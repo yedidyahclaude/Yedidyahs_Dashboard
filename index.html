@@ -405,6 +405,9 @@ let alts = JSON.parse(localStorage.getItem('sv_al') || '[]');
 let pos  = JSON.parse(localStorage.getItem('sv_pt') || '[]');
 let Q    = {};
 let srt=null, hlt=-1, flt=[];
+let scanSyms=JSON.parse(localStorage.getItem('sv_scan')||'[]');
+function getScanSyms(){return[...new Set([...wl,...scanSyms])];}
+function saveScanSyms(){localStorage.setItem('sv_scan',JSON.stringify(scanSyms));}
 
 // ════════════════════════════════════
 //  CLOCK + SESSION
@@ -531,7 +534,7 @@ function connectFinnhubWS(){
             high:Math.max(Q[sym].high||px,px),
             low:Math.min(Q[sym].low||px,px),
           };
-          if(sym===CUR) updateSymBar();
+          if(sym===CUR) 
           buildTape();renderWL();checkAlerts();
         });
       }
@@ -545,7 +548,7 @@ function connectFinnhubWS(){
 async function refreshPrices(){
   for(const sym of [...wl,CUR].filter((s,i,a)=>a.indexOf(s)===i)){
     await fetchQ(sym);
-    if(sym===CUR) updateSymBar();
+    if(sym===CUR) 
     renderWL();buildTape();checkAlerts();
     await new Promise(r=>setTimeout(r,250));
   }
@@ -835,9 +838,7 @@ if(Notification.permission==='default')Notification.requestPermission();
 // ════════════════════════════════════════
 //  5 PILLARS SCANNER
 // ════════════════════════════════════════
-let scanSyms = JSON.parse(localStorage.getItem('sv_scan') || '[]');
-function getScanSyms(){ return [...new Set([...wl, ...scanSyms])]; }
-function saveScanSyms(){ localStorage.setItem('sv_scan', JSON.stringify(scanSyms)); }
+// scanSyms defined at top
 
 function renderScanSyms(){
   const all = getScanSyms();
