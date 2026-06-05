@@ -127,9 +127,11 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .ws-del:hover{background:var(--rd);color:#fff}
 
 /* WIDGET BODY */
-.wb{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px;border-radius:0 0 7px 7px}
+.wb{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px;border-radius:0 0 7px 7px;min-height:0}
 .wb::-webkit-scrollbar{width:3px}
 .wb::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+.wb.iframe-body{padding:0;overflow:hidden;display:flex;flex-direction:column}
+.wb.iframe-body iframe{flex:1;width:100%;height:100%;border:none;display:block;min-height:0}
 
 /* RESIZE */
 .resize-br{position:absolute;bottom:0;right:0;width:14px;height:14px;cursor:se-resize;z-index:10}
@@ -361,11 +363,12 @@ function addNewsSubTab(url,title){
   }
 }
 
-let recentSyms=[];
+let recentSyms=JSON.parse(localStorage.getItem('sv_recent')||'[]');
 function addToRecentBar(sym){
   recentSyms=recentSyms.filter(s=>s!==sym);
   recentSyms.unshift(sym);
-  if(recentSyms.length>8)recentSyms=recentSyms.slice(0,8);
+  if(recentSyms.length>12)recentSyms=recentSyms.slice(0,12);
+  localStorage.setItem('sv_recent',JSON.stringify(recentSyms));
   renderRecentBar();
 }
 
@@ -373,9 +376,9 @@ function renderRecentBar(){
   const bar=document.getElementById('subtabBar');
   if(!bar)return;
   if(!recentSyms.length){bar.innerHTML='';return;}
-  bar.innerHTML=`<span class="rbar-label">Recent:</span>`+recentSyms.map(s=>{
+  bar.innerHTML=`<span class="rbar-label">History:</span>`+recentSyms.map(s=>{
     const q=Q[s],u=(q?.changePct||0)>=0;
-    return `<div class="stab" onclick="addSubTab('${s}');selectSym('${s}')">
+    return `<div class="stab" onclick="selectSym('${s}')">
       <span class="stab-sym">${s}</span>
       ${q?`<span class="stab-px ${u?'up':'dn'}">${u?'+':''}${(q.changePct||0).toFixed(1)}%</span>`:''}
     </div>`;
@@ -407,7 +410,7 @@ function connectFinnhubWS(){
           const prev=Q[sym].prevClose||px;
           Q[sym]={...Q[sym],price:px,change:px-prev,changePct:prev?(px-prev)/prev*100:0,
             high:Math.max(Q[sym].high||px,px),low:Math.min(Q[sym].low||px,px)};
-          buildTape();refreshWLWidgets();liveScanUpdate();
+          buildTape();refreshWLWidgets();liveScanUpdate();renderRecentBar();
         });
       }
     };
@@ -449,33 +452,7 @@ async function selectSym(sym){
   addSubTab(sym);
 }
 
-// ── SCREENERS via Finnhub
-async function fetchScreener(type){
-  try{
-    // Use Finnhub market news + scan approach
-    // For gainers/losers/active use the market overview endpoint
-    if(type==='premarket'){
-      // Pre-market: fetch quotes for watchlist + common movers
-      const syms=['AAPL','TSLA','NVDA','AMZN','MSFT','META','GOOGL','AMD','COIN','NFLX','SPY','QQQ'];
-      const results=[];
-      for(const s of syms){
-        if(!Q[s])await fetchQ(s);
-        if(Q[s]?.price)results.push(Q[s]);
-      }
-      return results.sort((a,b)=>Math.abs(b.changePct||0)-Math.abs(a.changePct||0)).slice(0,15);
-    }
-    // For gainers/losers/active — use Finnhub scan endpoint
-    const r=await fetch(`https://finnhub.io/api/v1/scan/technical-indicator?exchange=US&indicator=macd&token=${FHK}`);
-    const d=await r.json();
-    // fallback to watchlist-based screener
-    const base=[];
-    for(const s of wl){if(!Q[s])await fetchQ(s);if(Q[s]?.price)base.push(Q[s]);}
-    if(type==='gainers')return[...base].sort((a,b)=>(b.changePct||0)-(a.changePct||0));
-    if(type==='losers') return[...base].sort((a,b)=>(a.changePct||0)-(b.changePct||0));
-    if(type==='active') return[...base].sort((a,b)=>(b.volume||0)-(a.volume||0));
-    return base;
-  }catch(e){return[];}
-}
+// Screener data comes from TradingView embed widgets
 
 // ── WIDGET SYSTEM
 let widgets=JSON.parse(localStorage.getItem('sv_widgets4')||'null');
@@ -585,6 +562,12 @@ function saveWS(id){
 
 function populateWidget(el,w){
   const body=document.getElementById('wb-'+w.id);if(!body)return;
+  const iframeTypes=['gainers','losers','active','premarket'];
+  if(iframeTypes.includes(w.type)){
+    body.classList.add('iframe-body');
+  } else {
+    body.classList.remove('iframe-body');
+  }
   if(w.type==='watchlist') renderWL(body);
   else if(w.type==='alerts')   renderAL(body);
   else if(w.type==='news')     renderNews(body,CUR);
@@ -629,29 +612,41 @@ async function addWLFrom(inp){
 }
 function rmWL(sym){wl=wl.filter(s=>s!==sym);saveWL();refreshWLWidgets();buildTape();}
 
-// ── SCREENERS (Gainers/Losers/Active/Premarket)
-function renderScreener(body,type){
-  body.innerHTML=`<div class="scr-loading"><div class="scr-sp"></div>Loading ${WIDGET_TYPES[type]||type}…</div>`;
-  const hdr=`<div style="display:flex;gap:4px;padding:3px 6px;font-size:7px;color:var(--dim);letter-spacing:.06em;border-bottom:1px solid var(--b1);margin-bottom:3px">
-    <span style="width:16px">#</span><span style="flex:1">SYM</span>
-    <span style="width:50px;text-align:right">PRICE</span>
-    <span style="width:45px;text-align:right">CHG%</span>
-    <span style="width:40px;text-align:right">VOL</span>
-  </div>`;
-  fetchScreener(type).then(data=>{
-    if(!data?.length){body.innerHTML='<div class="scan-empty">No data available</div>';return;}
-    body.innerHTML=hdr+data.slice(0,20).map((q,i)=>{
-      const u=(q.changePct||0)>=0;
-      return `<div class="scr-item" onclick="selectSym('${q.symbol}')">
-        <span class="scr-rank">${i+1}</span>
-        <span class="scr-sym ${u?'up':'dn'}">${q.symbol}</span>
-        <span class="scr-name">${q.name||''}</span>
-        <span class="scr-px">$${fmtP(q.price)}</span>
-        <span class="scr-chg ${u?'up':'dn'}">${u?'+':''}${(q.changePct||0).toFixed(2)}%</span>
-        <span class="scr-vol">${fmtV(q.volume)}</span>
-      </div>`;
-    }).join('');
-  });
+// ── SCREENERS — TradingView embeddable widgets (free, real-time, no API needed)
+// TradingView screener widgets are officially supported embeds — no iframe blocking
+
+function renderScreener(body, type){
+  body.style.padding = '0';
+  body.style.overflow = 'hidden';
+
+  const screens = {
+    gainers:   'top_gainers',
+    losers:    'top_losers',
+    active:    'most_capitalized',
+    premarket: 'pre_market_gainers',
+  };
+
+  const screen = screens[type];
+  if(!screen){body.innerHTML='<div class="scan-empty">Unknown screener</div>';return;}
+
+  const params = encodeURIComponent(JSON.stringify({
+    width:         '100%',
+    height:        '100%',
+    defaultColumn: 'overview',
+    defaultScreen:  screen,
+    market:        'america',
+    showToolbar:    true,
+    colorTheme:    'dark',
+    locale:        'en',
+  }));
+
+  body.innerHTML = `<iframe
+    scrolling="no"
+    allowtransparency="true"
+    frameborder="0"
+    src="https://www.tradingview.com/embed-widget/screener/?locale=en#${params}"
+    style="width:100%;height:100%;border:none;display:block;flex:1">
+  </iframe>`;
 }
 
 // ── ALERTS
@@ -928,6 +923,11 @@ function makeResizable(el,wData){
   });
   document.addEventListener('mouseup',()=>{
     if(!resizing)return;resizing=false;el.classList.remove('resizing');saveWidgets();
+    // Force iframes to reflow after resize
+    el.querySelectorAll('iframe').forEach(f=>{
+      const s=f.style.width;f.style.width='99%';
+      requestAnimationFrame(()=>f.style.width=s||'100%');
+    });
   });
 }
 
@@ -981,11 +981,13 @@ if(Notification.permission==='default')Notification.requestPermission();
 
 // ── BOOT
 async function init(){
+  renderRecentBar(); // render history bar immediately (empty on first visit)
   widgets.forEach(w=>renderWidget(w));
   for(const sym of wl){
     await fetchQ(sym);buildTape();refreshWLWidgets();liveScanUpdate();
     await new Promise(r=>setTimeout(r,150));
   }
+  renderRecentBar(); // re-render with prices loaded
   connectFinnhubWS();
 }
 init();
