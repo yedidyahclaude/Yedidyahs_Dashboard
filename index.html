@@ -426,38 +426,6 @@ function tick(){
 }
 setInterval(tick,1000);tick();
 
-// ════════════════════════════════════
-//  TRADINGVIEW — load in iframe
-//  Uses TradingView's own chart page
-//  Requires user to be logged in to TV
-// ════════════════════════════════════
-  // removed
-  let tvSym = sym;
-  if(sym==='BTC'||sym==='BTC/USD') tvSym='BINANCE:BTCUSDT';
-  else if(sym==='ETH'||sym==='ETH/USD') tvSym='BINANCE:ETHUSDT';
-
-  const frame = document.getElementById('tvframe');
-
-  // Use TradingView's advanced chart widget
-  // interval=1S = 1 second (needs Premium), 10S = 10 seconds
-  // Falls back to 1m if not on Premium
-  const src = `https://www.tradingview.com/widgetembed/?`
-    + `symbol=${encodeURIComponent(tvSym)}`
-    + `&interval=1`
-    + `&theme=dark`
-    + `&style=1`
-    + `&locale=en`
-    + `&hide_top_toolbar=0`
-    + `&hide_side_toolbar=0`
-    + `&allow_symbol_change=0`
-    + `&save_image=1`
-    + `&studies=STD%3BRSI%7CSTD%3BVolume`
-    + `&withdateranges=1`
-    + `&extended_hours=1`
-    + `&hide_legend=0`;
-
-  frame.src = src;
-}
 
 function openTVDirect(){
   let tvSym = CUR;
