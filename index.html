@@ -772,36 +772,9 @@ function showP(id,btn){}
 // ════════════════════════════════════
 //  RESIZABLE PANEL
 // ════════════════════════════════════
-const handle = document.getElementById('resizeHandle');
-const dashP  = document.getElementById('dashPanel');
-let isResizing = false;
 
-// Restore saved width
-const savedW = localStorage.getItem('sv_pw');
-if(savedW) dashP.style.width = savedW + 'px';
 
-handle.addEventListener('mousedown', e => {
-  isResizing = true;
-  handle.classList.add('dragging');
-  document.body.style.cursor = 'col-resize';
-  document.body.style.userSelect = 'none';
-  e.preventDefault();
-});
-document.addEventListener('mousemove', e => {
-  if (!isResizing) return;
-  const bodyRect = document.getElementById('body').getBoundingClientRect();
-  const newWidth = Math.max(200, Math.min(520, e.clientX - bodyRect.left));
-  dashP.style.width = newWidth + 'px';
-});
-document.addEventListener('mouseup', () => {
-  if(isResizing){
-    localStorage.setItem('sv_pw', parseInt(dashP.style.width));
-  }
-  isResizing = false;
-  handle.classList.remove('dragging');
-  document.body.style.cursor = '';
-  document.body.style.userSelect = '';
-});
+// resize removed - no chart panel
 
 if(Notification.permission==='default')Notification.requestPermission();
 
