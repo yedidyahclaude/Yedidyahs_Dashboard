@@ -166,6 +166,54 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:50px;flex-
 .nlod{font-size:10px;color:var(--mu);text-align:center;padding:16px 0}
 
 .up{color:var(--gr)}.dn{color:var(--rd)}
+
+/* COLLAPSIBLE SECTIONS */
+.dash-inner{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.dash-inner::-webkit-scrollbar{width:3px}
+.dash-inner::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
+.csec{border-bottom:1px solid var(--b1);flex-shrink:0}
+.csec-hdr{display:flex;align-items:center;gap:8px;padding:8px 10px;cursor:pointer;user-select:none;transition:background .1s;background:var(--s1)}
+.csec-hdr:hover{background:var(--s2)}
+.csec-title{font-size:10px;font-weight:500;color:var(--tx);letter-spacing:.03em;flex:1}
+.csec-badge{font-size:9px;background:var(--b2);color:var(--mu);padding:1px 6px;border-radius:8px;min-width:18px;text-align:center}
+.csec-arrow{font-size:10px;color:var(--mu);flex-shrink:0;transition:transform .15s;width:12px;text-align:center}
+.csec-body{padding:8px;background:var(--bg)}
+.csec-body.open{display:block!important}
+
+/* 5 PILLARS SCANNER */
+.scanner-wrap{padding:10px}
+.scanner-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.scanner-title{font-size:10px;color:var(--mu);letter-spacing:.08em;text-transform:uppercase}
+.scanner-badge{font-size:9px;padding:2px 7px;border-radius:10px;background:#19c48a15;color:var(--gr);border:1px solid #19c48a25}
+.scanner-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;padding:8px;background:var(--s2);border-radius:6px;border:1px solid var(--b2)}
+.flt-group{display:flex;flex-direction:column;gap:2px;flex:1;min-width:80px}
+.flt-label{font-size:8px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.flt-input{background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:4px 6px;outline:none;width:100%}
+.flt-input:focus{border-color:var(--ac)}
+.scan-btn{background:var(--ac);border:none;border-radius:5px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.05em;padding:6px 12px;cursor:pointer;white-space:nowrap;transition:opacity .12s}
+.scan-btn:hover{opacity:.85}
+.scan-btn:disabled{opacity:.4;cursor:not-allowed}
+.scanner-table{width:100%;border-collapse:collapse}
+.scanner-table th{font-size:8px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;padding:5px 8px;text-align:left;border-bottom:1px solid var(--b2);white-space:nowrap}
+.scanner-table td{padding:6px 8px;border-bottom:1px solid #1a1b2a;font-size:11px;vertical-align:middle}
+.scanner-row{cursor:pointer;transition:background .08s}
+.scanner-row:hover{background:#7c6aff0a}
+.pill{display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:50%;font-size:9px;font-weight:600;flex-shrink:0}
+.pill.pass{background:#19c48a20;color:var(--gr);border:1px solid #19c48a40}
+.pill.fail{background:#f0506e15;color:var(--rd);border:1px solid #f0506e30}
+.pill.na{background:var(--b2);color:var(--mu);border:1px solid var(--b2)}
+.pillars-row{display:flex;gap:3px;align-items:center}
+.score-badge{font-size:9px;padding:2px 6px;border-radius:8px;font-weight:600}
+.score-5{background:#19c48a20;color:var(--gr);border:1px solid #19c48a30}
+.score-4{background:#f59e0b15;color:var(--gold);border:1px solid #f59e0b30}
+.score-3{background:#7c6aff15;color:var(--ac2);border:1px solid #7c6aff30}
+.score-low{background:var(--b2);color:var(--mu);border:1px solid var(--b2)}
+.scan-empty{text-align:center;padding:30px;color:var(--mu);font-size:11px}
+.scan-loading{text-align:center;padding:20px;color:var(--mu);font-size:11px;display:flex;align-items:center;justify-content:center;gap:8px}
+.scan-loading .sp{width:14px;height:14px;border:2px solid var(--b2);border-top-color:var(--ac);border-radius:50%;animation:spin .6s linear infinite}
+.news-flag{font-size:9px;margin-left:3px}
+.tv-link{background:none;border:1px solid var(--b2);border-radius:4px;color:var(--ac2);font-family:'DM Mono',monospace;font-size:9px;padding:2px 6px;cursor:pointer;transition:all .1s;white-space:nowrap}
+.tv-link:hover{border-color:var(--ac);background:#7c6aff0e}
 @keyframes fg{0%{color:var(--gr)}100%{color:inherit}}
 @keyframes fr{0%{color:var(--rd)}100%{color:inherit}}
 .fu{animation:fg .7s ease}.fd{animation:fr .7s ease}
@@ -209,18 +257,90 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:50px;flex-
       <div class="dash-inner">
         <div class="ptabs">
           <button class="ptab on" onclick="showP('wl',this)">Watch</button>
+          <button class="ptab"    onclick="showP('sc',this)">Scanner</button>
           <button class="ptab"    onclick="showP('al',this)">Alerts</button>
           <button class="ptab"    onclick="showP('pt',this)">Portfolio</button>
           <button class="ptab"    onclick="showP('nw',this)">News</button>
         </div>
-        <div class="pbody" id="p-wl">
-          <div class="wla">
-            <input id="wli" type="text" placeholder="Add symbol…" maxlength="10" spellcheck="false"/>
-            <button onclick="addWL()">+</button>
+        <div class="csec" id="sec-wl">
+          <div class="csec-hdr" onclick="toggleSec('wl')">
+            <span class="csec-title">📋 Watchlist</span>
+            <span class="csec-badge" id="wl-badge">0</span>
+            <span class="csec-arrow" id="arr-wl">▾</span>
           </div>
-          <div id="wll"></div>
+          <div class="csec-body" id="body-wl">
+            <div class="wla">
+              <input id="wli" type="text" placeholder="Add symbol…" maxlength="10" spellcheck="false"/>
+              <button onclick="addWL()">+</button>
+            </div>
+            <div id="wll"></div>
+          </div>
         </div>
-        <div class="pbody" id="p-al" style="display:none">
+        <!-- 5 PILLARS SCANNER -->
+        <div class="csec" id="sec-sc">
+          <div class="csec-hdr" onclick="toggleSec('sc')">
+            <span class="csec-title">🔥 5 Pillars Scanner</span>
+            <span class="csec-badge" id="scan-count-badge">0</span>
+            <span class="csec-arrow" id="arr-sc">▸</span>
+          </div>
+          <div class="csec-body" id="body-sc" style="display:none">
+          <div class="scanner-wrap">
+            <div class="scanner-header">
+              <span class="scanner-title">🔥 5 Pillars Scanner</span>
+              <span class="scanner-badge" id="scan-count">0 results</span>
+            </div>
+            <!-- Filter controls -->
+            <div class="scanner-filters">
+              <div class="flt-group">
+                <span class="flt-label">Min Price</span>
+                <input class="flt-input" id="flt-minprice" type="number" value="1" step="0.5"/>
+              </div>
+              <div class="flt-group">
+                <span class="flt-label">Max Price</span>
+                <input class="flt-input" id="flt-maxprice" type="number" value="20" step="1"/>
+              </div>
+              <div class="flt-group">
+                <span class="flt-label">Min % Chg</span>
+                <input class="flt-input" id="flt-minchg" type="number" value="10" step="1"/>
+              </div>
+              <div class="flt-group">
+                <span class="flt-label">Min RVol</span>
+                <input class="flt-input" id="flt-rvol" type="number" value="5" step="0.5"/>
+              </div>
+            </div>
+            <div style="display:flex;gap:6px;margin-bottom:10px">
+              <button class="scan-btn" id="scanBtn" onclick="runScanner()" style="flex:1">▶ RUN SCANNER</button>
+              <button class="scan-btn" onclick="addCustomSym()" style="background:var(--s2);border:1px solid var(--b2);color:var(--mu)">+ Add Symbol</button>
+            </div>
+            <div style="font-size:9px;color:var(--dim);margin-bottom:8px;line-height:1.5">
+              Checks your watchlist + custom symbols against Ross Cameron's 5 Pillars. 
+              Add more symbols below for broader scanning.
+            </div>
+            <!-- Custom symbols to scan -->
+            <div style="margin-bottom:10px">
+              <div style="font-size:8px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px">Symbols to Scan</div>
+              <div id="scan-syms" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px"></div>
+              <div style="display:flex;gap:5px">
+                <input id="scan-add-inp" type="text" placeholder="Add symbol…" maxlength="8" spellcheck="false"
+                  style="flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:5px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:5px 7px;outline:none"/>
+                <button onclick="addScanSym()" style="background:var(--ac);border:none;border-radius:5px;color:#fff;font-size:12px;width:26px;cursor:pointer">+</button>
+              </div>
+            </div>
+            <!-- Results -->
+            <div id="scan-results">
+              <div class="scan-empty">Click RUN SCANNER to find stocks<br>meeting Ross Cameron's 5 Pillars</div>
+            </div>
+          </div>
+          </div>
+        </div>
+
+        <div class="csec" id="sec-al">
+          <div class="csec-hdr" onclick="toggleSec('al')">
+            <span class="csec-title">🔔 Alerts</span>
+            <span class="csec-badge" id="al-badge">0</span>
+            <span class="csec-arrow" id="arr-al">▸</span>
+          </div>
+          <div class="csec-body" id="body-al" style="display:none">
           <div class="alf">
             <select id="al-s"></select>
             <select id="al-t">
@@ -232,7 +352,16 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:50px;flex-
           </div>
           <div id="all"></div>
         </div>
-        <div class="pbody" id="p-pt" style="display:none">
+          </div>
+        </div>
+
+        <div class="csec" id="sec-pt">
+          <div class="csec-hdr" onclick="toggleSec('pt')">
+            <span class="csec-title">💼 Portfolio</span>
+            <span class="csec-badge" id="pt-badge">0</span>
+            <span class="csec-arrow" id="arr-pt">▸</span>
+          </div>
+          <div class="csec-body" id="body-pt" style="display:none">
           <div class="psum" id="psum"></div>
           <div class="padd">
             <input id="pts" type="text"   placeholder="Symbol (AAPL)"/>
@@ -242,8 +371,17 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:50px;flex-
           </div>
           <div id="ptl"></div>
         </div>
-        <div class="pbody" id="p-nw" style="display:none">
-          <div id="nbody"><div class="nlod">Loading news…</div></div>
+          </div>
+        </div>
+
+        <div class="csec" id="sec-nw">
+          <div class="csec-hdr" onclick="toggleSec('nw')">
+            <span class="csec-title">📰 News</span>
+            <span class="csec-arrow" id="arr-nw">▸</span>
+          </div>
+          <div class="csec-body" id="body-nw" style="display:none">
+            <div id="nbody"><div class="nlod">Loading news…</div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -462,6 +600,8 @@ function renderWL(){
     </div>`;
   }).join('');
   document.getElementById('wli').onkeydown=e=>{if(e.key==='Enter')addWL();};
+  const badge = document.getElementById('wl-badge');
+  if(badge) badge.textContent = wl.length;
 }
 
 // ════════════════════════════════════
@@ -504,6 +644,8 @@ function checkAlerts(){
 function renderAL(){
   const el=document.getElementById('all');
   if(!alts.length){el.innerHTML='<div style="font-size:10px;color:var(--mu);text-align:center;padding:10px">No alerts set</div>';return;}
+  const albadge = document.getElementById('al-badge');
+  if(albadge) albadge.textContent = alts.filter(a=>a.active).length;
   el.innerHTML=alts.map(a=>{
     const cls=a.triggered?'trig':a.active?'on':'off';
     return `<div class="ali">
@@ -641,12 +783,17 @@ inp.addEventListener('keydown',e=>{
 });
 document.addEventListener('click',e=>{if(!e.target.closest('.sw'))closeDrop();});
 
-function showP(id,btn){
-  ['wl','al','pt','nw'].forEach(p=>document.getElementById('p-'+p).style.display=p===id?'block':'none');
-  document.querySelectorAll('.ptab').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  if(id==='nw') loadNews(CUR);
+function toggleSec(id){
+  const body  = document.getElementById('body-'+id);
+  const arrow = document.getElementById('arr-'+id);
+  const open  = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  arrow.textContent  = open ? '▸' : '▾';
+  if(!open && id==='nw') loadNews(CUR);
+  if(!open && id==='sc') renderScanSyms();
 }
+// Keep showP as no-op for compatibility
+function showP(id,btn){}
 
 // ════════════════════════════════════
 //  RESIZABLE PANEL
@@ -684,11 +831,151 @@ document.addEventListener('mouseup', () => {
 
 if(Notification.permission==='default')Notification.requestPermission();
 
+
+// ════════════════════════════════════════
+//  5 PILLARS SCANNER
+// ════════════════════════════════════════
+let scanSyms = JSON.parse(localStorage.getItem('sv_scan') || '[]');
+function getScanSyms(){ return [...new Set([...wl, ...scanSyms])]; }
+function saveScanSyms(){ localStorage.setItem('sv_scan', JSON.stringify(scanSyms)); }
+
+function renderScanSyms(){
+  const all = getScanSyms();
+  const el = document.getElementById('scan-syms');
+  if(!el) return;
+  el.innerHTML = all.map(s => {
+    const inWL = wl.includes(s);
+    return `<span style="display:inline-flex;align-items:center;gap:3px;background:${inWL?'#7c6aff15':'var(--s2)'};border:1px solid ${inWL?'#7c6aff30':'var(--b2)'};border-radius:12px;padding:2px 7px;font-size:9px;color:${inWL?'var(--ac2)':'var(--mu)'}">
+      ${s}${!inWL?`<button onclick="removeScanSym('${s}')" style="background:none;border:none;color:var(--rd);cursor:pointer;font-size:10px;opacity:.6;margin-left:1px">×</button>`:''}
+    </span>`;
+  }).join('');
+}
+
+function addScanSym(){
+  const inp = document.getElementById('scan-add-inp');
+  const sym = inp.value.toUpperCase().trim();
+  if(!sym || getScanSyms().includes(sym)) return;
+  scanSyms.push(sym); saveScanSyms(); inp.value='';
+  renderScanSyms();
+}
+
+function removeScanSym(sym){
+  scanSyms = scanSyms.filter(s=>s!==sym); saveScanSyms(); renderScanSyms();
+}
+
+async function runScanner(){
+  const btn = document.getElementById('scanBtn');
+  btn.disabled=true; btn.textContent='⏳ Scanning…';
+  document.getElementById('scan-results').innerHTML='<div class="scan-loading"><div class="sp"></div>Checking 5 pillars…</div>';
+
+  const minP  = parseFloat(document.getElementById('flt-minprice').value)||1;
+  const maxP  = parseFloat(document.getElementById('flt-maxprice').value)||20;
+  const minC  = parseFloat(document.getElementById('flt-minchg').value)||10;
+  const minRV = parseFloat(document.getElementById('flt-rvol').value)||5;
+
+  const results=[];
+  for(const sym of getScanSyms()){
+    try{
+      if(!Q[sym]) await fetchQ(sym);
+      const q=Q[sym]; if(!q||!q.price) continue;
+
+      // Pillar 1: Price range
+      const p1 = q.price>=minP && q.price<=maxP;
+      // Pillar 2: % change
+      const p2 = (q.changePct||0)>=minC;
+
+      if(!p1||!p2) continue; // must pass both minimum pillars
+
+      // Pillar 3: News
+      let hasNews=false;
+      try{
+        const today=new Date().toISOString().split('T')[0];
+        const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];
+        const r=await fetch(`https://finnhub.io/api/v1/company-news?symbol=${sym}&from=${from}&to=${today}&token=${FHK}`);
+        const news=await r.json();
+        hasNews=Array.isArray(news)&&news.length>0;
+      }catch(e){}
+      const p3=hasNews;
+
+      // Pillar 4: Relative volume + Pillar 5: Float
+      let rVol=null, float=null, p4=null, p5=null;
+      try{
+        const r=await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${sym}&metric=all&token=${FHK}`);
+        const d=await r.json();
+        const avgV=(d.metric?.['10DayAverageTradingVolume']||0)*1000000;
+        rVol = avgV>0 ? q.volume/avgV : null;
+        float = d.metric?.['float']||null;
+        p4 = rVol!==null ? rVol>=minRV : null;
+        p5 = float!==null ? float<10 : null;
+      }catch(e){}
+
+      const score=[p1,p2,p3,p4===true,p5===true].filter(Boolean).length;
+      results.push({sym,q,p1,p2,p3,p4,p5,rVol,float,score,hasNews});
+    }catch(e){}
+    await new Promise(r=>setTimeout(r,200));
+  }
+
+  results.sort((a,b)=>b.score-a.score||(b.q.changePct||0)-(a.q.changePct||0));
+  document.getElementById('scan-count').textContent=results.length+' results';
+  const scb = document.getElementById('scan-count-badge');
+  if(scb) scb.textContent = results.length;
+  renderScanResults(results, minP, maxP, minC, minRV);
+  btn.disabled=false; btn.textContent='▶ RUN SCANNER';
+}
+
+function pDot(val,label){
+  const cls=val===true?'pass':val===false?'fail':'na';
+  const icon=val===true?'✓':val===false?'✗':'?';
+  return `<span class="pill ${cls}" title="${label}">${icon}</span>`;
+}
+
+function renderScanResults(results, minP, maxP, minC, minRV){
+  const el=document.getElementById('scan-results');
+  if(!results.length){
+    el.innerHTML='<div class="scan-empty">No stocks passed minimum criteria<br><span style="font-size:9px;color:var(--dim)">Try adjusting filters or add more symbols</span></div>';
+    return;
+  }
+  el.innerHTML='<div style="font-size:8px;color:var(--dim);letter-spacing:.06em;margin-bottom:6px;display:flex;gap:6px;padding:0 4px"><span style="flex:1">SYMBOL</span><span style="width:48px;text-align:right">PRICE</span><span style="width:44px;text-align:right">CHG%</span><span style="width:76px;text-align:center">P1 P2 P3 P4 P5</span><span style="width:26px;text-align:center">SCR</span></div>'+
+  results.map(r=>{
+    const u=(r.q.changePct||0)>=0;
+    const scoreCls=r.score>=4?'score-5':r.score===3?'score-4':r.score===2?'score-3':'score-low';
+    return `<div class="scanner-row" onclick="openScanSym('${r.sym}')"
+      style="display:flex;align-items:center;gap:5px;padding:7px 4px;border-bottom:1px solid #1a1b2a">
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;font-weight:500;color:${r.score>=4?'var(--gr)':'#ddd'}">${r.sym}${r.hasNews?' 🔥':''}</div>
+        <div style="font-size:9px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100px">${r.q.name||''}</div>
+      </div>
+      <div style="width:48px;text-align:right;font-size:11px">$${fmtP(r.q.price)}</div>
+      <div style="width:44px;text-align:right;font-size:11px" class="${u?'up':'dn'}">${u?'+':''}${(r.q.changePct||0).toFixed(1)}%</div>
+      <div style="width:76px"><div class="pillars-row" style="justify-content:center;gap:2px">
+        ${pDot(r.p1,'P1: Price $'+minP+'-$'+maxP)}
+        ${pDot(r.p2,'P2: Change ≥'+minC+'%')}
+        ${pDot(r.p3,'P3: News Catalyst')}
+        ${pDot(r.p4,'P4: RVol ≥'+minRV+'x')}
+        ${pDot(r.p5,'P5: Float <10M')}
+      </div></div>
+      <div style="width:26px;text-align:center"><span class="score-badge ${scoreCls}">${r.score}/5</span></div>
+    </div>`;
+  }).join('');
+}
+
+function openScanSym(sym){
+  if(!wl.includes(sym)){ wl.push(sym); saveWL(); renderWL(); buildTape(); }
+  selectSym(sym);
+  const w=Math.floor(screen.width*.75),h=Math.floor(screen.height*.85);
+  const l=Math.floor((screen.width-w)/2),t=Math.floor((screen.height-h)/2);
+  window.open('https://www.tradingview.com/chart/?symbol='+encodeURIComponent(sym)+'&interval=1',
+    'TradingView','width='+w+',height='+h+',left='+l+',top='+t+',resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no');
+}
+
 // ════════════════════════════════════
 //  BOOT
 // ════════════════════════════════════
 async function init(){
-  renderWL();renderAL();renderPort();updateAlSel();
+  renderWL();renderAL();renderPort();updateAlSel();renderScanSyms();
+  // Watchlist open by default
+  document.getElementById('body-wl').style.display='block';
+  document.getElementById('arr-wl').textContent='▾';
   // Load prices staggered
   for(const sym of wl){
     await fetchQ(sym);
