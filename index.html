@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StockView Dashboard</title>
+<title>Yedidyah's Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -229,13 +229,30 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 </style>
 </head>
 <body>
-<div class="app">
+<!-- LOGIN WALL -->
+<div id="loginWall" style="position:fixed;inset:0;background:#07080f;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px">
+  <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:#fff">Yedidyah's <span style="color:#a78bfa">Dashboard</span></div>
+  <div style="background:#0c0d1a;border:1px solid #242538;border-radius:10px;padding:28px;min-width:320px;display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:11px;color:#606172;text-align:center;margin-bottom:4px">Sign in to continue</div>
+    <input id="loginUser" type="text" placeholder="Username" autocomplete="username"
+      style="background:#111220;border:1px solid #242538;border-radius:6px;color:#e0e1f0;font-family:'DM Mono',monospace;font-size:12px;padding:8px 12px;outline:none;width:100%"
+      onkeydown="if(event.key==='Enter')tryLogin()"/>
+    <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password"
+      style="background:#111220;border:1px solid #242538;border-radius:6px;color:#e0e1f0;font-family:'DM Mono',monospace;font-size:12px;padding:8px 12px;outline:none;width:100%"
+      onkeydown="if(event.key==='Enter')tryLogin()"/>
+    <div id="loginErr" style="font-size:10px;color:#f0506e;text-align:center;display:none">Incorrect username or password</div>
+    <button onclick="tryLogin()" style="background:#7c6aff;border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;padding:9px;cursor:pointer;margin-top:4px">Sign In →</button>
+  </div>
+  <div style="font-size:9px;color:#383950">Private access only</div>
+</div>
+
+<div class="app" id="mainApp" style="display:none">
 
   <!-- HEADER -->
   <header>
     <a class="brand" href="#">
       <div class="bico"><svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,12 5,7 8,10 12,4 15,6"/></svg></div>
-      <span class="bnm">Stock<em>View</em></span>
+      <span class="bnm">Yedidyah's <em>Dashboard</em></span>
     </a>
 
     <!-- SEARCH — TradingView powered -->
@@ -294,9 +311,43 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
     </div>
   </div>
 
-</div>
+</div><!-- end mainApp -->
 
 <script>
+// ── LOGIN WALL
+// Add authorized users here: {user, pass}
+const USERS = [
+  {user:'Yedidyah', pass:'Test321!@#'},
+];
+
+function tryLogin(){
+  const u=document.getElementById('loginUser').value.trim().toLowerCase();
+  const p=document.getElementById('loginPass').value;
+  const ok=USERS.some(x=>x.user===u&&x.pass===p);
+  if(ok){
+    // Save session
+    sessionStorage.setItem('sv_auth','1');
+    document.getElementById('loginWall').style.display='none';
+    document.getElementById('mainApp').style.display='flex';
+    init();
+  } else {
+    const err=document.getElementById('loginErr');
+    err.style.display='block';
+    document.getElementById('loginPass').value='';
+    setTimeout(()=>err.style.display='none',3000);
+  }
+}
+
+// Check if already authenticated this session
+function checkAuth(){
+  if(sessionStorage.getItem('sv_auth')==='1'){
+    document.getElementById('loginWall').style.display='none';
+    document.getElementById('mainApp').style.display='flex';
+    return true;
+  }
+  return false;
+}
+
 const FHK = 'd8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
 const SNAP = 20;
 const WIDGET_TYPES = {
@@ -454,11 +505,26 @@ function openTVPopup(sym){
   let tvSym=sym;
   if(sym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
   else if(sym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
-  const url=`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tvSym)}&interval=1&theme=dark`;
-  const w=Math.floor(screen.width*.72),h=Math.floor(screen.height*.85);
-  const l=Math.floor((screen.width-w)/2),t=Math.floor((screen.height-h)/10);
-  if(tvWin&&!tvWin.closed){tvWin.location.href=url;tvWin.focus();}
-  else tvWin=window.open(url,'StockViewTV',`width=${w},height=${h},left=${l},top=${t},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no`);
+  const url='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSym)+'&interval=1&theme=dark';
+  const pw=Math.floor(screen.width*.72);
+  const ph=Math.floor(screen.height*.85);
+  const pl=Math.floor((screen.width-pw)/2);
+  const pt=Math.floor((screen.height-ph)/10);
+  const features='width='+pw+',height='+ph+',left='+pl+',top='+pt+',resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=no';
+  // Always try reusing existing popup first
+  try{
+    if(tvWin&&!tvWin.closed){
+      tvWin.location.href=url;
+      tvWin.focus();
+      return;
+    }
+  }catch(e){}
+  // Open new popup
+  tvWin=window.open(url,'StockViewTV',features);
+  if(!tvWin||tvWin.closed){
+    // Popup was blocked — open in new tab as fallback
+    window.open(url,'_blank');
+  }
 }
 function openNewsPopup(url){
   const w=Math.floor(screen.width*.65),h=Math.floor(screen.height*.85);
@@ -525,12 +591,18 @@ async function selectSym(sym){
   CUR=sym;localStorage.setItem('sv_s',sym);
   const si=document.getElementById('si');if(si)si.value='';
   closeDrop();
+  // Fetch price if not cached
   if(!Q[sym])await fetchQ(sym);
+  // Add to history AFTER price is fetched so % shows immediately
   addToHistory(sym);
+  // Subscribe to live feed
   if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
+  // Update all widgets
   refreshHistWidgets();
-  // Update news widgets
+  renderHistBar();
+  // Update news widgets for this symbol
   widgets.filter(w=>w.type==='news').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderNews(b,sym);});
+  // Open TradingView popup
   openTVPopup(sym);
 }
 
@@ -957,10 +1029,16 @@ inp.addEventListener('keydown',e=>{
   else if(e.key==='Escape'){closeDrop();inp.blur();}
 });
 
-// ANY KEY press opens search box
+// ANY KEY press opens search box — but only when not typing in another input
 document.addEventListener('keydown',e=>{
   if(e.target===inp)return;
+  // Don't hijack if user is typing in any input, textarea, select, or contenteditable
+  const tag=e.target.tagName;
+  if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
+  if(e.target.isContentEditable)return;
+  // Don't hijack modifier keys
   if(e.metaKey||e.ctrlKey||e.altKey)return;
+  if(e.key==='Escape'){closeDrop();return;}
   if(e.key.length===1&&/[a-zA-Z0-9]/.test(e.key)){
     inp.focus();
     inp.value=e.key;
@@ -1032,7 +1110,11 @@ async function init(){
   connectFinnhubWS();
   startDeepScan();
 }
-init();
+// Only auto-init if already authenticated
+if(!checkAuth()){
+  // Show login wall — init() called after successful login
+  document.getElementById('loginPass')?.addEventListener('keydown',e=>{if(e.key==='Enter')tryLogin();});
+}
 </script>
 </body>
 </html>
