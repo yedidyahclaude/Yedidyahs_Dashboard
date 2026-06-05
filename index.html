@@ -73,21 +73,16 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .tpc{font-size:8px}
 .tsp{width:1px;height:9px;background:var(--b1);flex-shrink:0}
 
-/* SUB-TAB BROWSER */
-.subtab-bar{display:flex;align-items:center;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0;overflow-x:auto;min-height:30px;padding:0 8px;gap:4px}
+/* RECENT STOCKS BAR */
+.subtab-bar{display:flex;align-items:center;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0;overflow-x:auto;min-height:28px;padding:0 10px;gap:4px}
+.subtab-bar:empty{display:none}
 .subtab-bar::-webkit-scrollbar{height:2px}
 .subtab-bar::-webkit-scrollbar-thumb{background:var(--b2)}
-.stab{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:5px 5px 0 0;background:var(--s2);border:1px solid var(--b2);border-bottom:none;cursor:pointer;font-size:10px;color:var(--mu);white-space:nowrap;transition:all .1s;flex-shrink:0;max-width:160px}
-.stab:hover{color:var(--tx);background:var(--s3)}
-.stab.on{background:var(--bg);color:var(--tx);border-color:var(--b1)}
-.stab-sym{font-weight:500;overflow:hidden;text-overflow:ellipsis;max-width:80px}
-.stab-x{font-size:9px;color:var(--mu);background:none;border:none;cursor:pointer;line-height:1;padding:0 2px;border-radius:2px;flex-shrink:0}
-.stab-x:hover{color:var(--rd);background:var(--b2)}
-.stab-new{font-size:18px;line-height:1;color:var(--mu);background:none;border:none;cursor:pointer;padding:0 6px;transition:color .1s}
-.stab-new:hover{color:var(--ac2)}
-.subtab-content{flex:1;overflow:hidden;display:none;min-height:0}
-.subtab-content.on{display:flex;flex-direction:column}
-.subtab-frame{flex:1;width:100%;border:none;background:var(--bg)}
+.stab{display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:4px;background:var(--s2);border:1px solid var(--b2);cursor:pointer;font-size:10px;color:var(--mu);white-space:nowrap;transition:all .1s;flex-shrink:0}
+.stab:hover{color:var(--tx);background:var(--s3);border-color:var(--ac)}
+.stab-sym{font-weight:500}
+.stab-px{font-size:9px}
+.rbar-label{font-size:8px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-right:4px;flex-shrink:0}
 
 /* CANVAS */
 .canvas{flex:1;overflow:auto;position:relative;background:var(--bg)}
@@ -275,11 +270,8 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
   <!-- TAPE -->
   <div class="tape"><div class="ttr" id="ttr"></div></div>
 
-  <!-- SUB-TAB BAR -->
-  <div class="subtab-bar" id="subtabBar">
-    <button class="stab-new" onclick="addSubTab('AAPL')" title="New tab">+</button>
-  </div>
-  <div id="subtabFrames"></div>
+  <!-- RECENT STOCKS BAR -->
+  <div class="subtab-bar" id="subtabBar"></div>
 
   <!-- WIDGET CANVAS -->
   <div class="canvas" id="canvas">
@@ -305,7 +297,6 @@ let alts   = JSON.parse(localStorage.getItem('sv_al')||'[]');
 let scanSyms = JSON.parse(localStorage.getItem('sv_scan')||'[]');
 let fhWS   = null;
 let srt=null, hlt=-1, flt=[];
-let subtabs=[], activeTab=null;
 let wIdC=100;
 
 function getScanSyms(){return[...new Set([...wl,...scanSyms])];}
@@ -336,91 +327,59 @@ function tvUrl(sym){
   return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(s)}&interval=1&theme=dark`;
 }
 
-function addSubTab(sym,url){
+// Open TradingView as popup window — TradingView blocks iframes
+let tvWin = null;
+function addSubTab(sym){
   sym=sym.toUpperCase();
-  // Check if tab already exists for this sym
-  const existing=subtabs.find(t=>t.sym===sym);
-  if(existing){setActiveTab(existing.id);return;}
-  const id='st'+(Date.now());
-  const frameUrl=url||tvUrl(sym);
-  subtabs.push({id,sym,url:frameUrl});
-  // Create tab button
-  const bar=document.getElementById('subtabBar');
-  const btn=document.createElement('div');
-  btn.className='stab'; btn.id='stab-'+id;
-  btn.innerHTML=`<span class="stab-sym">${sym}</span><button class="stab-x" onclick="event.stopPropagation();closeSubTab('${id}')">✕</button>`;
-  btn.onclick=()=>setActiveTab(id);
-  bar.insertBefore(btn,bar.querySelector('.stab-new'));
-  // Create frame container
-  const frames=document.getElementById('subtabFrames');
-  const wrap=document.createElement('div');
-  wrap.className='subtab-content'; wrap.id='stcontent-'+id;
-  wrap.style.cssText='position:fixed;inset:0;z-index:50;background:var(--bg);display:none;flex-direction:column';
-  wrap.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:0 12px;height:36px;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0">
-    <span style="font-family:Syne,sans-serif;font-size:13px;font-weight:800;color:var(--ac2)">${sym}</span>
-    <span style="font-size:9px;color:var(--mu)">TradingView</span>
-    <div style="flex:1"></div>
-    <button onclick="closeSubTab('${id}')" style="background:none;border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-family:'DM Mono',monospace;font-size:9px;padding:3px 8px;cursor:pointer">✕ Close</button>
-  </div>
-  <iframe class="subtab-frame" src="${frameUrl}" allowfullscreen></iframe>`;
-  frames.appendChild(wrap);
-  setActiveTab(id);
-  // Show canvas when tab is shown
-  document.getElementById('canvas').style.display='none';
-}
-
-function addNewsSubTab(url,title){
-  const id='st'+(Date.now());
-  subtabs.push({id,sym:title||'News',url});
-  const bar=document.getElementById('subtabBar');
-  const btn=document.createElement('div');
-  btn.className='stab'; btn.id='stab-'+id;
-  btn.innerHTML=`<span class="stab-sym">${(title||'News').slice(0,20)}</span><button class="stab-x" onclick="event.stopPropagation();closeSubTab('${id}')">✕</button>`;
-  btn.onclick=()=>setActiveTab(id);
-  bar.insertBefore(btn,bar.querySelector('.stab-new'));
-  const frames=document.getElementById('subtabFrames');
-  const wrap=document.createElement('div');
-  wrap.className='subtab-content'; wrap.id='stcontent-'+id;
-  wrap.style.cssText='position:fixed;inset:0;z-index:50;background:var(--bg);display:none;flex-direction:column';
-  wrap.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:0 12px;height:36px;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0">
-    <span style="font-size:10px;color:var(--tx);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${title||'Article'}</span>
-    <button onclick="closeSubTab('${id}')" style="background:none;border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-family:'DM Mono',monospace;font-size:9px;padding:3px 8px;cursor:pointer;flex-shrink:0">✕ Close</button>
-  </div>
-  <iframe class="subtab-frame" src="${url}" allowfullscreen></iframe>`;
-  frames.appendChild(wrap);
-  setActiveTab(id);
-  document.getElementById('canvas').style.display='none';
-}
-
-function setActiveTab(id){
-  subtabs.forEach(t=>{
-    const btn=document.getElementById('stab-'+t.id);
-    const content=document.getElementById('stcontent-'+t.id);
-    if(btn)btn.classList.toggle('on',t.id===id);
-    if(content){
-      if(t.id===id){content.style.display='flex';}
-      else{content.style.display='none';}
-    }
-  });
-  activeTab=id;
-  const hasTab=subtabs.length>0;
-  document.getElementById('canvas').style.display=hasTab?'none':'block';
-}
-
-function closeSubTab(id){
-  const idx=subtabs.findIndex(t=>t.id===id);
-  subtabs=subtabs.filter(t=>t.id!==id);
-  const btn=document.getElementById('stab-'+id);
-  const content=document.getElementById('stcontent-'+id);
-  if(btn)btn.remove();
-  if(content)content.remove();
-  if(subtabs.length>0){
-    const ni=Math.min(idx,subtabs.length-1);
-    setActiveTab(subtabs[ni].id);
+  let tvSym=sym;
+  if(sym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
+  else if(sym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
+  const url=`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tvSym)}&interval=1&theme=dark`;
+  // Open/reuse popup window
+  const w=Math.floor(screen.width*.72),h=Math.floor(screen.height*.85);
+  const l=Math.floor((screen.width-w)/2),t=Math.floor((screen.height-h)/10);
+  if(tvWin&&!tvWin.closed){
+    tvWin.location.href=url;
+    tvWin.focus();
   } else {
-    activeTab=null;
-    document.getElementById('canvas').style.display='block';
+    tvWin=window.open(url,'StockViewTV',`width=${w},height=${h},left=${l},top=${t},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no`);
   }
+  // Add to recent bar
+  addToRecentBar(sym);
+}
+
+// News opens in popup window
+let newsWin = null;
+function addNewsSubTab(url,title){
+  const w=Math.floor(screen.width*.65),h=Math.floor(screen.height*.85);
+  const l=Math.floor((screen.width-w)/2),t=Math.floor((screen.height-h)/10);
+  if(newsWin&&!newsWin.closed){
+    newsWin.location.href=url;
+    newsWin.focus();
+  } else {
+    newsWin=window.open(url,'StockViewNews',`width=${w},height=${h},left=${l},top=${t},resizable=yes,scrollbars=yes,toolbar=yes,menubar=no,location=yes`);
+  }
+}
+
+let recentSyms=[];
+function addToRecentBar(sym){
+  recentSyms=recentSyms.filter(s=>s!==sym);
+  recentSyms.unshift(sym);
+  if(recentSyms.length>8)recentSyms=recentSyms.slice(0,8);
+  renderRecentBar();
+}
+
+function renderRecentBar(){
+  const bar=document.getElementById('subtabBar');
+  if(!bar)return;
+  if(!recentSyms.length){bar.innerHTML='';return;}
+  bar.innerHTML=`<span class="rbar-label">Recent:</span>`+recentSyms.map(s=>{
+    const q=Q[s],u=(q?.changePct||0)>=0;
+    return `<div class="stab" onclick="addSubTab('${s}');selectSym('${s}')">
+      <span class="stab-sym">${s}</span>
+      ${q?`<span class="stab-px ${u?'up':'dn'}">${u?'+':''}${(q.changePct||0).toFixed(1)}%</span>`:''}
+    </div>`;
+  }).join('');
 }
 
 // ── PRICES
@@ -448,7 +407,7 @@ function connectFinnhubWS(){
           const prev=Q[sym].prevClose||px;
           Q[sym]={...Q[sym],price:px,change:px-prev,changePct:prev?(px-prev)/prev*100:0,
             high:Math.max(Q[sym].high||px,px),low:Math.min(Q[sym].low||px,px)};
-          buildTape();refreshWLWidgets();
+          buildTape();refreshWLWidgets();liveScanUpdate();
         });
       }
     };
@@ -459,7 +418,7 @@ function connectFinnhubWS(){
 
 async function refreshPrices(){
   for(const sym of [...new Set([...wl,CUR])]){
-    await fetchQ(sym);buildTape();refreshWLWidgets();
+    await fetchQ(sym);buildTape();refreshWLWidgets();liveScanUpdate();
     await new Promise(r=>setTimeout(r,250));
   }
 }
@@ -782,7 +741,13 @@ async function renderNews(body,sym){
 }
 function timeAgo(d){const s=Math.floor((Date.now()-d)/1000);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';}
 
-// ── 5 PILLARS SCANNER
+// ── 5 PILLARS SCANNER — HYBRID LIVE SYSTEM
+// P1+P2: update live via WebSocket (price & % change, zero extra API calls)
+// P3+P4+P5: deep scan every 90 seconds (news, rvol, float)
+
+const scanCache = {};
+let scanDeepRunning = false;
+
 function renderScanner(body){
   const bid=body.id;
   body.innerHTML=`<div class="scan-filters">
@@ -791,15 +756,17 @@ function renderScanner(body){
     <div class="flt-g"><span class="flt-l">Min % Chg</span><input class="flt-i" type="number" value="10" id="${bid}-chg"/></div>
     <div class="flt-g"><span class="flt-l">Min RVol</span><input class="flt-i" type="number" value="5" step="0.5" id="${bid}-rv"/></div>
   </div>
-  <div class="scan-btn-row">
-    <button class="scan-btn" id="${bid}-btn" onclick="runScan('${bid}')">▶ RUN SCANNER</button>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+    <div style="font-size:8px;color:var(--dim)" id="${bid}-status">⚡ Live · Deep scan every 15s</div>
+    <button class="scan-btn" style="flex:0;padding:3px 8px;font-size:8px" id="${bid}-btn" onclick="startDeepScan('${bid}')">↺</button>
   </div>
-  <div class="scan-syms" id="${bid}-tags">${getScanSyms().map(s=>`<span class="scan-tag${wl.includes(s)?' wl':''}">${s}${!wl.includes(s)?`<button onclick="rmScanSym('${s}','${bid}')">×</button>`:''}</span>`).join('')}</div>
+  <div class="scan-syms" id="${bid}-tags">${getScanSyms().map(s=>`<span class="scan-tag${wl.includes(s)?' wl':''}">${s}${!wl.includes(s)?`<button onclick="rmScanSym('${s}','${bid}')">x</button>`:''}</span>`).join('')}</div>
   <div class="scan-add">
-    <input type="text" placeholder="Add symbol to scan…" id="${bid}-inp" onkeydown="if(event.key==='Enter')addScanSymFrom('${bid}')"/>
+    <input type="text" placeholder="Add symbol…" id="${bid}-inp" onkeydown="if(event.key==='Enter')addScanSymFrom('${bid}')"/>
     <button onclick="addScanSymFrom('${bid}')">+</button>
   </div>
-  <div id="${bid}-res"><div class="scan-empty">Click RUN SCANNER<br>to check 5 pillars</div></div>`;
+  <div id="${bid}-res"><div style="font-size:10px;color:var(--mu);text-align:center;padding:16px;display:flex;align-items:center;justify-content:center;gap:6px"><div style="width:10px;height:10px;border:2px solid var(--b2);border-top-color:var(--ac);border-radius:50%;animation:spin .6s linear infinite"></div>Initial deep scan…</div></div>`;
+  setTimeout(()=>startDeepScan(bid), 500);
 }
 
 function addScanSymFrom(bid){
@@ -807,59 +774,109 @@ function addScanSymFrom(bid){
   const sym=inp.value.toUpperCase().trim();
   if(!sym||getScanSyms().includes(sym))return;
   scanSyms.push(sym);saveScanSyms();inp.value='';
+  if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
   widgets.filter(w=>w.type==='scanner').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderScanner(b);});
 }
-function rmScanSym(sym,bid){scanSyms=scanSyms.filter(s=>s!==sym);saveScanSyms();widgets.filter(w=>w.type==='scanner').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderScanner(b);});}
 
-async function runScan(bid){
-  const btn=document.getElementById(bid+'-btn');
-  if(btn){btn.disabled=true;btn.textContent='⏳ Scanning…';}
-  const res=document.getElementById(bid+'-res');
-  const minP=parseFloat(document.getElementById(bid+'-minp')?.value)||1;
-  const maxP=parseFloat(document.getElementById(bid+'-maxp')?.value)||20;
-  const minC=parseFloat(document.getElementById(bid+'-chg')?.value)||10;
-  const minRV=parseFloat(document.getElementById(bid+'-rv')?.value)||5;
-  const results=[];
-  for(const sym of getScanSyms()){
-    try{
-      if(!Q[sym])await fetchQ(sym);
-      const q=Q[sym];if(!q?.price)continue;
+function rmScanSym(sym,bid){
+  scanSyms=scanSyms.filter(s=>s!==sym);saveScanSyms();
+  delete scanCache[sym];
+  widgets.filter(w=>w.type==='scanner').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderScanner(b);});
+}
+
+// Called on every WebSocket price tick — zero API calls, instant P1+P2 update
+function liveScanUpdate(){
+  widgets.filter(w=>w.type==='scanner').forEach(w=>{
+    const bid='wb-'+w.id;
+    const res=document.getElementById(bid+'-res');if(!res)return;
+    const minP=parseFloat(document.getElementById(bid+'-minp')?.value)||1;
+    const maxP=parseFloat(document.getElementById(bid+'-maxp')?.value)||20;
+    const minC=parseFloat(document.getElementById(bid+'-chg')?.value)||10;
+    const results=[];
+    getScanSyms().forEach(sym=>{
+      const q=Q[sym];if(!q?.price)return;
       const p1=q.price>=minP&&q.price<=maxP;
       const p2=(q.changePct||0)>=minC;
-      if(!p1||!p2)continue;
-      let hasNews=false;
-      try{const today=new Date().toISOString().split('T')[0];const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];const r=await fetch(`https://finnhub.io/api/v1/company-news?symbol=${sym}&from=${from}&to=${today}&token=${FHK}`);const news=await r.json();hasNews=Array.isArray(news)&&news.length>0;}catch(e){}
-      let rVol=null,float=null;
-      try{const r=await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${sym}&metric=all&token=${FHK}`);const d=await r.json();const avgV=(d.metric?.['10DayAverageTradingVolume']||0)*1000000;rVol=avgV>0?q.volume/avgV:null;float=d.metric?.['float']||null;}catch(e){}
-      const p3=hasNews,p4=rVol!==null?rVol>=minRV:null,p5=float!==null?float<10:null;
-      const score=[p1,p2,p3,p4===true,p5===true].filter(Boolean).length;
-      results.push({sym,q,p1,p2,p3,p4,p5,score,hasNews});
-    }catch(e){}
-    await new Promise(r=>setTimeout(r,150));
-  }
-  results.sort((a,b)=>b.score-a.score||(b.q.changePct||0)-(a.q.changePct||0));
-  if(res){
-    if(!results.length){res.innerHTML='<div class="scan-empty">No results — try adjusting filters</div>';}
-    else res.innerHTML=results.map(r=>{
+      const cached=scanCache[sym]||{};
+      const p3=cached.p3??null;
+      const p4=cached.p4??null;
+      const p5=cached.p5??null;
+      const score=[p1,p2,p3===true,p4===true,p5===true].filter(Boolean).length;
+      results.push({sym,q,p1,p2,p3,p4,p5,score,hasNews:cached.hasNews||false});
+    });
+    results.sort((a,b)=>b.score-a.score||(b.q.changePct||0)-(a.q.changePct||0));
+    if(!results.length) return;
+    const pd=v=>v===true?'pass':v===false?'fail':'na';
+    res.innerHTML=results.map(r=>{
       const u=(r.q.changePct||0)>=0,sc=r.score>=4?'s5':r.score===3?'s4':r.score>=2?'s3':'s0';
-      const pd=v=>v===true?'pass':v===false?'fail':'na';
       return `<div class="scan-row" onclick="selectSym('${r.sym}')">
-        <span class="scan-sym ${r.score>=4?'up':''}">${r.sym}${r.hasNews?' 🔥':''}</span>
+        <span class="scan-sym ${r.p1&&r.p2?'up':''}">${r.sym}${r.hasNews?' 🔥':''}</span>
         <span class="scan-px">$${fmtP(r.q.price)}</span>
-        <span class="scan-chg ${u?'up':'dn'}">${u?'+':''}${(r.q.changePct||0).toFixed(1)}%</span>
+        <span class="scan-chg ${u?'up':'dn'}">${u?'+':''}${(r.q.changePct||0).toFixed(2)}%</span>
         <div class="scan-pills">
-          <span class="pill ${pd(r.p1)}" title="Price">P1</span>
-          <span class="pill ${pd(r.p2)}" title="% Chg">P2</span>
-          <span class="pill ${pd(r.p3)}" title="News">P3</span>
-          <span class="pill ${pd(r.p4)}" title="RVol">P4</span>
-          <span class="pill ${pd(r.p5)}" title="Float">P5</span>
+          <span class="pill ${pd(r.p1)}" title="P1: Price">P1</span>
+          <span class="pill ${pd(r.p2)}" title="P2: %Chg">P2</span>
+          <span class="pill ${pd(r.p3)}" title="P3: News">P3</span>
+          <span class="pill ${pd(r.p4)}" title="P4: RVol">P4</span>
+          <span class="pill ${pd(r.p5)}" title="P5: Float">P5</span>
         </div>
         <span class="scan-score ${sc}">${r.score}/5</span>
       </div>`;
     }).join('');
-  }
-  if(btn){btn.disabled=false;btn.textContent='▶ RUN SCANNER';}
+  });
 }
+
+// Deep scan — fetches P3/P4/P5, runs every 90s
+async function startDeepScan(callerBid){
+  if(scanDeepRunning) return;
+  scanDeepRunning=true;
+  document.querySelectorAll('[id$="-status"]').forEach(el=>{
+    if(el.closest('.widget'))el.textContent='🔄 Deep scanning P3/P4/P5…';
+  });
+  document.querySelectorAll('[id$="-btn"]').forEach(btn=>{
+    if(btn.closest('.widget')&&btn.textContent==='↺'){btn.disabled=true;btn.textContent='…';}
+  });
+
+  for(const sym of getScanSyms()){
+    try{
+      if(!Q[sym]) await fetchQ(sym);
+      let hasNews=false;
+      try{
+        const today=new Date().toISOString().split('T')[0];
+        const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];
+        const r=await fetch(`https://finnhub.io/api/v1/company-news?symbol=${sym}&from=${from}&to=${today}&token=${FHK}`);
+        const news=await r.json();
+        hasNews=Array.isArray(news)&&news.length>0;
+      }catch(e){}
+      let p4=null,p5=null;
+      try{
+        const r=await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${sym}&metric=all&token=${FHK}`);
+        const d=await r.json();
+        const avgV=(d.metric?.['10DayAverageTradingVolume']||0)*1000000;
+        const rVol=avgV>0?(Q[sym]?.volume||0)/avgV:null;
+        const float=d.metric?.['float']||null;
+        p4=rVol!==null?rVol>=5:null;
+        p5=float!==null?float<10:null;
+      }catch(e){}
+      scanCache[sym]={p3:hasNews,p4,p5,hasNews,ts:Date.now()};
+    }catch(e){}
+    await new Promise(r=>setTimeout(r,150));
+  }
+
+  scanDeepRunning=false;
+  const now=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.querySelectorAll('[id$="-status"]').forEach(el=>{
+    if(el.closest('.widget'))el.textContent='⚡ Live P1+P2 · Last deep: '+now;
+  });
+  document.querySelectorAll('[id$="-btn"]').forEach(btn=>{
+    if(btn.closest('.widget')&&btn.textContent==='…'){btn.disabled=false;btn.textContent='↺';}
+  });
+  liveScanUpdate();
+}
+
+// Auto deep scan every 90 seconds
+setInterval(()=>startDeepScan(null), 15000);
+
 
 // ── DRAG & DROP
 function makeDraggable(el,wData){
@@ -966,7 +983,7 @@ if(Notification.permission==='default')Notification.requestPermission();
 async function init(){
   widgets.forEach(w=>renderWidget(w));
   for(const sym of wl){
-    await fetchQ(sym);buildTape();refreshWLWidgets();
+    await fetchQ(sym);buildTape();refreshWLWidgets();liveScanUpdate();
     await new Promise(r=>setTimeout(r,150));
   }
   connectFinnhubWS();
