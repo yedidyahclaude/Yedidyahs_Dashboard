@@ -431,7 +431,7 @@ setInterval(tick,1000);tick();
 //  Uses TradingView's own chart page
 //  Requires user to be logged in to TV
 // ════════════════════════════════════
-function loadChart(sym){
+  // removed
   let tvSym = sym;
   if(sym==='BTC'||sym==='BTC/USD') tvSym='BINANCE:BTCUSDT';
   else if(sym==='ETH'||sym==='ETH/USD') tvSym='BINANCE:ETHUSDT';
@@ -486,9 +486,9 @@ async function selectSym(sym){
   localStorage.setItem('sv_s',sym);
   closeDrop();
   document.getElementById('si').value='';
-  document.getElementById('sbsym').textContent=sym;
-  document.getElementById('sbnam').textContent='Loading…';
-  document.getElementById('sbpri').textContent='—';
+  // removed
+  // removed
+  // removed
   renderWL();
   if(!Q[sym]) await fetchQ(sym);
   loadNews(sym);
@@ -854,6 +854,7 @@ function renderScanSyms(){
 
 function addScanSym(){
   const inp = document.getElementById('scan-add-inp');
+  if(!inp) return;
   const sym = inp.value.toUpperCase().trim();
   if(!sym || getScanSyms().includes(sym)) return;
   scanSyms.push(sym); saveScanSyms(); inp.value='';
