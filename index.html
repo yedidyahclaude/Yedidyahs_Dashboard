@@ -25,8 +25,6 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .bico svg{width:13px;height:13px}
 .bnm{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:#fff}
 .bnm em{color:var(--ac2);font-style:normal}
-
-/* SEARCH */
 .sw{flex:1;max-width:340px;position:relative}
 .sico{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--mu);pointer-events:none}
 #si{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:7px;color:var(--tx);font-family:'DM Mono',monospace;font-size:12px;padding:6px 28px 6px 29px;outline:none;transition:border-color .15s}
@@ -44,8 +42,6 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .dil{display:flex;align-items:center;gap:7px}
 .dsy{font-size:12px;font-weight:500;color:#fff;min-width:55px;text-align:left}
 .dna{font-size:10px;color:var(--mu);text-align:left}
-
-/* HEADER RIGHT */
 .hright{display:flex;align-items:center;gap:10px;margin-left:auto}
 .sess{font-size:9px;padding:2px 7px;border-radius:9px;font-weight:600;letter-spacing:.04em}
 .sess.pre{background:#f59e0b12;color:var(--gold);border:1px solid #f59e0b25}
@@ -53,16 +49,14 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .sess.aft{background:#a78bfa12;color:var(--ac2);border:1px solid #a78bfa25}
 .sess.cls{background:var(--b1);color:var(--mu);border:1px solid var(--b2)}
 .htime{font-size:10px;color:var(--mu)}
-
-/* ADD WIDGET BUTTON */
-.add-widget-btn{display:flex;align-items:center;gap:5px;background:var(--ac);border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.04em;padding:5px 10px;cursor:pointer;transition:opacity .12s}
+.add-widget-btn{display:flex;align-items:center;gap:5px;background:var(--ac);border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.04em;padding:5px 10px;cursor:pointer}
 .add-widget-btn:hover{opacity:.85}
-.widget-menu{position:absolute;top:calc(100% + 4px);right:0;background:var(--s2);border:1px solid var(--b2);border-radius:8px;z-index:200;min-width:160px;box-shadow:0 16px 40px #00000077;display:none}
+.wm-wrap{position:relative}
+.widget-menu{position:absolute;top:calc(100% + 4px);right:0;background:var(--s2);border:1px solid var(--b2);border-radius:8px;z-index:500;min-width:180px;box-shadow:0 16px 40px #00000077;display:none}
 .widget-menu.open{display:block}
 .wm-item{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;border:none;background:none;width:100%;font-family:'DM Mono',monospace;font-size:11px;color:var(--tx);transition:background .08s}
 .wm-item:hover{background:#7c6aff0e}
 .wm-item span{font-size:14px}
-.wm-wrap{position:relative}
 
 /* TAPE */
 .tape{height:24px;background:var(--s1);border-bottom:1px solid var(--b1);overflow:hidden;flex-shrink:0;position:relative}
@@ -79,46 +73,72 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .tpc{font-size:8px}
 .tsp{width:1px;height:9px;background:var(--b1);flex-shrink:0}
 
-/* GRID CANVAS */
+/* SUB-TAB BROWSER */
+.subtab-bar{display:flex;align-items:center;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0;overflow-x:auto;min-height:30px;padding:0 8px;gap:4px}
+.subtab-bar::-webkit-scrollbar{height:2px}
+.subtab-bar::-webkit-scrollbar-thumb{background:var(--b2)}
+.stab{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:5px 5px 0 0;background:var(--s2);border:1px solid var(--b2);border-bottom:none;cursor:pointer;font-size:10px;color:var(--mu);white-space:nowrap;transition:all .1s;flex-shrink:0;max-width:160px}
+.stab:hover{color:var(--tx);background:var(--s3)}
+.stab.on{background:var(--bg);color:var(--tx);border-color:var(--b1)}
+.stab-sym{font-weight:500;overflow:hidden;text-overflow:ellipsis;max-width:80px}
+.stab-x{font-size:9px;color:var(--mu);background:none;border:none;cursor:pointer;line-height:1;padding:0 2px;border-radius:2px;flex-shrink:0}
+.stab-x:hover{color:var(--rd);background:var(--b2)}
+.stab-new{font-size:18px;line-height:1;color:var(--mu);background:none;border:none;cursor:pointer;padding:0 6px;transition:color .1s}
+.stab-new:hover{color:var(--ac2)}
+.subtab-content{flex:1;overflow:hidden;display:none;min-height:0}
+.subtab-content.on{display:flex;flex-direction:column}
+.subtab-frame{flex:1;width:100%;border:none;background:var(--bg)}
+
+/* CANVAS */
 .canvas{flex:1;overflow:auto;position:relative;background:var(--bg)}
 .canvas::-webkit-scrollbar{width:5px;height:5px}
 .canvas::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px}
 #grid{position:relative;min-width:100%;min-height:100%}
 
 /* WIDGETS */
-.widget{
-  position:absolute;
-  background:var(--s1);
-  border:1px solid var(--b1);
-  border-radius:8px;
-  display:flex;
-  flex-direction:column;
-  overflow:hidden;
-  min-width:180px;
-  min-height:120px;
-  box-shadow:0 2px 20px #00000040;
-  transition:box-shadow .15s;
-}
-.widget:hover{box-shadow:0 4px 30px #00000066}
+.widget{position:absolute;background:var(--s1);border:1px solid var(--b1);border-radius:8px;display:flex;flex-direction:column;overflow:visible;min-width:180px;min-height:120px;box-shadow:0 2px 20px #00000040}
 .widget.dragging{box-shadow:0 8px 40px #0000009a;opacity:.95;z-index:1000}
 .widget.resizing{z-index:1000}
+.widget.pinned .wh{cursor:default}
+.widget.pinned .resize-br{display:none}
+.pin-ind{font-size:10px;opacity:.7}
 
 /* WIDGET HEADER */
-.wh{display:flex;align-items:center;gap:6px;padding:6px 10px;background:var(--s2);border-bottom:1px solid var(--b1);cursor:grab;user-select:none;flex-shrink:0}
+.wh{display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--s2);border-bottom:1px solid var(--b1);cursor:grab;user-select:none;flex-shrink:0;border-radius:7px 7px 0 0}
 .wh:active{cursor:grabbing}
-.wh-title{font-size:10px;font-weight:500;color:var(--tx);letter-spacing:.03em;flex:1}
-.wh-badge{font-size:8px;background:var(--b2);color:var(--mu);padding:1px 5px;border-radius:6px}
-.wh-btn{background:none;border:none;cursor:pointer;color:var(--mu);font-size:11px;padding:1px 4px;border-radius:3px;transition:all .1s;line-height:1}
+.wh-title{font-size:10px;font-weight:500;color:var(--tx);letter-spacing:.03em;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.wh-btn{background:none;border:none;cursor:pointer;color:var(--mu);font-size:11px;padding:1px 4px;border-radius:3px;transition:all .1s;line-height:1;flex-shrink:0}
 .wh-btn:hover{color:var(--tx);background:var(--b2)}
 
+/* SETTINGS PANEL */
+.ws-wrap{position:relative;flex-shrink:0}
+.ws-panel{position:absolute;top:0;right:30px;background:var(--s2);border:1px solid var(--b2);border-radius:7px;z-index:9999;min-width:190px;box-shadow:0 8px 30px #00000099;display:none;padding:10px}
+.ws-panel.open{display:block}
+.ws-row{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
+.ws-label{font-size:8px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
+.ws-input{background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:5px 7px;outline:none;width:100%}
+.ws-input:focus{border-color:var(--ac)}
+.ws-select{background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:5px 6px;outline:none;width:100%;cursor:pointer;-webkit-appearance:auto;appearance:auto}
+.ws-select option{background:#1a1b2e;color:var(--tx)}
+.ws-toggle{display:flex;align-items:center;justify-content:space-between;padding:5px 0;cursor:pointer;margin-bottom:4px}
+.ws-tl{font-size:10px;color:var(--tx)}
+.ws-tb{width:28px;height:15px;border-radius:8px;background:var(--b2);border:none;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
+.ws-tb::after{content:'';position:absolute;left:2px;top:2px;width:11px;height:11px;border-radius:50%;background:var(--mu);transition:all .2s}
+.ws-tb.on{background:var(--ac)}
+.ws-tb.on::after{left:15px;background:#fff}
+.ws-save{width:100%;background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.05em;padding:6px;cursor:pointer;margin-top:2px}
+.ws-save:hover{opacity:.85}
+.ws-del{width:100%;background:none;border:1px solid var(--rd);border-radius:4px;color:var(--rd);font-family:'DM Mono',monospace;font-size:9px;padding:5px;cursor:pointer;margin-top:5px}
+.ws-del:hover{background:var(--rd);color:#fff}
+
 /* WIDGET BODY */
-.wb{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px}
+.wb{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px;border-radius:0 0 7px 7px}
 .wb::-webkit-scrollbar{width:3px}
 .wb::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
 
-/* RESIZE HANDLE */
+/* RESIZE */
 .resize-br{position:absolute;bottom:0;right:0;width:14px;height:14px;cursor:se-resize;z-index:10}
-.resize-br::after{content:'';position:absolute;bottom:3px;right:3px;width:6px;height:6px;border-right:2px solid var(--dim);border-bottom:2px solid var(--dim);border-radius:0 0 2px 0}
+.resize-br::after{content:'';position:absolute;bottom:3px;right:3px;width:6px;height:6px;border-right:2px solid var(--dim);border-bottom:2px solid var(--dim)}
 .resize-br:hover::after{border-color:var(--ac)}
 
 /* WATCHLIST */
@@ -142,8 +162,8 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 
 /* ALERTS */
 .alf{background:var(--s2);border:1px solid var(--b2);border-radius:6px;padding:8px;margin-bottom:8px}
-.alf select,.alf input{width:100%;background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:4px 6px;outline:none;margin-bottom:4px}
-.alf select option{background:#111}
+.alf select,.alf input{width:100%;background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:4px 6px;outline:none;margin-bottom:4px;-webkit-appearance:auto;appearance:auto;cursor:pointer}
+.alf select option{background:#1a1b2e;color:var(--tx)}
 .alcr{width:100%;background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.05em;padding:5px;cursor:pointer}
 .ali{display:flex;align-items:center;justify-content:space-between;padding:5px 6px;background:var(--s2);border:1px solid var(--b2);border-radius:4px;margin-bottom:3px}
 .alil{display:flex;align-items:center;gap:5px}
@@ -155,25 +175,6 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .als{font-size:10px;font-weight:500;color:var(--ac2)}
 .alx{background:none;border:none;color:var(--rd);opacity:.4;cursor:pointer;font-size:10px}
 .alx:hover{opacity:1}
-
-/* PORTFOLIO */
-.psum{background:var(--s2);border:1px solid var(--b2);border-radius:6px;padding:8px;margin-bottom:8px}
-.psr{display:flex;justify-content:space-between;margin-bottom:2px}
-.psr:last-child{margin-bottom:0}
-.psl{font-size:8px;color:var(--mu);letter-spacing:.05em;text-transform:uppercase}
-.psv{font-size:11px;color:var(--tx)}
-.padd{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
-.padd input{background:var(--s2);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:4px 6px;outline:none}
-.padd input:focus{border-color:var(--ac)}
-.padd button{background:var(--gr);border:none;border-radius:4px;color:#000;font-family:'DM Mono',monospace;font-size:9px;font-weight:700;letter-spacing:.05em;padding:5px;cursor:pointer}
-.poi{padding:6px;background:var(--s2);border:1px solid var(--b2);border-radius:4px;margin-bottom:3px}
-.pot{display:flex;justify-content:space-between;align-items:center;margin-bottom:2px}
-.pos2{font-size:10px;font-weight:500;color:#ddd}
-.poq{font-size:8px;color:var(--mu)}
-.pop{font-size:10px}
-.pob{display:flex;justify-content:space-between}
-.poa{font-size:8px;color:var(--mu)}
-.poc{font-size:8px;color:var(--tx)}
 
 /* NEWS */
 .ni{padding:7px;background:var(--s2);border:1px solid var(--b2);border-radius:5px;margin-bottom:4px;cursor:pointer;text-decoration:none;display:block;transition:border-color .1s}
@@ -187,6 +188,18 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .nisen.u{background:var(--b2);color:var(--mu)}
 .nlod{font-size:10px;color:var(--mu);text-align:center;padding:14px 0}
 
+/* SCREENER */
+.scr-item{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:4px;cursor:pointer;border-bottom:1px solid var(--b1);transition:background .08s}
+.scr-item:hover{background:var(--s2)}
+.scr-rank{font-size:9px;color:var(--dim);width:16px;text-align:right;flex-shrink:0}
+.scr-sym{font-size:11px;font-weight:500;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-name{font-size:8px;color:var(--mu);flex:2;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scr-px{font-size:10px;width:50px;text-align:right;flex-shrink:0}
+.scr-chg{font-size:9px;width:45px;text-align:right;flex-shrink:0}
+.scr-vol{font-size:8px;color:var(--mu);width:40px;text-align:right;flex-shrink:0}
+.scr-loading{font-size:10px;color:var(--mu);text-align:center;padding:20px;display:flex;flex-direction:column;gap:8px;align-items:center}
+.scr-sp{width:14px;height:14px;border:2px solid var(--b2);border-top-color:var(--ac);border-radius:50%;animation:spin .6s linear infinite}
+
 /* SCANNER */
 .scan-filters{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:7px}
 .flt-g{display:flex;flex-direction:column;gap:2px}
@@ -197,7 +210,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .scan-btn{background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.05em;padding:5px 8px;cursor:pointer;flex:1}
 .scan-btn:disabled{opacity:.4;cursor:not-allowed}
 .scan-btn.sec{background:var(--s2);border:1px solid var(--b2);color:var(--mu);flex:0}
-.scan-syms{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:7px}
+.scan-syms{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px}
 .scan-tag{display:inline-flex;align-items:center;gap:2px;background:var(--s2);border:1px solid var(--b2);border-radius:10px;padding:2px 6px;font-size:9px;color:var(--mu)}
 .scan-tag.wl{background:#7c6aff12;border-color:#7c6aff28;color:var(--ac2)}
 .scan-tag button{background:none;border:none;color:var(--rd);cursor:pointer;font-size:9px;opacity:.5;line-height:1}
@@ -223,38 +236,6 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .scan-empty{text-align:center;padding:20px;color:var(--mu);font-size:10px}
 
 .up{color:var(--gr)}.dn{color:var(--rd)}
-
-/* SNAP GRID OVERLAY */
-.grid-snap{pointer-events:none;position:absolute;inset:0;z-index:0}
-
-/* WIDGET PINNED */
-.widget.pinned .wh{cursor:default}
-.widget.pinned .resize-br{display:none}
-.pin-indicator{font-size:9px;color:var(--gold);opacity:.7}
-
-/* SETTINGS PANEL */
-.ws-panel{position:absolute;top:32px;right:0;background:var(--s2);border:1px solid var(--b2);border-radius:7px;z-index:200;min-width:180px;box-shadow:0 8px 30px #00000077;display:none;padding:10px}
-.ws-panel.open{display:block;animation:ddi .12s ease}
-@keyframes ddi{from{opacity:0;transform:translateY(-3px)}to{opacity:1;transform:none}}
-.ws-row{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
-.ws-label{font-size:8px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
-.ws-input{background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:4px 7px;outline:none;width:100%}
-.ws-input:focus{border-color:var(--ac)}
-.ws-select{background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:4px 6px;outline:none;width:100%}
-.ws-select option{background:#111}
-.ws-toggle{display:flex;align-items:center;justify-content:space-between;padding:5px 0;cursor:pointer}
-.ws-toggle-label{font-size:10px;color:var(--tx)}
-.ws-toggle-btn{width:28px;height:15px;border-radius:8px;background:var(--b2);border:none;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
-.ws-toggle-btn::after{content:'';position:absolute;left:2px;top:2px;width:11px;height:11px;border-radius:50%;background:var(--mu);transition:all .2s}
-.ws-toggle-btn.on{background:var(--ac)}
-.ws-toggle-btn.on::after{left:15px;background:#fff}
-.ws-save{width:100%;background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.05em;padding:6px;cursor:pointer;margin-top:4px}
-.ws-save:hover{opacity:.85}
-.ws-danger{width:100%;background:none;border:1px solid var(--rd);border-radius:4px;color:var(--rd);font-family:'DM Mono',monospace;font-size:10px;padding:5px;cursor:pointer;margin-top:4px;transition:all .1s}
-.ws-danger:hover{background:var(--rd);color:#fff}
-@keyframes fg{0%{color:var(--gr)}100%{color:inherit}}
-@keyframes fr{0%{color:var(--rd)}100%{color:inherit}}
-.fu{animation:fg .7s ease}.fd{animation:fr .7s ease}
 </style>
 </head>
 <body>
@@ -263,27 +244,26 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
   <!-- HEADER -->
   <header>
     <a class="brand" href="#">
-      <div class="bico">
-        <svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,12 5,7 8,10 12,4 15,6"/></svg>
-      </div>
+      <div class="bico"><svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,12 5,7 8,10 12,4 15,6"/></svg></div>
       <span class="bnm">Stock<em>View</em></span>
     </a>
-
     <div class="sw">
       <span class="sico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
       <input id="si" type="text" placeholder="Search any stock…" autocomplete="off" spellcheck="false"/>
       <div class="sspin" id="sspin"></div>
       <div id="dd"></div>
     </div>
-
     <div class="hright">
       <div class="wm-wrap">
         <button class="add-widget-btn" id="addWidgetBtn">+ Add Widget</button>
         <div class="widget-menu" id="widgetMenu">
           <button class="wm-item" onclick="addWidget('watchlist')"><span>📋</span> Watchlist</button>
-          <button class="wm-item" onclick="addWidget('scanner')"><span>🔥</span> 5 Pillars Scanner</button>
+          <button class="wm-item" onclick="addWidget('gainers')"><span>🚀</span> Top Gainers</button>
+          <button class="wm-item" onclick="addWidget('losers')"><span>📉</span> Top Losers</button>
+          <button class="wm-item" onclick="addWidget('active')"><span>🔥</span> Most Active</button>
+          <button class="wm-item" onclick="addWidget('premarket')"><span>🌅</span> Pre-Market Movers</button>
+          <button class="wm-item" onclick="addWidget('scanner')"><span>🎯</span> 5 Pillars Scanner</button>
           <button class="wm-item" onclick="addWidget('alerts')"><span>🔔</span> Alerts</button>
-          <button class="wm-item" onclick="addWidget('portfolio')"><span>💼</span> Portfolio</button>
           <button class="wm-item" onclick="addWidget('news')"><span>📰</span> News</button>
         </div>
       </div>
@@ -295,29 +275,43 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
   <!-- TAPE -->
   <div class="tape"><div class="ttr" id="ttr"></div></div>
 
-  <!-- GRID CANVAS -->
+  <!-- SUB-TAB BAR -->
+  <div class="subtab-bar" id="subtabBar">
+    <button class="stab-new" onclick="addSubTab('AAPL')" title="New tab">+</button>
+  </div>
+  <div id="subtabFrames"></div>
+
+  <!-- WIDGET CANVAS -->
   <div class="canvas" id="canvas">
     <div id="grid"></div>
   </div>
+
 </div>
 
 <script>
 const FHK = 'd8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
 const DEFAULT_WL = ['AAPL','NVDA','TSLA','MSFT','AMZN','SPY','QQQ','META'];
+const SNAP = 20;
+const WIDGET_TYPES = {
+  watchlist:'📋 Watchlist', gainers:'🚀 Top Gainers', losers:'📉 Top Losers',
+  active:'🔥 Most Active', premarket:'🌅 Pre-Market', scanner:'🎯 5 Pillars Scanner',
+  alerts:'🔔 Alerts', news:'📰 News'
+};
 
-const Q    = {};
-let CUR    = localStorage.getItem('sv_s') || 'AAPL';
-let wl     = JSON.parse(localStorage.getItem('sv_wl') || JSON.stringify(DEFAULT_WL));
-let alts   = JSON.parse(localStorage.getItem('sv_al') || '[]');
-let pos    = JSON.parse(localStorage.getItem('sv_pt') || '[]');
-let scanSyms = JSON.parse(localStorage.getItem('sv_scan') || '[]');
+const Q = {};
+let CUR    = localStorage.getItem('sv_s')||'AAPL';
+let wl     = JSON.parse(localStorage.getItem('sv_wl')||JSON.stringify(DEFAULT_WL));
+let alts   = JSON.parse(localStorage.getItem('sv_al')||'[]');
+let scanSyms = JSON.parse(localStorage.getItem('sv_scan')||'[]');
+let fhWS   = null;
 let srt=null, hlt=-1, flt=[];
-let fhWS=null;
+let subtabs=[], activeTab=null;
+let wIdC=100;
 
-function getScanSyms(){ return [...new Set([...wl,...scanSyms])]; }
-function saveScanSyms(){ localStorage.setItem('sv_scan',JSON.stringify(scanSyms)); }
-function fmtP(p){ return p?parseFloat(p).toFixed(2):'—'; }
-function fmtV(n){ if(!n||n<1)return'—'; if(n>=1e9)return(n/1e9).toFixed(1)+'B'; if(n>=1e6)return(n/1e6).toFixed(1)+'M'; if(n>=1e3)return(n/1e3).toFixed(1)+'K'; return''+n; }
+function getScanSyms(){return[...new Set([...wl,...scanSyms])];}
+function saveScanSyms(){localStorage.setItem('sv_scan',JSON.stringify(scanSyms));}
+function fmtP(p){return p?parseFloat(p).toFixed(2):'—';}
+function fmtV(n){if(!n||n<1)return'—';if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return''+n;}
 
 // ── CLOCK
 function tick(){
@@ -334,11 +328,106 @@ function tick(){
 }
 setInterval(tick,1000);tick();
 
+// ── SUB-TAB BROWSER
+function tvUrl(sym){
+  let s=sym;
+  if(sym==='BTC/USD')s='BINANCE:BTCUSDT';
+  else if(sym==='ETH/USD')s='BINANCE:ETHUSDT';
+  return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(s)}&interval=1&theme=dark`;
+}
+
+function addSubTab(sym,url){
+  sym=sym.toUpperCase();
+  // Check if tab already exists for this sym
+  const existing=subtabs.find(t=>t.sym===sym);
+  if(existing){setActiveTab(existing.id);return;}
+  const id='st'+(Date.now());
+  const frameUrl=url||tvUrl(sym);
+  subtabs.push({id,sym,url:frameUrl});
+  // Create tab button
+  const bar=document.getElementById('subtabBar');
+  const btn=document.createElement('div');
+  btn.className='stab'; btn.id='stab-'+id;
+  btn.innerHTML=`<span class="stab-sym">${sym}</span><button class="stab-x" onclick="event.stopPropagation();closeSubTab('${id}')">✕</button>`;
+  btn.onclick=()=>setActiveTab(id);
+  bar.insertBefore(btn,bar.querySelector('.stab-new'));
+  // Create frame container
+  const frames=document.getElementById('subtabFrames');
+  const wrap=document.createElement('div');
+  wrap.className='subtab-content'; wrap.id='stcontent-'+id;
+  wrap.style.cssText='position:fixed;inset:0;z-index:50;background:var(--bg);display:none;flex-direction:column';
+  wrap.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:0 12px;height:36px;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0">
+    <span style="font-family:Syne,sans-serif;font-size:13px;font-weight:800;color:var(--ac2)">${sym}</span>
+    <span style="font-size:9px;color:var(--mu)">TradingView</span>
+    <div style="flex:1"></div>
+    <button onclick="closeSubTab('${id}')" style="background:none;border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-family:'DM Mono',monospace;font-size:9px;padding:3px 8px;cursor:pointer">✕ Close</button>
+  </div>
+  <iframe class="subtab-frame" src="${frameUrl}" allowfullscreen></iframe>`;
+  frames.appendChild(wrap);
+  setActiveTab(id);
+  // Show canvas when tab is shown
+  document.getElementById('canvas').style.display='none';
+}
+
+function addNewsSubTab(url,title){
+  const id='st'+(Date.now());
+  subtabs.push({id,sym:title||'News',url});
+  const bar=document.getElementById('subtabBar');
+  const btn=document.createElement('div');
+  btn.className='stab'; btn.id='stab-'+id;
+  btn.innerHTML=`<span class="stab-sym">${(title||'News').slice(0,20)}</span><button class="stab-x" onclick="event.stopPropagation();closeSubTab('${id}')">✕</button>`;
+  btn.onclick=()=>setActiveTab(id);
+  bar.insertBefore(btn,bar.querySelector('.stab-new'));
+  const frames=document.getElementById('subtabFrames');
+  const wrap=document.createElement('div');
+  wrap.className='subtab-content'; wrap.id='stcontent-'+id;
+  wrap.style.cssText='position:fixed;inset:0;z-index:50;background:var(--bg);display:none;flex-direction:column';
+  wrap.innerHTML=`<div style="display:flex;align-items:center;gap:8px;padding:0 12px;height:36px;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0">
+    <span style="font-size:10px;color:var(--tx);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${title||'Article'}</span>
+    <button onclick="closeSubTab('${id}')" style="background:none;border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-family:'DM Mono',monospace;font-size:9px;padding:3px 8px;cursor:pointer;flex-shrink:0">✕ Close</button>
+  </div>
+  <iframe class="subtab-frame" src="${url}" allowfullscreen></iframe>`;
+  frames.appendChild(wrap);
+  setActiveTab(id);
+  document.getElementById('canvas').style.display='none';
+}
+
+function setActiveTab(id){
+  subtabs.forEach(t=>{
+    const btn=document.getElementById('stab-'+t.id);
+    const content=document.getElementById('stcontent-'+t.id);
+    if(btn)btn.classList.toggle('on',t.id===id);
+    if(content){
+      if(t.id===id){content.style.display='flex';}
+      else{content.style.display='none';}
+    }
+  });
+  activeTab=id;
+  const hasTab=subtabs.length>0;
+  document.getElementById('canvas').style.display=hasTab?'none':'block';
+}
+
+function closeSubTab(id){
+  const idx=subtabs.findIndex(t=>t.id===id);
+  subtabs=subtabs.filter(t=>t.id!==id);
+  const btn=document.getElementById('stab-'+id);
+  const content=document.getElementById('stcontent-'+id);
+  if(btn)btn.remove();
+  if(content)content.remove();
+  if(subtabs.length>0){
+    const ni=Math.min(idx,subtabs.length-1);
+    setActiveTab(subtabs[ni].id);
+  } else {
+    activeTab=null;
+    document.getElementById('canvas').style.display='block';
+  }
+}
+
 // ── PRICES
 async function fetchQ(sym){
   try{
     const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FHK}`);
-    const q=await r.json(); if(!q.c)return;
+    const q=await r.json();if(!q.c)return;
     const pr=await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${FHK}`);
     const p=await pr.json();
     Q[sym]={symbol:sym,price:q.c,open:q.o,high:q.h,low:q.l,
@@ -350,20 +439,16 @@ async function fetchQ(sym){
 function connectFinnhubWS(){
   try{
     fhWS=new WebSocket(`wss://ws.finnhub.io?token=${FHK}`);
-    fhWS.onopen=()=>{
-      wl.forEach(s=>fhWS.send(JSON.stringify({type:'subscribe',symbol:s})));
-      console.log('✅ Finnhub WS connected');
-    };
+    fhWS.onopen=()=>{wl.forEach(s=>fhWS.send(JSON.stringify({type:'subscribe',symbol:s})));console.log('✅ Finnhub WS connected');};
     fhWS.onmessage=e=>{
       const msg=JSON.parse(e.data);
       if(msg.type==='trade'&&msg.data){
         msg.data.forEach(t=>{
-          const sym=t.s,px=t.p;
-          if(!Q[sym])return;
+          const sym=t.s,px=t.p;if(!Q[sym])return;
           const prev=Q[sym].prevClose||px;
           Q[sym]={...Q[sym],price:px,change:px-prev,changePct:prev?(px-prev)/prev*100:0,
             high:Math.max(Q[sym].high||px,px),low:Math.min(Q[sym].low||px,px)};
-          buildTape();refreshAllWidgets(sym);
+          buildTape();refreshWLWidgets();
         });
       }
     };
@@ -374,8 +459,7 @@ function connectFinnhubWS(){
 
 async function refreshPrices(){
   for(const sym of [...new Set([...wl,CUR])]){
-    await fetchQ(sym);
-    buildTape();refreshAllWidgets(sym);
+    await fetchQ(sym);buildTape();refreshWLWidgets();
     await new Promise(r=>setTimeout(r,250));
   }
 }
@@ -387,8 +471,7 @@ function buildTape(){
   const h=syms.map(s=>{
     const q=Q[s],u=(q.changePct||0)>=0;
     return `<div class="ti" onclick="selectSym('${s}')">
-      <span class="tsy">${s}</span>
-      <span class="tpx">$${fmtP(q.price)}</span>
+      <span class="tsy">${s}</span><span class="tpx">$${fmtP(q.price)}</span>
       <span class="tpc ${u?'up':'dn'}">${u?'▲':'▼'}${Math.abs(q.changePct||0).toFixed(2)}%</span>
     </div><div class="tsp"></div>`;
   }).join('');
@@ -399,141 +482,182 @@ async function selectSym(sym){
   sym=sym.toUpperCase().trim();
   if(sym==='BTC'||sym==='BITCOIN')sym='BTC/USD';
   if(sym==='ETH'||sym==='ETHEREUM')sym='ETH/USD';
-  CUR=sym; localStorage.setItem('sv_s',sym);
-  closeDrop();
+  CUR=sym;localStorage.setItem('sv_s',sym);
   const si=document.getElementById('si');if(si)si.value='';
+  closeDrop();
   if(!Q[sym])await fetchQ(sym);
-  refreshAllWidgets(sym);
-  openTVPopup(sym);
+  refreshWLWidgets();
+  addSubTab(sym);
 }
 
-function openTVPopup(sym){
-  let tvSym=sym;
-  if(sym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
-  else if(sym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
-  const w=Math.floor(screen.width*.78),h=Math.floor(screen.height*.85);
-  const l=Math.floor((screen.width-w)/2),t=Math.floor((screen.height-h)/2);
-  window.open(`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tvSym)}&interval=1`,
-    'TradingView',`width=${w},height=${h},left=${l},top=${t},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no`);
+// ── SCREENERS via Finnhub
+async function fetchScreener(type){
+  try{
+    // Use Finnhub market news + scan approach
+    // For gainers/losers/active use the market overview endpoint
+    if(type==='premarket'){
+      // Pre-market: fetch quotes for watchlist + common movers
+      const syms=['AAPL','TSLA','NVDA','AMZN','MSFT','META','GOOGL','AMD','COIN','NFLX','SPY','QQQ'];
+      const results=[];
+      for(const s of syms){
+        if(!Q[s])await fetchQ(s);
+        if(Q[s]?.price)results.push(Q[s]);
+      }
+      return results.sort((a,b)=>Math.abs(b.changePct||0)-Math.abs(a.changePct||0)).slice(0,15);
+    }
+    // For gainers/losers/active — use Finnhub scan endpoint
+    const r=await fetch(`https://finnhub.io/api/v1/scan/technical-indicator?exchange=US&indicator=macd&token=${FHK}`);
+    const d=await r.json();
+    // fallback to watchlist-based screener
+    const base=[];
+    for(const s of wl){if(!Q[s])await fetchQ(s);if(Q[s]?.price)base.push(Q[s]);}
+    if(type==='gainers')return[...base].sort((a,b)=>(b.changePct||0)-(a.changePct||0));
+    if(type==='losers') return[...base].sort((a,b)=>(a.changePct||0)-(b.changePct||0));
+    if(type==='active') return[...base].sort((a,b)=>(b.volume||0)-(a.volume||0));
+    return base;
+  }catch(e){return[];}
 }
 
 // ── WIDGET SYSTEM
-let widgets=JSON.parse(localStorage.getItem('sv_widgets')||'null');
+let widgets=JSON.parse(localStorage.getItem('sv_widgets4')||'null');
 if(!widgets){
   widgets=[
-    {id:'w1',type:'watchlist', x:20, y:20, w:240, h:360},
-    {id:'w2',type:'scanner',   x:280,y:20, w:400, h:360},
-    {id:'w3',type:'alerts',    x:700,y:20, w:240, h:200},
-    {id:'w4',type:'news',      x:700,y:240,w:340, h:360},
-    {id:'w5',type:'portfolio', x:20, y:400,w:240, h:280},
+    {id:'w1',type:'watchlist', x:20, y:20, w:240, h:380},
+    {id:'w2',type:'gainers',   x:280,y:20, w:260, h:240},
+    {id:'w3',type:'losers',    x:560,y:20, w:260, h:240},
+    {id:'w4',type:'active',    x:840,y:20, w:260, h:240},
+    {id:'w5',type:'scanner',   x:280,y:280,w:400, h:320},
+    {id:'w6',type:'alerts',    x:700,y:280,w:240, h:240},
+    {id:'w7',type:'news',      x:960,y:20, w:320, h:520},
   ];
 }
-function saveWidgets(){localStorage.setItem('sv_widgets',JSON.stringify(widgets));}
+function saveWidgets(){localStorage.setItem('sv_widgets4',JSON.stringify(widgets));}
 
-let wIdCounter=100;
 function addWidget(type){
-  const id='w'+(++wIdCounter);
-  widgets.push({id,type,x:40+Math.random()*200,y:40+Math.random()*100,w:280,h:320});
-  saveWidgets();
-  renderWidget(widgets[widgets.length-1]);
+  const id='w'+(++wIdC);
+  const canvas=document.getElementById('canvas');
+  const cx=canvas.scrollLeft+60+Math.random()*100;
+  const cy=canvas.scrollTop+60+Math.random()*60;
+  widgets.push({id,type,x:Math.round(cx/SNAP)*SNAP,y:Math.round(cy/SNAP)*SNAP,w:280,h:320});
+  saveWidgets();renderWidget(widgets[widgets.length-1]);
   document.getElementById('widgetMenu').classList.remove('open');
 }
 
 function removeWidget(id){
-  widgets=widgets.filter(w=>w.id!==id);
-  saveWidgets();
-  const el=document.getElementById(id);
-  if(el)el.remove();
+  widgets=widgets.filter(w=>w.id!==id);saveWidgets();
+  const el=document.getElementById(id);if(el)el.remove();
 }
 
 function renderWidget(wData){
   const el=document.createElement('div');
-  el.className='widget';
-  el.id=wData.id;
+  el.className='widget';el.id=wData.id;
   el.style.cssText=`left:${wData.x}px;top:${wData.y}px;width:${wData.w}px;height:${wData.h}px`;
-  el.innerHTML=widgetHTML(wData);
   if(wData.pinned)el.classList.add('pinned');
+  el.innerHTML=widgetHTML(wData);
   document.getElementById('grid').appendChild(el);
-  makeDraggable(el,wData);
-  makeResizable(el,wData);
+  makeDraggable(el,wData);makeResizable(el,wData);
   populateWidget(el,wData);
 }
 
 function widgetHTML(w){
-  const titles={watchlist:'📋 Watchlist',scanner:'🔥 5 Pillars Scanner',alerts:'🔔 Alerts',portfolio:'💼 Portfolio',news:'📰 News'};
-  const title = w.label || titles[w.type] || w.type;
-  return `<div class="wh" data-wid="${w.id}">
-    ${w.pinned?'<span class="pin-indicator">📌</span>':''}
+  const title=w.label||WIDGET_TYPES[w.type]||w.type;
+  return `<div class="wh">
+    ${w.pinned?'<span class="pin-ind">📌</span>':''}
     <span class="wh-title">${title}</span>
-    <button class="wh-btn" onclick="toggleSettings('${w.id}',event)" title="Settings">⚙</button>
-    <button class="wh-btn" onclick="removeWidget('${w.id}')" title="Close">✕</button>
-  </div>
-  <div style="position:relative">
-    <div class="ws-panel" id="wsp-${w.id}">
-      <div class="ws-row">
-        <span class="ws-label">Widget Name</span>
-        <input class="ws-input" id="wsl-${w.id}" value="${w.label||titles[w.type]||w.type}" placeholder="Widget name…"/>
+    <div class="ws-wrap">
+      <button class="wh-btn" onclick="toggleWS('${w.id}',event)">⚙</button>
+      <div class="ws-panel" id="wsp-${w.id}">
+        <div class="ws-row">
+          <span class="ws-label">Widget Name</span>
+          <input class="ws-input" id="wsl-${w.id}" value="${w.label||WIDGET_TYPES[w.type]||w.type}"/>
+        </div>
+        <div class="ws-row">
+          <span class="ws-label">Widget Type</span>
+          <select class="ws-select" id="wst-${w.id}">
+            ${Object.entries(WIDGET_TYPES).map(([k,v])=>`<option value="${k}"${w.type===k?' selected':''}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <div class="ws-toggle" onclick="togglePin('${w.id}')">
+          <span class="ws-tl">📌 Pin (lock position)</span>
+          <button class="ws-tb${w.pinned?' on':''}" id="wspin-${w.id}"></button>
+        </div>
+        <button class="ws-save" onclick="saveWS('${w.id}')">✓ Save Settings</button>
+        <button class="ws-del" onclick="removeWidget('${w.id}')">Remove Widget</button>
       </div>
-      <div class="ws-row">
-        <span class="ws-label">Widget Type</span>
-        <select class="ws-select" id="wst-${w.id}">
-          <option value="watchlist" ${w.type==='watchlist'?'selected':''}>📋 Watchlist</option>
-          <option value="scanner"   ${w.type==='scanner'?'selected':''}>🔥 5 Pillars Scanner</option>
-          <option value="alerts"    ${w.type==='alerts'?'selected':''}>🔔 Alerts</option>
-          <option value="portfolio" ${w.type==='portfolio'?'selected':''}>💼 Portfolio</option>
-          <option value="news"      ${w.type==='news'?'selected':''}>📰 News</option>
-        </select>
-      </div>
-      <div class="ws-toggle" onclick="togglePin('${w.id}')">
-        <span class="ws-toggle-label">📌 Pin widget (lock position)</span>
-        <button class="ws-toggle-btn ${w.pinned?'on':''}" id="wsp-pin-${w.id}"></button>
-      </div>
-      <button class="ws-save" onclick="saveWidgetSettings('${w.id}')">✓ Save Settings</button>
-      <button class="ws-danger" onclick="removeWidget('${w.id}')">Remove Widget</button>
     </div>
+    <button class="wh-btn" onclick="removeWidget('${w.id}')">✕</button>
   </div>
   <div class="wb" id="wb-${w.id}"></div>
-  <div class="resize-br" data-wid="${w.id}"></div>`;
+  <div class="resize-br"></div>`;
 }
 
-function populateWidget(el,wData){
-  const body=document.getElementById('wb-'+wData.id);
-  if(!body)return;
-  if(wData.type==='watchlist')  renderWL(body);
-  if(wData.type==='alerts')     renderAL(body);
-  if(wData.type==='portfolio')  renderPort(body);
-  if(wData.type==='news')       renderNews(body,CUR);
-  if(wData.type==='scanner')    renderScanner(body);
+function toggleWS(id,e){
+  e.stopPropagation();
+  const p=document.getElementById('wsp-'+id);if(!p)return;
+  const isOpen=p.classList.contains('open');
+  document.querySelectorAll('.ws-panel.open').forEach(x=>x.classList.remove('open'));
+  if(!isOpen)p.classList.add('open');
 }
 
-function refreshAllWidgets(sym){
+function togglePin(id){
+  const w=widgets.find(x=>x.id===id);if(!w)return;
+  w.pinned=!w.pinned;saveWidgets();
+  const btn=document.getElementById('wspin-'+id);if(btn)btn.classList.toggle('on',w.pinned);
+  const el=document.getElementById(id);if(el)el.classList.toggle('pinned',w.pinned);
+}
+
+function saveWS(id){
+  const w=widgets.find(x=>x.id===id);if(!w)return;
+  const lbl=document.getElementById('wsl-'+id)?.value.trim();
+  const tp=document.getElementById('wst-'+id)?.value;
+  if(lbl)w.label=lbl;
+  const changed=tp&&tp!==w.type;
+  if(changed)w.type=tp;
+  saveWidgets();
+  const el=document.getElementById(id);
+  if(el){
+    el.innerHTML=widgetHTML(w);
+    makeDraggable(el,w);makeResizable(el,w);
+    populateWidget(el,w);
+    if(w.pinned)el.classList.add('pinned');
+  }
+  document.querySelectorAll('.ws-panel.open').forEach(x=>x.classList.remove('open'));
+}
+
+function populateWidget(el,w){
+  const body=document.getElementById('wb-'+w.id);if(!body)return;
+  if(w.type==='watchlist') renderWL(body);
+  else if(w.type==='alerts')   renderAL(body);
+  else if(w.type==='news')     renderNews(body,CUR);
+  else if(w.type==='scanner')  renderScanner(body);
+  else renderScreener(body,w.type);
+}
+
+function refreshWLWidgets(){
   widgets.forEach(w=>{
-    const body=document.getElementById('wb-'+w.id);
-    if(!body)return;
-    if(w.type==='watchlist') renderWL(body);
-    if(w.type==='portfolio') renderPort(body);
-    if(w.type==='news'&&sym===CUR) renderNews(body,CUR);
+    const b=document.getElementById('wb-'+w.id);if(!b)return;
+    if(w.type==='watchlist')renderWL(b);
   });
   buildTape();
 }
 
-// ── WATCHLIST WIDGET
+// ── WATCHLIST
 function saveWL(){localStorage.setItem('sv_wl',JSON.stringify(wl));}
 
 function renderWL(body){
   body.innerHTML=`<div class="wla">
-    <input type="text" placeholder="Add symbol…" maxlength="10" spellcheck="false" id="wli-${body.id}" onkeydown="if(event.key==='Enter')addWLFrom(this)"/>
+    <input type="text" placeholder="Add symbol…" maxlength="10" spellcheck="false"
+      onkeydown="if(event.key==='Enter')addWLFrom(this)"/>
     <button onclick="addWLFrom(this.previousElementSibling)">+</button>
-  </div><div>${
-    wl.map(sym=>{
-      const q=Q[sym],u=(q?.changePct||0)>=0;
-      return `<div class="wi${sym===CUR?' ac':''}" onclick="selectSym('${sym}')">
-        <div class="wil"><span class="wis">${sym}</span><span class="win">${q?.name||'—'}</span></div>
-        <div class="wir"><div class="wip">${q?'$'+fmtP(q.price):'—'}</div><div class="wic ${u?'up':'dn'}">${q?(u?'+':'')+((q.changePct||0).toFixed(2))+'%':'—'}</div></div>
-        <button class="wid" onclick="event.stopPropagation();rmWL('${sym}')">✕</button>
-      </div>`;
-    }).join('')
-  }</div>`;
+  </div>${wl.map(sym=>{
+    const q=Q[sym],u=(q?.changePct||0)>=0;
+    return `<div class="wi${sym===CUR?' ac':''}" onclick="selectSym('${sym}')">
+      <div class="wil"><span class="wis">${sym}</span><span class="win">${q?.name||'—'}</span></div>
+      <div class="wir"><div class="wip">${q?'$'+fmtP(q.price):'—'}</div>
+      <div class="wic ${u?'up':'dn'}">${q?(u?'+':'')+((q.changePct||0).toFixed(2))+'%':'—'}</div></div>
+      <button class="wid" onclick="event.stopPropagation();rmWL('${sym}')">✕</button>
+    </div>`;
+  }).join('')}`;
 }
 
 async function addWLFrom(inp){
@@ -542,21 +666,40 @@ async function addWLFrom(inp){
   wl.push(sym);saveWL();inp.value='';
   if(!Q[sym])await fetchQ(sym);
   if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
-  refreshAllWidgets(sym);buildTape();updateAlSelAll();
+  refreshWLWidgets();buildTape();updateAlSels();
+}
+function rmWL(sym){wl=wl.filter(s=>s!==sym);saveWL();refreshWLWidgets();buildTape();}
+
+// ── SCREENERS (Gainers/Losers/Active/Premarket)
+function renderScreener(body,type){
+  body.innerHTML=`<div class="scr-loading"><div class="scr-sp"></div>Loading ${WIDGET_TYPES[type]||type}…</div>`;
+  const hdr=`<div style="display:flex;gap:4px;padding:3px 6px;font-size:7px;color:var(--dim);letter-spacing:.06em;border-bottom:1px solid var(--b1);margin-bottom:3px">
+    <span style="width:16px">#</span><span style="flex:1">SYM</span>
+    <span style="width:50px;text-align:right">PRICE</span>
+    <span style="width:45px;text-align:right">CHG%</span>
+    <span style="width:40px;text-align:right">VOL</span>
+  </div>`;
+  fetchScreener(type).then(data=>{
+    if(!data?.length){body.innerHTML='<div class="scan-empty">No data available</div>';return;}
+    body.innerHTML=hdr+data.slice(0,20).map((q,i)=>{
+      const u=(q.changePct||0)>=0;
+      return `<div class="scr-item" onclick="selectSym('${q.symbol}')">
+        <span class="scr-rank">${i+1}</span>
+        <span class="scr-sym ${u?'up':'dn'}">${q.symbol}</span>
+        <span class="scr-name">${q.name||''}</span>
+        <span class="scr-px">$${fmtP(q.price)}</span>
+        <span class="scr-chg ${u?'up':'dn'}">${u?'+':''}${(q.changePct||0).toFixed(2)}%</span>
+        <span class="scr-vol">${fmtV(q.volume)}</span>
+      </div>`;
+    }).join('');
+  });
 }
 
-function rmWL(sym){
-  wl=wl.filter(s=>s!==sym);saveWL();
-  refreshAllWidgets(sym);buildTape();
-}
-
-// ── ALERTS WIDGET
+// ── ALERTS
 function saveAL(){localStorage.setItem('sv_al',JSON.stringify(alts));}
-
-function updateAlSelAll(){
+function updateAlSels(){
   document.querySelectorAll('.al-sel').forEach(sel=>{
-    const cur=sel.value;
-    sel.innerHTML=wl.map(s=>`<option value="${s}">${s}</option>`).join('');
+    const cur=sel.value;sel.innerHTML=wl.map(s=>`<option value="${s}">${s}</option>`).join('');
     if(wl.includes(cur))sel.value=cur;
   });
 }
@@ -570,41 +713,36 @@ function renderAL(body){
     </select>
     <input class="al-val" type="number" placeholder="Value e.g. 220.00" step="0.01"/>
     <button class="alcr" onclick="createAlertFrom(this)">+ CREATE ALERT</button>
-  </div><div>${
-    alts.map(a=>{
-      const cls=a.triggered?'trig':a.active?'on':'off';
-      return `<div class="ali">
-        <div class="alil"><div class="ald ${cls}"></div>
-          <div><div class="als">${a.sym} <span style="font-size:8px;color:var(--mu)">${a.type}</span></div>
-          <div style="font-size:8px;color:var(--mu)">${a.type.includes('%')?a.val+'%':'$'+a.val}${a.triggered?' <span style="color:var(--gold)">✓</span>':''}</div>
-        </div></div>
-        <div style="display:flex;gap:2px">
-          <button class="alx" style="color:var(--mu)" onclick="togAL(${a.id})">${a.active?'⏸':'▶'}</button>
-          <button class="alx" onclick="delAL(${a.id})">✕</button>
-        </div>
-      </div>`;
-    }).join('')||'<div style="font-size:10px;color:var(--mu);text-align:center;padding:10px">No alerts</div>'
-  }</div>`;
+  </div>${alts.map(a=>{
+    const cls=a.triggered?'trig':a.active?'on':'off';
+    return `<div class="ali">
+      <div class="alil"><div class="ald ${cls}"></div>
+        <div><div class="als">${a.sym} <span style="font-size:8px;color:var(--mu)">${a.type}</span></div>
+        <div style="font-size:8px;color:var(--mu)">${a.type.includes('%')?a.val+'%':'$'+a.val}${a.triggered?' <span style="color:var(--gold)">✓</span>':''}</div></div>
+      </div>
+      <div style="display:flex;gap:2px">
+        <button class="alx" style="color:var(--mu)" onclick="togAL(${a.id})">${a.active?'⏸':'▶'}</button>
+        <button class="alx" onclick="delAL(${a.id})">✕</button>
+      </div>
+    </div>`;
+  }).join('')||'<div style="font-size:10px;color:var(--mu);text-align:center;padding:10px">No alerts</div>'}`;
 }
 
 function createAlertFrom(btn){
-  const wrap=btn.closest('.alf');
-  const sym=wrap.querySelector('.al-sel').value;
-  const type=wrap.querySelector('.al-type').value;
-  const val=parseFloat(wrap.querySelector('.al-val').value);
+  const w=btn.closest('.alf');
+  const sym=w.querySelector('.al-sel').value;
+  const type=w.querySelector('.al-type').value;
+  const val=parseFloat(w.querySelector('.al-val').value);
   if(!sym||!val)return;
   alts.push({id:Date.now(),sym,type,val,active:true,triggered:false});
-  saveAL();wrap.querySelector('.al-val').value='';
-  widgets.filter(w=>w.type==='alerts').forEach(w=>{
-    const b=document.getElementById('wb-'+w.id);if(b)renderAL(b);
-  });
+  saveAL();w.querySelector('.al-val').value='';
+  reRenderAlerts();
 }
-
-function delAL(id){alts=alts.filter(a=>a.id!==id);saveAL();widgets.filter(w=>w.type==='alerts').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderAL(b);});}
-function togAL(id){alts=alts.map(a=>a.id===id?{...a,active:!a.active,triggered:false}:a);saveAL();widgets.filter(w=>w.type==='alerts').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderAL(b);});}
-
+function delAL(id){alts=alts.filter(a=>a.id!==id);saveAL();reRenderAlerts();}
+function togAL(id){alts=alts.map(a=>a.id===id?{...a,active:!a.active,triggered:false}:a);saveAL();reRenderAlerts();}
+function reRenderAlerts(){widgets.filter(w=>w.type==='alerts').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderAL(b);});}
 function checkAlerts(){
-  let changed=false;
+  let ch=false;
   alts.forEach(a=>{
     if(!a.active||a.triggered)return;
     const q=Q[a.sym];if(!q)return;
@@ -613,55 +751,13 @@ function checkAlerts(){
     if(a.type==='Price Below'&&q.price<=a.val)hit=true;
     if(a.type==='% Change Up'&&(q.changePct||0)>=a.val)hit=true;
     if(a.type==='% Change Down'&&(q.changePct||0)<=-a.val)hit=true;
-    if(hit){
-      a.triggered=true;changed=true;
-      if(Notification.permission==='granted')new Notification(`🔔 ${a.sym}`,{body:`${a.type} ${a.val}${a.type.includes('%')?'%':''} triggered`});
-    }
+    if(hit){a.triggered=true;ch=true;
+      if(Notification.permission==='granted')new Notification(`🔔 ${a.sym}`,{body:`${a.type} ${a.val}${a.type.includes('%')?'%':''} triggered`});}
   });
-  if(changed){saveAL();widgets.filter(w=>w.type==='alerts').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderAL(b);});}
+  if(ch){saveAL();reRenderAlerts();}
 }
 
-// ── PORTFOLIO WIDGET
-function savePT(){localStorage.setItem('sv_pt',JSON.stringify(pos));}
-
-function renderPort(body){
-  let tv=0,tc=0;
-  pos.forEach(p=>{const c=Q[p.sym]?.price||p.avg;tv+=c*p.qty;tc+=p.avg*p.qty;});
-  const pnl=tv-tc,pct=tc?(pnl/tc)*100:0,u=pnl>=0;
-  body.innerHTML=`<div class="psum">
-    <div class="psr"><span class="psl">Value</span><span class="psv">$${fmtP(tv)}</span></div>
-    <div class="psr"><span class="psl">P&L</span><span class="psv ${u?'up':'dn'}">${u?'+':''}$${fmtP(pnl)}</span></div>
-    <div class="psr"><span class="psl">Return</span><span class="psv ${u?'up':'dn'}">${u?'+':''}${pct.toFixed(2)}%</span></div>
-  </div>
-  <div class="padd">
-    <input type="text" placeholder="Symbol" maxlength="8" id="pt-sym-${body.id}" spellcheck="false"/>
-    <input type="number" placeholder="Shares" id="pt-qty-${body.id}"/>
-    <input type="number" placeholder="Avg cost" id="pt-avg-${body.id}" step="0.01"/>
-    <button onclick="addPosFrom('${body.id}')">+ ADD POSITION</button>
-  </div>
-  <div>${pos.map((p,i)=>{
-    const c=Q[p.sym]?.price||p.avg,pnl2=(c-p.avg)*p.qty,pct2=((c-p.avg)/p.avg)*100,u2=pnl2>=0;
-    return `<div class="poi">
-      <div class="pot"><span class="pos2">${p.sym} <span class="poq">×${p.qty}</span></span><span class="pop ${u2?'up':'dn'}">${u2?'+':''}$${fmtP(pnl2)}</span></div>
-      <div class="pob"><span class="poa">Avg $${fmtP(p.avg)}</span><span class="poc">$${fmtP(c)} <span class="${u2?'up':'dn'}">${u2?'+':''}${pct2.toFixed(2)}%</span></span></div>
-      <button onclick="rmPos(${i})" style="background:none;border:none;color:var(--rd);opacity:.4;cursor:pointer;font-size:8px;float:right">remove</button>
-    </div>`;
-  }).join('')||'<div style="font-size:10px;color:var(--mu);text-align:center;padding:10px">No positions</div>'}</div>`;
-}
-
-async function addPosFrom(bid){
-  const sym=document.getElementById('pt-sym-'+bid)?.value.toUpperCase().trim();
-  const qty=parseFloat(document.getElementById('pt-qty-'+bid)?.value);
-  const avg=parseFloat(document.getElementById('pt-avg-'+bid)?.value);
-  if(!sym||!qty||!avg)return;
-  pos.push({sym,qty,avg});savePT();
-  if(!Q[sym])await fetchQ(sym);
-  widgets.filter(w=>w.type==='portfolio').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderPort(b);});
-}
-
-function rmPos(i){pos.splice(i,1);savePT();widgets.filter(w=>w.type==='portfolio').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderPort(b);});}
-
-// ── NEWS WIDGET
+// ── NEWS
 async function renderNews(body,sym){
   body.innerHTML='<div class="nlod">Loading…</div>';
   try{
@@ -675,66 +771,54 @@ async function renderNews(body,sym){
       const age=timeAgo(new Date(n.datetime*1000));
       const s=n.sentiment>0.1?'p':n.sentiment<-0.1?'n':'u';
       const sl=n.sentiment>0.1?'▲':n.sentiment<-0.1?'▼':'●';
-      return `<a class="ni" href="${n.url}" target="_blank" rel="noopener">
+      // News opens in sub-tab instead of new window
+      return `<div class="ni" onclick="addNewsSubTab('${n.url}','${(n.headline||'').replace(/'/g,'').slice(0,30)}')">
         <div class="nisym">${n.related||sym}<span class="nisen ${s}">${sl}</span></div>
         <div class="nitl">${(n.headline||'').slice(0,90)}${(n.headline||'').length>90?'…':''}</div>
         <div class="nitm">${age} · ${n.source||''}</div>
-      </a>`;
+      </div>`;
     }).join('');
   }catch(e){body.innerHTML='<div class="nlod">News unavailable</div>';}
 }
+function timeAgo(d){const s=Math.floor((Date.now()-d)/1000);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';}
 
-function timeAgo(d){
-  const s=Math.floor((Date.now()-d)/1000);
-  if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';
-  if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';
-}
-
-// ── SCANNER WIDGET
+// ── 5 PILLARS SCANNER
 function renderScanner(body){
+  const bid=body.id;
   body.innerHTML=`<div class="scan-filters">
-    <div class="flt-g"><span class="flt-l">Min Price</span><input class="flt-i" type="number" value="1" step="0.5" id="fp-minp-${body.id}"/></div>
-    <div class="flt-g"><span class="flt-l">Max Price</span><input class="flt-i" type="number" value="20" id="fp-maxp-${body.id}"/></div>
-    <div class="flt-g"><span class="flt-l">Min % Chg</span><input class="flt-i" type="number" value="10" id="fp-chg-${body.id}"/></div>
-    <div class="flt-g"><span class="flt-l">Min RVol</span><input class="flt-i" type="number" value="5" step="0.5" id="fp-rv-${body.id}"/></div>
+    <div class="flt-g"><span class="flt-l">Min Price</span><input class="flt-i" type="number" value="1" step="0.5" id="${bid}-minp"/></div>
+    <div class="flt-g"><span class="flt-l">Max Price</span><input class="flt-i" type="number" value="20" id="${bid}-maxp"/></div>
+    <div class="flt-g"><span class="flt-l">Min % Chg</span><input class="flt-i" type="number" value="10" id="${bid}-chg"/></div>
+    <div class="flt-g"><span class="flt-l">Min RVol</span><input class="flt-i" type="number" value="5" step="0.5" id="${bid}-rv"/></div>
   </div>
   <div class="scan-btn-row">
-    <button class="scan-btn" id="scanBtn-${body.id}" onclick="runScan('${body.id}')">▶ RUN SCANNER</button>
-    <button class="scan-btn sec" onclick="addScanSymFrom('${body.id}')">+</button>
+    <button class="scan-btn" id="${bid}-btn" onclick="runScan('${bid}')">▶ RUN SCANNER</button>
   </div>
-  <div class="scan-syms" id="scan-tags-${body.id}">${getScanSyms().map(s=>
-    `<span class="scan-tag${wl.includes(s)?' wl':''}">${s}${!wl.includes(s)?`<button onclick="rmScanSym('${s}','${body.id}')">×</button>`:''}</span>`
-  ).join('')}</div>
+  <div class="scan-syms" id="${bid}-tags">${getScanSyms().map(s=>`<span class="scan-tag${wl.includes(s)?' wl':''}">${s}${!wl.includes(s)?`<button onclick="rmScanSym('${s}','${bid}')">×</button>`:''}</span>`).join('')}</div>
   <div class="scan-add">
-    <input type="text" placeholder="Add symbol to scan…" id="scan-inp-${body.id}" onkeydown="if(event.key==='Enter')addScanSymFrom('${body.id}')"/>
-    <button onclick="addScanSymFrom('${body.id}')">+</button>
+    <input type="text" placeholder="Add symbol to scan…" id="${bid}-inp" onkeydown="if(event.key==='Enter')addScanSymFrom('${bid}')"/>
+    <button onclick="addScanSymFrom('${bid}')">+</button>
   </div>
-  <div id="scan-res-${body.id}"><div class="scan-empty">Click RUN SCANNER<br>to check 5 pillars</div></div>`;
+  <div id="${bid}-res"><div class="scan-empty">Click RUN SCANNER<br>to check 5 pillars</div></div>`;
 }
 
 function addScanSymFrom(bid){
-  const inp=document.getElementById('scan-inp-'+bid);if(!inp)return;
+  const inp=document.getElementById(bid+'-inp');if(!inp)return;
   const sym=inp.value.toUpperCase().trim();
   if(!sym||getScanSyms().includes(sym))return;
   scanSyms.push(sym);saveScanSyms();inp.value='';
-  renderScanner(document.getElementById('wb-'+bid.split('-')[0])||{innerHTML:''});
   widgets.filter(w=>w.type==='scanner').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderScanner(b);});
 }
-
-function rmScanSym(sym,bid){
-  scanSyms=scanSyms.filter(s=>s!==sym);saveScanSyms();
-  widgets.filter(w=>w.type==='scanner').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderScanner(b);});
-}
+function rmScanSym(sym,bid){scanSyms=scanSyms.filter(s=>s!==sym);saveScanSyms();widgets.filter(w=>w.type==='scanner').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderScanner(b);});}
 
 async function runScan(bid){
-  const btn=document.getElementById('scanBtn-'+bid);
+  const btn=document.getElementById(bid+'-btn');
   if(btn){btn.disabled=true;btn.textContent='⏳ Scanning…';}
-  const res=document.getElementById('scan-res-'+bid);
-  if(res)res.innerHTML='<div class="scan-empty">Checking symbols…</div>';
-  const minP=parseFloat(document.getElementById('fp-minp-'+bid)?.value)||1;
-  const maxP=parseFloat(document.getElementById('fp-maxp-'+bid)?.value)||20;
-  const minC=parseFloat(document.getElementById('fp-chg-'+bid)?.value)||10;
-  const minRV=parseFloat(document.getElementById('fp-rv-'+bid)?.value)||5;
+  const res=document.getElementById(bid+'-res');
+  const minP=parseFloat(document.getElementById(bid+'-minp')?.value)||1;
+  const maxP=parseFloat(document.getElementById(bid+'-maxp')?.value)||20;
+  const minC=parseFloat(document.getElementById(bid+'-chg')?.value)||10;
+  const minRV=parseFloat(document.getElementById(bid+'-rv')?.value)||5;
   const results=[];
   for(const sym of getScanSyms()){
     try{
@@ -744,23 +828,10 @@ async function runScan(bid){
       const p2=(q.changePct||0)>=minC;
       if(!p1||!p2)continue;
       let hasNews=false;
-      try{
-        const today=new Date().toISOString().split('T')[0];
-        const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];
-        const r=await fetch(`https://finnhub.io/api/v1/company-news?symbol=${sym}&from=${from}&to=${today}&token=${FHK}`);
-        const news=await r.json();hasNews=Array.isArray(news)&&news.length>0;
-      }catch(e){}
+      try{const today=new Date().toISOString().split('T')[0];const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];const r=await fetch(`https://finnhub.io/api/v1/company-news?symbol=${sym}&from=${from}&to=${today}&token=${FHK}`);const news=await r.json();hasNews=Array.isArray(news)&&news.length>0;}catch(e){}
       let rVol=null,float=null;
-      try{
-        const r=await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${sym}&metric=all&token=${FHK}`);
-        const d=await r.json();
-        const avgV=(d.metric?.['10DayAverageTradingVolume']||0)*1000000;
-        rVol=avgV>0?q.volume/avgV:null;
-        float=d.metric?.['float']||null;
-      }catch(e){}
-      const p3=hasNews;
-      const p4=rVol!==null?rVol>=minRV:null;
-      const p5=float!==null?float<10:null;
+      try{const r=await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${sym}&metric=all&token=${FHK}`);const d=await r.json();const avgV=(d.metric?.['10DayAverageTradingVolume']||0)*1000000;rVol=avgV>0?q.volume/avgV:null;float=d.metric?.['float']||null;}catch(e){}
+      const p3=hasNews,p4=rVol!==null?rVol>=minRV:null,p5=float!==null?float<10:null;
       const score=[p1,p2,p3,p4===true,p5===true].filter(Boolean).length;
       results.push({sym,q,p1,p2,p3,p4,p5,score,hasNews});
     }catch(e){}
@@ -768,127 +839,55 @@ async function runScan(bid){
   }
   results.sort((a,b)=>b.score-a.score||(b.q.changePct||0)-(a.q.changePct||0));
   if(res){
-    if(!results.length){res.innerHTML='<div class="scan-empty">No stocks passed criteria<br>Try adjusting filters</div>';}
-    else{
-      res.innerHTML=`<div style="font-size:7px;color:var(--dim);display:flex;gap:4px;padding:3px 4px;letter-spacing:.06em">
-        <span style="flex:1">SYM</span><span style="width:42px;text-align:right">PRICE</span>
-        <span style="width:36px;text-align:right">CHG%</span>
-        <span style="width:70px;text-align:center">PILLARS</span>
-        <span style="width:22px;text-align:center">SCR</span>
-      </div>`+results.map(r=>{
-        const u=(r.q.changePct||0)>=0;
-        const sc=r.score>=4?'s5':r.score===3?'s4':r.score>=2?'s3':'s0';
-        const pd=v=>v===true?'pass':v===false?'fail':'na';
-        return `<div class="scan-row" onclick="openTVPopup('${r.sym}')">
-          <span class="scan-sym ${r.score>=4?'up':''}">${r.sym}${r.hasNews?' 🔥':''}</span>
-          <span class="scan-px">$${fmtP(r.q.price)}</span>
-          <span class="scan-chg ${u?'up':'dn'}">${u?'+':''}${(r.q.changePct||0).toFixed(1)}%</span>
-          <div class="scan-pills">
-            <span class="pill ${pd(r.p1)}" title="Price">P1</span>
-            <span class="pill ${pd(r.p2)}" title="% Change">P2</span>
-            <span class="pill ${pd(r.p3)}" title="News">P3</span>
-            <span class="pill ${pd(r.p4)}" title="RVol">P4</span>
-            <span class="pill ${pd(r.p5)}" title="Float">P5</span>
-          </div>
-          <span class="scan-score ${sc}">${r.score}/5</span>
-        </div>`;
-      }).join('');
-    }
+    if(!results.length){res.innerHTML='<div class="scan-empty">No results — try adjusting filters</div>';}
+    else res.innerHTML=results.map(r=>{
+      const u=(r.q.changePct||0)>=0,sc=r.score>=4?'s5':r.score===3?'s4':r.score>=2?'s3':'s0';
+      const pd=v=>v===true?'pass':v===false?'fail':'na';
+      return `<div class="scan-row" onclick="selectSym('${r.sym}')">
+        <span class="scan-sym ${r.score>=4?'up':''}">${r.sym}${r.hasNews?' 🔥':''}</span>
+        <span class="scan-px">$${fmtP(r.q.price)}</span>
+        <span class="scan-chg ${u?'up':'dn'}">${u?'+':''}${(r.q.changePct||0).toFixed(1)}%</span>
+        <div class="scan-pills">
+          <span class="pill ${pd(r.p1)}" title="Price">P1</span>
+          <span class="pill ${pd(r.p2)}" title="% Chg">P2</span>
+          <span class="pill ${pd(r.p3)}" title="News">P3</span>
+          <span class="pill ${pd(r.p4)}" title="RVol">P4</span>
+          <span class="pill ${pd(r.p5)}" title="Float">P5</span>
+        </div>
+        <span class="scan-score ${sc}">${r.score}/5</span>
+      </div>`;
+    }).join('');
   }
   if(btn){btn.disabled=false;btn.textContent='▶ RUN SCANNER';}
 }
-
-// ── WIDGET SETTINGS
-function toggleSettings(id,e){
-  e.stopPropagation();
-  const panel=document.getElementById('wsp-'+id);
-  if(!panel)return;
-  document.querySelectorAll('.ws-panel.open').forEach(p=>{if(p.id!=='wsp-'+id)p.classList.remove('open');});
-  panel.classList.toggle('open');
-}
-
-function togglePin(id){
-  const w=widgets.find(w=>w.id===id);if(!w)return;
-  w.pinned=!w.pinned;
-  const btn=document.getElementById('wsp-pin-'+id);
-  if(btn)btn.classList.toggle('on',w.pinned);
-  const el=document.getElementById(id);
-  if(el)el.classList.toggle('pinned',w.pinned);
-  saveWidgets();
-}
-
-function saveWidgetSettings(id){
-  const w=widgets.find(w=>w.id===id);if(!w)return;
-  const newLabel=document.getElementById('wsl-'+id)?.value.trim();
-  const newType=document.getElementById('wst-'+id)?.value;
-  if(newLabel)w.label=newLabel;
-  const typeChanged=newType&&newType!==w.type;
-  if(typeChanged)w.type=newType;
-  saveWidgets();
-  // Re-render widget
-  const el=document.getElementById(id);
-  if(el){
-    el.innerHTML=widgetHTML(w);
-    makeDraggable(el,w);makeResizable(el,w);
-    populateWidget(el,w);
-    if(w.pinned)el.classList.add('pinned');
-  }
-  document.querySelectorAll('.ws-panel').forEach(p=>p.classList.remove('open'));
-}
-
-// Close settings when clicking outside
-document.addEventListener('click',()=>{
-  document.querySelectorAll('.ws-panel.open').forEach(p=>p.classList.remove('open'));
-});
-
-const SNAP=20; // snap to 20px grid
 
 // ── DRAG & DROP
 function makeDraggable(el,wData){
   const hdr=el.querySelector('.wh');
   let ox=0,oy=0,sx=0,sy=0,dragging=false;
+  const canvas=document.getElementById('canvas');
+
   hdr.addEventListener('mousedown',e=>{
-    if(e.target.tagName==='BUTTON')return;
+    if(e.target.tagName==='BUTTON'||e.target.closest('.ws-wrap'))return;
     if(wData.pinned)return;
-    dragging=true;
-    sx=e.clientX;sy=e.clientY;
-    ox=wData.x;oy=wData.y;
-    el.classList.add('dragging');
-    el.style.zIndex=1000;
-    e.preventDefault();
+    dragging=true;sx=e.clientX;sy=e.clientY;ox=wData.x;oy=wData.y;
+    el.classList.add('dragging');el.style.zIndex=1000;e.preventDefault();
   });
   document.addEventListener('mousemove',e=>{
     if(!dragging)return;
-    const dx=e.clientX-sx,dy=e.clientY-sy;
-    const rx=Math.max(0,ox+dx);
-    const ry=Math.max(0,oy+dy);
+    const canvasRect=canvas.getBoundingClientRect();
+    const maxX=canvas.scrollWidth-wData.w;
+    const maxY=canvas.scrollHeight-wData.h;
+    const rx=Math.max(0,Math.min(maxX,ox+(e.clientX-sx)));
+    const ry=Math.max(0,Math.min(maxY,oy+(e.clientY-sy)));
     wData.x=Math.round(rx/SNAP)*SNAP;
     wData.y=Math.round(ry/SNAP)*SNAP;
-    el.style.left=wData.x+'px';
-    el.style.top=wData.y+'px';
+    el.style.left=wData.x+'px';el.style.top=wData.y+'px';
   });
   document.addEventListener('mouseup',()=>{
-    if(!dragging)return;
-    dragging=false;
-    el.classList.remove('dragging');
-    el.style.zIndex='';
-    saveWidgets();
+    if(!dragging)return;dragging=false;
+    el.classList.remove('dragging');el.style.zIndex='';saveWidgets();
   });
-  // Touch support
-  hdr.addEventListener('touchstart',e=>{
-    if(e.target.tagName==='BUTTON')return;
-    dragging=true;
-    sx=e.touches[0].clientX;sy=e.touches[0].clientY;
-    ox=wData.x;oy=wData.y;
-    el.classList.add('dragging');
-  },{passive:true});
-  document.addEventListener('touchmove',e=>{
-    if(!dragging)return;
-    const dx=e.touches[0].clientX-sx,dy=e.touches[0].clientY-sy;
-    wData.x=Math.max(0,ox+dx);wData.y=Math.max(0,oy+dy);
-    el.style.left=wData.x+'px';el.style.top=wData.y+'px';
-  },{passive:true});
-  document.addEventListener('touchend',()=>{if(!dragging)return;dragging=false;el.classList.remove('dragging');saveWidgets();});
 }
 
 function makeResizable(el,wData){
@@ -901,8 +900,11 @@ function makeResizable(el,wData){
   });
   document.addEventListener('mousemove',e=>{
     if(!resizing)return;
-    const rw=Math.max(180,ow+(e.clientX-sx));
-    const rh=Math.max(120,oh+(e.clientY-sy));
+    const canvas=document.getElementById('canvas');
+    const maxW=canvas.scrollWidth-wData.x;
+    const maxH=canvas.scrollHeight-wData.y;
+    const rw=Math.max(180,Math.min(maxW,ow+(e.clientX-sx)));
+    const rh=Math.max(120,Math.min(maxH,oh+(e.clientY-sy)));
     wData.w=Math.round(rw/SNAP)*SNAP;
     wData.h=Math.round(rh/SNAP)*SNAP;
     el.style.width=wData.w+'px';el.style.height=wData.h+'px';
@@ -926,15 +928,10 @@ async function doSearch(q){
       &&(x.type==='Common Stock'||x.type==='ETP'||x.type==='ADR'||x.type==='DR'||x.type===''))
       .sort((a,b)=>a.symbol.length-b.symbol.length).slice(0,10);
     renderDrop('Results for "'+q+'"',flt);
-  }catch(e){dd.innerHTML='<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">Search error</div>';}
+  }catch(e){}
   spin.style.display='none';dd.classList.add('open');
 }
-
-function showPop(){
-  flt=wl.map(s=>({symbol:s,description:Q[s]?.name||s}));
-  renderDrop('Watchlist',flt);dd.classList.add('open');
-}
-
+function showPop(){flt=wl.map(s=>({symbol:s,description:Q[s]?.name||s}));renderDrop('Watchlist',flt);dd.classList.add('open');}
 function renderDrop(lbl,items){
   if(!items.length){dd.innerHTML='<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">No results</div>';return;}
   dd.innerHTML=`<div class="dlb">${lbl}</div>`+items.map((it,i)=>{
@@ -946,14 +943,8 @@ function renderDrop(lbl,items){
   }).join('');
   hlt=-1;
 }
-
 function closeDrop(){dd.classList.remove('open');hlt=-1;}
-inp.addEventListener('input',e=>{
-  const v=e.target.value.trim();clearTimeout(srt);
-  if(!v){showPop();return;}
-  spin.style.display='block';
-  srt=setTimeout(()=>doSearch(v),350);
-});
+inp.addEventListener('input',e=>{const v=e.target.value.trim();clearTimeout(srt);if(!v){showPop();return;}spin.style.display='block';srt=setTimeout(()=>doSearch(v),350);});
 inp.addEventListener('focus',()=>{if(!inp.value.trim())showPop();});
 inp.addEventListener('keydown',e=>{
   const its=dd.querySelectorAll('.dit');
@@ -965,11 +956,9 @@ inp.addEventListener('keydown',e=>{
 document.addEventListener('click',e=>{
   if(!e.target.closest('.sw'))closeDrop();
   if(!e.target.closest('.wm-wrap'))document.getElementById('widgetMenu').classList.remove('open');
+  if(!e.target.closest('.ws-wrap'))document.querySelectorAll('.ws-panel.open').forEach(x=>x.classList.remove('open'));
 });
-document.getElementById('addWidgetBtn').addEventListener('click',e=>{
-  document.getElementById('widgetMenu').classList.toggle('open');
-  e.stopPropagation();
-});
+document.getElementById('addWidgetBtn').addEventListener('click',e=>{document.getElementById('widgetMenu').classList.toggle('open');e.stopPropagation();});
 
 if(Notification.permission==='default')Notification.requestPermission();
 
@@ -977,10 +966,9 @@ if(Notification.permission==='default')Notification.requestPermission();
 async function init(){
   widgets.forEach(w=>renderWidget(w));
   for(const sym of wl){
-    await fetchQ(sym);buildTape();refreshAllWidgets(sym);
+    await fetchQ(sym);buildTape();refreshWLWidgets();
     await new Promise(r=>setTimeout(r,150));
   }
-  await fetchQ(CUR);
   connectFinnhubWS();
 }
 init();
