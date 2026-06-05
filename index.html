@@ -25,6 +25,8 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .bico svg{width:13px;height:13px}
 .bnm{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:#fff}
 .bnm em{color:var(--ac2);font-style:normal}
+
+/* SEARCH — connected to TradingView */
 .sw{flex:1;max-width:340px;position:relative}
 .sico{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--mu);pointer-events:none}
 #si{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:7px;color:var(--tx);font-family:'DM Mono',monospace;font-size:12px;padding:6px 28px 6px 29px;outline:none;transition:border-color .15s}
@@ -38,51 +40,65 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 #dd::-webkit-scrollbar-thumb{background:var(--b2)}
 .dlb{font-size:8px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;padding:7px 10px 4px;position:sticky;top:0;background:var(--s2)}
 .dit{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;cursor:pointer;border:none;background:none;width:100%;font-family:'DM Mono',monospace;transition:background .08s}
-.dit:hover{background:#7c6aff0e}
+.dit:hover,.dit.hl{background:#7c6aff0e}
 .dil{display:flex;align-items:center;gap:7px}
 .dsy{font-size:12px;font-weight:500;color:#fff;min-width:55px;text-align:left}
 .dna{font-size:10px;color:var(--mu);text-align:left}
-.hright{display:flex;align-items:center;gap:10px;margin-left:auto}
+
+/* HEADER RIGHT */
+.hright{display:flex;align-items:center;gap:8px;margin-left:auto}
 .sess{font-size:9px;padding:2px 7px;border-radius:9px;font-weight:600;letter-spacing:.04em}
 .sess.pre{background:#f59e0b12;color:var(--gold);border:1px solid #f59e0b25}
 .sess.mkt{background:#19c48a12;color:var(--gr);border:1px solid #19c48a25}
 .sess.aft{background:#a78bfa12;color:var(--ac2);border:1px solid #a78bfa25}
 .sess.cls{background:var(--b1);color:var(--mu);border:1px solid var(--b2)}
 .htime{font-size:10px;color:var(--mu)}
-.add-widget-btn{display:flex;align-items:center;gap:5px;background:var(--ac);border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.04em;padding:5px 10px;cursor:pointer}
+.hbtn{display:flex;align-items:center;gap:5px;background:var(--s2);border:1px solid var(--b2);border-radius:6px;color:var(--mu);font-family:'DM Mono',monospace;font-size:10px;padding:4px 9px;cursor:pointer;transition:all .12s;white-space:nowrap}
+.hbtn:hover{color:var(--tx);border-color:var(--ac)}
+.hbtn.ac{background:var(--ac);border-color:var(--ac);color:#fff}
+.add-widget-btn{background:var(--ac);border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.04em;padding:5px 10px;cursor:pointer}
 .add-widget-btn:hover{opacity:.85}
 .wm-wrap{position:relative}
-.widget-menu{position:absolute;top:calc(100% + 4px);right:0;background:var(--s2);border:1px solid var(--b2);border-radius:8px;z-index:500;min-width:180px;box-shadow:0 16px 40px #00000077;display:none}
+.widget-menu{position:absolute;top:calc(100% + 4px);right:0;background:var(--s2);border:1px solid var(--b2);border-radius:8px;z-index:500;min-width:190px;box-shadow:0 16px 40px #00000077;display:none}
 .widget-menu.open{display:block}
-.wm-item{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;border:none;background:none;width:100%;font-family:'DM Mono',monospace;font-size:11px;color:var(--tx);transition:background .08s}
+.wm-sect{font-size:8px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;padding:7px 12px 3px}
+.wm-item{display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;border:none;background:none;width:100%;font-family:'DM Mono',monospace;font-size:11px;color:var(--tx);transition:background .08s}
 .wm-item:hover{background:#7c6aff0e}
-.wm-item span{font-size:14px}
+.wm-item span{font-size:13px}
 
-/* TAPE */
-.tape{height:24px;background:var(--s1);border-bottom:1px solid var(--b1);overflow:hidden;flex-shrink:0;position:relative}
-.tape::before,.tape::after{content:'';position:absolute;top:0;bottom:0;width:30px;z-index:2;pointer-events:none}
-.tape::before{left:0;background:linear-gradient(to right,var(--s1),transparent)}
-.tape::after{right:0;background:linear-gradient(to left,var(--s1),transparent)}
-.ttr{display:flex;align-items:center;height:100%;animation:tsc 55s linear infinite;width:max-content}
-.tape:hover .ttr{animation-play-state:paused}
-@keyframes tsc{from{transform:translateX(0)}to{transform:translateX(-50%)}}
-.ti{display:flex;align-items:center;gap:5px;padding:0 12px;cursor:pointer;height:100%;white-space:nowrap}
-.ti:hover{background:#ffffff05}
-.tsy{font-size:9px;font-weight:500;color:#999}
-.tpx{font-size:9px;color:var(--tx)}
-.tpc{font-size:8px}
-.tsp{width:1px;height:9px;background:var(--b1);flex-shrink:0}
+/* HISTORY BAR */
+.hist-bar{display:flex;align-items:center;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0;overflow-x:auto;min-height:28px;padding:0 10px;gap:4px}
+.hist-bar::-webkit-scrollbar{height:2px}
+.hist-bar::-webkit-scrollbar-thumb{background:var(--b2)}
+.hist-label{font-size:8px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-right:4px;flex-shrink:0;white-space:nowrap}
+.htab{display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:4px;background:var(--s2);border:1px solid var(--b2);cursor:pointer;font-size:10px;color:var(--mu);white-space:nowrap;transition:all .1s;flex-shrink:0}
+.htab:hover{color:var(--tx);border-color:var(--ac)}
+.htab-sym{font-weight:500}
+.htab-px{font-size:9px}
 
-/* RECENT STOCKS BAR */
-.subtab-bar{display:flex;align-items:center;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0;overflow-x:auto;min-height:28px;padding:0 10px;gap:4px}
-.subtab-bar:empty{display:none}
-.subtab-bar::-webkit-scrollbar{height:2px}
-.subtab-bar::-webkit-scrollbar-thumb{background:var(--b2)}
-.stab{display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:4px;background:var(--s2);border:1px solid var(--b2);cursor:pointer;font-size:10px;color:var(--mu);white-space:nowrap;transition:all .1s;flex-shrink:0}
-.stab:hover{color:var(--tx);background:var(--s3);border-color:var(--ac)}
-.stab-sym{font-weight:500}
-.stab-px{font-size:9px}
-.rbar-label{font-size:8px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-right:4px;flex-shrink:0}
+/* PROFILE MODAL */
+.modal-bg{position:fixed;inset:0;background:#00000088;z-index:600;display:none;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--s1);border:1px solid var(--b2);border-radius:10px;padding:20px;min-width:340px;max-width:420px;box-shadow:0 20px 60px #000000aa}
+.modal h2{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#fff;margin-bottom:14px}
+.modal-row{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.modal-label{font-size:9px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
+.modal-input{background:var(--s2);border:1px solid var(--b2);border-radius:5px;color:var(--tx);font-family:'DM Mono',monospace;font-size:12px;padding:6px 9px;outline:none;width:100%}
+.modal-input:focus{border-color:var(--ac)}
+.profile-list{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;max-height:200px;overflow-y:auto}
+.profile-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--s2);border:1px solid var(--b2);border-radius:6px;cursor:pointer;transition:all .1s}
+.profile-item:hover{border-color:var(--ac)}
+.profile-item.active{background:#7c6aff0e;border-color:var(--ac)}
+.profile-name{font-size:12px;color:var(--tx)}
+.profile-meta{font-size:9px;color:var(--mu)}
+.profile-btns{display:flex;gap:4px}
+.modal-btn{border:none;border-radius:5px;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;padding:6px 12px;cursor:pointer;transition:opacity .1s}
+.modal-btn:hover{opacity:.85}
+.modal-btn.pri{background:var(--ac);color:#fff}
+.modal-btn.sec{background:var(--s2);border:1px solid var(--b2);color:var(--mu)}
+.modal-btn.sec:hover{color:var(--tx)}
+.modal-btn.dan{background:var(--rd);color:#fff}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end}
 
 /* CANVAS */
 .canvas{flex:1;overflow:auto;position:relative;background:var(--bg)}
@@ -93,13 +109,12 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 /* WIDGETS */
 .widget{position:absolute;background:var(--s1);border:1px solid var(--b1);border-radius:8px;display:flex;flex-direction:column;overflow:visible;min-width:180px;min-height:120px;box-shadow:0 2px 20px #00000040}
 .widget.dragging{box-shadow:0 8px 40px #0000009a;opacity:.95;z-index:1000}
-.widget.resizing{z-index:1000}
 .widget.pinned .wh{cursor:default}
 .widget.pinned .resize-br{display:none}
 .pin-ind{font-size:10px;opacity:.7}
 
 /* WIDGET HEADER */
-.wh{display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--s2);border-bottom:1px solid var(--b1);cursor:grab;user-select:none;flex-shrink:0;border-radius:7px 7px 0 0}
+.wh{display:flex;align-items:center;gap:5px;padding:5px 8px;background:var(--s2);border-bottom:1px solid var(--b1);cursor:grab;user-select:none;flex-shrink:0;border-radius:7px 7px 0 0}
 .wh:active{cursor:grabbing}
 .wh-title{font-size:10px;font-weight:500;color:var(--tx);letter-spacing:.03em;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wh-btn{background:none;border:none;cursor:pointer;color:var(--mu);font-size:11px;padding:1px 4px;border-radius:3px;transition:all .1s;line-height:1;flex-shrink:0}
@@ -123,7 +138,9 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .ws-tb.on::after{left:15px;background:#fff}
 .ws-save{width:100%;background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.05em;padding:6px;cursor:pointer;margin-top:2px}
 .ws-save:hover{opacity:.85}
-.ws-del{width:100%;background:none;border:1px solid var(--rd);border-radius:4px;color:var(--rd);font-family:'DM Mono',monospace;font-size:9px;padding:5px;cursor:pointer;margin-top:5px}
+.ws-reset{width:100%;background:none;border:1px solid var(--gold);border-radius:4px;color:var(--gold);font-family:'DM Mono',monospace;font-size:9px;padding:5px;cursor:pointer;margin-top:4px}
+.ws-reset:hover{background:var(--gold);color:#000}
+.ws-del{width:100%;background:none;border:1px solid var(--rd);border-radius:4px;color:var(--rd);font-family:'DM Mono',monospace;font-size:9px;padding:5px;cursor:pointer;margin-top:4px}
 .ws-del:hover{background:var(--rd);color:#fff}
 
 /* WIDGET BODY */
@@ -138,7 +155,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .resize-br::after{content:'';position:absolute;bottom:3px;right:3px;width:6px;height:6px;border-right:2px solid var(--dim);border-bottom:2px solid var(--dim)}
 .resize-br:hover::after{border-color:var(--ac)}
 
-/* WATCHLIST */
+/* WATCHLIST / HISTORY */
 .wla{display:flex;gap:5px;margin-bottom:7px}
 .wla input{flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:5px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:4px 7px;outline:none}
 .wla input:focus{border-color:var(--ac)}
@@ -185,41 +202,17 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .nisen.u{background:var(--b2);color:var(--mu)}
 .nlod{font-size:10px;color:var(--mu);text-align:center;padding:14px 0}
 
-/* SCREENER */
-.scr-item{display:flex;align-items:center;gap:6px;padding:5px 6px;border-radius:4px;cursor:pointer;border-bottom:1px solid var(--b1);transition:background .08s}
-.scr-item:hover{background:var(--s2)}
-.scr-rank{font-size:9px;color:var(--dim);width:16px;text-align:right;flex-shrink:0}
-.scr-sym{font-size:11px;font-weight:500;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.scr-name{font-size:8px;color:var(--mu);flex:2;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.scr-px{font-size:10px;width:50px;text-align:right;flex-shrink:0}
-.scr-chg{font-size:9px;width:45px;text-align:right;flex-shrink:0}
-.scr-vol{font-size:8px;color:var(--mu);width:40px;text-align:right;flex-shrink:0}
-.scr-loading{font-size:10px;color:var(--mu);text-align:center;padding:20px;display:flex;flex-direction:column;gap:8px;align-items:center}
-.scr-sp{width:14px;height:14px;border:2px solid var(--b2);border-top-color:var(--ac);border-radius:50%;animation:spin .6s linear infinite}
-
-/* SCANNER */
+/* 5 PILLARS SCANNER */
 .scan-filters{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:7px}
 .flt-g{display:flex;flex-direction:column;gap:2px}
 .flt-l{font-size:7px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
 .flt-i{background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:4px 6px;outline:none;width:100%}
 .flt-i:focus{border-color:var(--ac)}
-.scan-btn-row{display:flex;gap:5px;margin-bottom:7px}
-.scan-btn{background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.05em;padding:5px 8px;cursor:pointer;flex:1}
-.scan-btn:disabled{opacity:.4;cursor:not-allowed}
-.scan-btn.sec{background:var(--s2);border:1px solid var(--b2);color:var(--mu);flex:0}
-.scan-syms{display:flex;flex-wrap:wrap;gap:3px;margin-bottom:6px}
-.scan-tag{display:inline-flex;align-items:center;gap:2px;background:var(--s2);border:1px solid var(--b2);border-radius:10px;padding:2px 6px;font-size:9px;color:var(--mu)}
-.scan-tag.wl{background:#7c6aff12;border-color:#7c6aff28;color:var(--ac2)}
-.scan-tag button{background:none;border:none;color:var(--rd);cursor:pointer;font-size:9px;opacity:.5;line-height:1}
-.scan-add{display:flex;gap:4px;margin-bottom:7px}
-.scan-add input{flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:4px 6px;outline:none}
-.scan-add input:focus{border-color:var(--ac)}
-.scan-add button{background:var(--ac);border:none;border-radius:4px;color:#fff;font-size:12px;width:22px;cursor:pointer}
 .scan-row{display:flex;align-items:center;gap:4px;padding:5px 4px;border-bottom:1px solid #1a1b2a;cursor:pointer;transition:background .08s}
 .scan-row:hover{background:#7c6aff08}
 .scan-sym{font-size:10px;font-weight:500;flex:1;min-width:0}
-.scan-px{font-size:10px;width:42px;text-align:right}
-.scan-chg{font-size:9px;width:38px;text-align:right}
+.scan-px{font-size:10px;width:46px;text-align:right}
+.scan-chg{font-size:9px;width:40px;text-align:right}
 .scan-pills{display:flex;gap:2px;width:70px;justify-content:center}
 .pill{width:14px;height:14px;border-radius:50%;font-size:7px;font-weight:600;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .pill.pass{background:#19c48a20;color:var(--gr);border:1px solid #19c48a40}
@@ -230,7 +223,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .s4{background:#f59e0b15;color:var(--gold)}
 .s3{background:#7c6aff15;color:var(--ac2)}
 .s0{background:var(--b2);color:var(--mu)}
-.scan-empty{text-align:center;padding:20px;color:var(--mu);font-size:10px}
+.scan-empty{text-align:center;padding:20px;color:var(--mu);font-size:10px;line-height:1.6}
 
 .up{color:var(--gr)}.dn{color:var(--rd)}
 </style>
@@ -244,24 +237,30 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
       <div class="bico"><svg viewBox="0 0 16 16" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,12 5,7 8,10 12,4 15,6"/></svg></div>
       <span class="bnm">Stock<em>View</em></span>
     </a>
+
+    <!-- SEARCH — TradingView powered -->
     <div class="sw">
       <span class="sico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-      <input id="si" type="text" placeholder="Search any stock…" autocomplete="off" spellcheck="false"/>
+      <input id="si" type="text" placeholder="Search any stock — press any key to open…" autocomplete="off" spellcheck="false"/>
       <div class="sspin" id="sspin"></div>
       <div id="dd"></div>
     </div>
+
     <div class="hright">
+      <button class="hbtn" onclick="openProfileModal()">👤 Profiles</button>
       <div class="wm-wrap">
         <button class="add-widget-btn" id="addWidgetBtn">+ Add Widget</button>
         <div class="widget-menu" id="widgetMenu">
-          <button class="wm-item" onclick="addWidget('watchlist')"><span>📋</span> Watchlist</button>
+          <div class="wm-sect">My Tools</div>
+          <button class="wm-item" onclick="addWidget('history')"><span>📋</span> History</button>
+          <button class="wm-item" onclick="addWidget('alerts')"><span>🔔</span> Alerts</button>
+          <button class="wm-item" onclick="addWidget('news')"><span>📰</span> News</button>
+          <button class="wm-item" onclick="addWidget('scanner')"><span>🎯</span> 5 Pillars Scanner</button>
+          <div class="wm-sect">Screeners</div>
           <button class="wm-item" onclick="addWidget('gainers')"><span>🚀</span> Top Gainers</button>
           <button class="wm-item" onclick="addWidget('losers')"><span>📉</span> Top Losers</button>
           <button class="wm-item" onclick="addWidget('active')"><span>🔥</span> Most Active</button>
-          <button class="wm-item" onclick="addWidget('premarket')"><span>🌅</span> Pre-Market Movers</button>
-          <button class="wm-item" onclick="addWidget('scanner')"><span>🎯</span> 5 Pillars Scanner</button>
-          <button class="wm-item" onclick="addWidget('alerts')"><span>🔔</span> Alerts</button>
-          <button class="wm-item" onclick="addWidget('news')"><span>📰</span> News</button>
+          <button class="wm-item" onclick="addWidget('premarket')"><span>🌅</span> Pre-Market</button>
         </div>
       </div>
       <span class="htime" id="htime"></span>
@@ -269,42 +268,146 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
     </div>
   </header>
 
-  <!-- TAPE -->
-  <div class="tape"><div class="ttr" id="ttr"></div></div>
+  <!-- HISTORY BAR -->
+  <div class="hist-bar" id="histBar">
+    <span class="hist-label" id="histLabel" style="display:none">History:</span>
+  </div>
 
-  <!-- RECENT STOCKS BAR -->
-  <div class="subtab-bar" id="subtabBar"></div>
-
-  <!-- WIDGET CANVAS -->
+  <!-- CANVAS -->
   <div class="canvas" id="canvas">
     <div id="grid"></div>
+  </div>
+
+  <!-- PROFILE MODAL -->
+  <div class="modal-bg" id="profileModal">
+    <div class="modal">
+      <h2>👤 Profiles</h2>
+      <div class="profile-list" id="profileList"></div>
+      <div class="ws-row">
+        <span class="ws-label">New Profile Name</span>
+        <input class="modal-input" id="newProfileName" placeholder="e.g. Morning Session, Crypto…"/>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn sec" onclick="closeProfileModal()">Cancel</button>
+        <button class="modal-btn pri" onclick="saveNewProfile()">💾 Save Current Layout</button>
+      </div>
+    </div>
   </div>
 
 </div>
 
 <script>
 const FHK = 'd8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
-const DEFAULT_WL = ['AAPL','NVDA','TSLA','MSFT','AMZN','SPY','QQQ','META'];
 const SNAP = 20;
 const WIDGET_TYPES = {
-  watchlist:'📋 Watchlist', gainers:'🚀 Top Gainers', losers:'📉 Top Losers',
-  active:'🔥 Most Active', premarket:'🌅 Pre-Market', scanner:'🎯 5 Pillars Scanner',
-  alerts:'🔔 Alerts', news:'📰 News'
+  history:'📋 History', gainers:'🚀 Top Gainers', losers:'📉 Top Losers',
+  active:'🔥 Most Active', premarket:'🌅 Pre-Market',
+  scanner:'🎯 5 Pillars Scanner', alerts:'🔔 Alerts', news:'📰 News'
 };
+const IFRAME_TYPES = ['gainers','losers','active','premarket'];
+
+// Default widget layout
+const DEFAULT_WIDGETS = [
+  {id:'w1',type:'history',  x:20,  y:20,  w:220, h:380},
+  {id:'w2',type:'gainers',  x:260, y:20,  w:380, h:260},
+  {id:'w3',type:'losers',   x:660, y:20,  w:380, h:260},
+  {id:'w4',type:'active',   x:1060,y:20,  w:380, h:260},
+  {id:'w5',type:'scanner',  x:260, y:300, w:420, h:340},
+  {id:'w6',type:'alerts',   x:700, y:300, w:240, h:260},
+  {id:'w7',type:'news',     x:960, y:300, w:320, h:520},
+];
 
 const Q = {};
-let CUR    = localStorage.getItem('sv_s')||'AAPL';
-let wl     = JSON.parse(localStorage.getItem('sv_wl')||JSON.stringify(DEFAULT_WL));
-let alts   = JSON.parse(localStorage.getItem('sv_al')||'[]');
+let CUR  = localStorage.getItem('sv_s')||'AAPL';
+let alts = JSON.parse(localStorage.getItem('sv_al')||'[]');
 let scanSyms = JSON.parse(localStorage.getItem('sv_scan')||'[]');
-let fhWS   = null;
+let histSyms = JSON.parse(localStorage.getItem('sv_hist')||'[]'); // history = clicked stocks
+let fhWS = null;
 let srt=null, hlt=-1, flt=[];
-let wIdC=100;
+let wIdC = 100;
+let tvWin=null, newsWin=null;
 
-function getScanSyms(){return[...new Set([...wl,...scanSyms])];}
-function saveScanSyms(){localStorage.setItem('sv_scan',JSON.stringify(scanSyms));}
-function fmtP(p){return p?parseFloat(p).toFixed(2):'—';}
-function fmtV(n){if(!n||n<1)return'—';if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return''+n;}
+// ── PROFILES
+let profiles = JSON.parse(localStorage.getItem('sv_profiles')||'[]');
+let activeProfileId = localStorage.getItem('sv_active_profile')||null;
+
+function getWidgets(){
+  if(activeProfileId){
+    const p=profiles.find(x=>x.id===activeProfileId);
+    if(p?.widgets)return p.widgets;
+  }
+  return JSON.parse(localStorage.getItem('sv_widgets5')||'null')||JSON.parse(JSON.stringify(DEFAULT_WIDGETS));
+}
+function saveWidgets(){
+  const ws=getAllWidgetStates();
+  if(activeProfileId){
+    profiles=profiles.map(p=>p.id===activeProfileId?{...p,widgets:ws}:p);
+    localStorage.setItem('sv_profiles',JSON.stringify(profiles));
+  } else {
+    localStorage.setItem('sv_widgets5',JSON.stringify(ws));
+  }
+}
+function getAllWidgetStates(){
+  return widgets.map(w=>({...w}));
+}
+
+let widgets = getWidgets();
+
+// Profile UI
+function openProfileModal(){
+  renderProfileList();
+  document.getElementById('profileModal').classList.add('open');
+}
+function closeProfileModal(){
+  document.getElementById('profileModal').classList.remove('open');
+}
+function renderProfileList(){
+  const el=document.getElementById('profileList');
+  if(!profiles.length){
+    el.innerHTML='<div style="font-size:10px;color:var(--mu);text-align:center;padding:10px">No saved profiles yet.<br>Save your current layout below.</div>';
+    return;
+  }
+  el.innerHTML=profiles.map(p=>`
+    <div class="profile-item${p.id===activeProfileId?' active':''}" onclick="loadProfile('${p.id}')">
+      <div>
+        <div class="profile-name">${p.name}</div>
+        <div class="profile-meta">${p.widgets?.length||0} widgets · ${new Date(p.saved).toLocaleDateString()}</div>
+      </div>
+      <div class="profile-btns" onclick="event.stopPropagation()">
+        <button class="modal-btn pri" style="padding:3px 8px;font-size:9px" onclick="loadProfile('${p.id}')">Load</button>
+        <button class="modal-btn dan" style="padding:3px 8px;font-size:9px" onclick="deleteProfile('${p.id}')">Del</button>
+      </div>
+    </div>`).join('');
+}
+function saveNewProfile(){
+  const name=document.getElementById('newProfileName').value.trim();
+  if(!name)return;
+  const id='p'+Date.now();
+  profiles.push({id,name,widgets:getAllWidgetStates(),saved:Date.now()});
+  localStorage.setItem('sv_profiles',JSON.stringify(profiles));
+  activeProfileId=id;
+  localStorage.setItem('sv_active_profile',id);
+  document.getElementById('newProfileName').value='';
+  renderProfileList();
+}
+function loadProfile(id){
+  activeProfileId=id;
+  localStorage.setItem('sv_active_profile',id);
+  const p=profiles.find(x=>x.id===id);
+  if(!p?.widgets)return;
+  // Clear and reload widgets
+  document.getElementById('grid').innerHTML='';
+  widgets=JSON.parse(JSON.stringify(p.widgets));
+  widgets.forEach(w=>renderWidget(w));
+  renderProfileList();
+  closeProfileModal();
+}
+function deleteProfile(id){
+  profiles=profiles.filter(p=>p.id!==id);
+  localStorage.setItem('sv_profiles',JSON.stringify(profiles));
+  if(activeProfileId===id){activeProfileId=null;localStorage.removeItem('sv_active_profile');}
+  renderProfileList();
+}
 
 // ── CLOCK
 function tick(){
@@ -321,71 +424,53 @@ function tick(){
 }
 setInterval(tick,1000);tick();
 
-// ── SUB-TAB BROWSER
-function tvUrl(sym){
-  let s=sym;
-  if(sym==='BTC/USD')s='BINANCE:BTCUSDT';
-  else if(sym==='ETH/USD')s='BINANCE:ETHUSDT';
-  return `https://www.tradingview.com/chart/?symbol=${encodeURIComponent(s)}&interval=1&theme=dark`;
+// ── HISTORY BAR — fills as you click stocks
+function addToHistory(sym){
+  histSyms=histSyms.filter(s=>s!==sym);
+  histSyms.unshift(sym);
+  if(histSyms.length>15)histSyms=histSyms.slice(0,15);
+  localStorage.setItem('sv_hist',JSON.stringify(histSyms));
+  renderHistBar();
+}
+function renderHistBar(){
+  const bar=document.getElementById('histBar');
+  const lbl=document.getElementById('histLabel');
+  if(!histSyms.length){if(lbl)lbl.style.display='none';bar.querySelectorAll('.htab').forEach(x=>x.remove());return;}
+  if(lbl)lbl.style.display='';
+  // Remove old tabs
+  bar.querySelectorAll('.htab').forEach(x=>x.remove());
+  histSyms.forEach(s=>{
+    const q=Q[s],u=(q?.changePct||0)>=0;
+    const div=document.createElement('div');
+    div.className='htab';
+    div.innerHTML=`<span class="htab-sym">${s}</span>${q?`<span class="htab-px ${u?'up':'dn'}">${u?'+':''}${(q.changePct||0).toFixed(1)}%</span>`:''}`;
+    div.onclick=()=>selectSym(s);
+    bar.appendChild(div);
+  });
 }
 
-// Open TradingView as popup window — TradingView blocks iframes
-let tvWin = null;
-function addSubTab(sym){
-  sym=sym.toUpperCase();
+// ── TRADINGVIEW POPUP
+function openTVPopup(sym){
   let tvSym=sym;
   if(sym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
   else if(sym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
   const url=`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tvSym)}&interval=1&theme=dark`;
-  // Open/reuse popup window
   const w=Math.floor(screen.width*.72),h=Math.floor(screen.height*.85);
   const l=Math.floor((screen.width-w)/2),t=Math.floor((screen.height-h)/10);
-  if(tvWin&&!tvWin.closed){
-    tvWin.location.href=url;
-    tvWin.focus();
-  } else {
-    tvWin=window.open(url,'StockViewTV',`width=${w},height=${h},left=${l},top=${t},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no`);
-  }
-  // Add to recent bar
-  addToRecentBar(sym);
+  if(tvWin&&!tvWin.closed){tvWin.location.href=url;tvWin.focus();}
+  else tvWin=window.open(url,'StockViewTV',`width=${w},height=${h},left=${l},top=${t},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no`);
 }
-
-// News opens in popup window
-let newsWin = null;
-function addNewsSubTab(url,title){
+function openNewsPopup(url){
   const w=Math.floor(screen.width*.65),h=Math.floor(screen.height*.85);
   const l=Math.floor((screen.width-w)/2),t=Math.floor((screen.height-h)/10);
-  if(newsWin&&!newsWin.closed){
-    newsWin.location.href=url;
-    newsWin.focus();
-  } else {
-    newsWin=window.open(url,'StockViewNews',`width=${w},height=${h},left=${l},top=${t},resizable=yes,scrollbars=yes,toolbar=yes,menubar=no,location=yes`);
-  }
-}
-
-let recentSyms=JSON.parse(localStorage.getItem('sv_recent')||'[]');
-function addToRecentBar(sym){
-  recentSyms=recentSyms.filter(s=>s!==sym);
-  recentSyms.unshift(sym);
-  if(recentSyms.length>12)recentSyms=recentSyms.slice(0,12);
-  localStorage.setItem('sv_recent',JSON.stringify(recentSyms));
-  renderRecentBar();
-}
-
-function renderRecentBar(){
-  const bar=document.getElementById('subtabBar');
-  if(!bar)return;
-  if(!recentSyms.length){bar.innerHTML='';return;}
-  bar.innerHTML=`<span class="rbar-label">History:</span>`+recentSyms.map(s=>{
-    const q=Q[s],u=(q?.changePct||0)>=0;
-    return `<div class="stab" onclick="selectSym('${s}')">
-      <span class="stab-sym">${s}</span>
-      ${q?`<span class="stab-px ${u?'up':'dn'}">${u?'+':''}${(q.changePct||0).toFixed(1)}%</span>`:''}
-    </div>`;
-  }).join('');
+  if(newsWin&&!newsWin.closed){newsWin.location.href=url;newsWin.focus();}
+  else newsWin=window.open(url,'StockViewNews',`width=${w},height=${h},left=${l},top=${t},resizable=yes,scrollbars=yes,toolbar=yes,menubar=no,location=yes`);
 }
 
 // ── PRICES
+function fmtP(p){return p?parseFloat(p).toFixed(2):'—';}
+function fmtV(n){if(!n||n<1)return'—';if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return''+n;}
+
 async function fetchQ(sym){
   try{
     const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FHK}`);
@@ -399,9 +484,13 @@ async function fetchQ(sym){
 }
 
 function connectFinnhubWS(){
+  const allSyms=[...new Set([...histSyms,...scanSyms,...(alts.map(a=>a.sym))])];
   try{
     fhWS=new WebSocket(`wss://ws.finnhub.io?token=${FHK}`);
-    fhWS.onopen=()=>{wl.forEach(s=>fhWS.send(JSON.stringify({type:'subscribe',symbol:s})));console.log('✅ Finnhub WS connected');};
+    fhWS.onopen=()=>{
+      allSyms.forEach(s=>fhWS.send(JSON.stringify({type:'subscribe',symbol:s})));
+      console.log('✅ Finnhub WS connected');
+    };
     fhWS.onmessage=e=>{
       const msg=JSON.parse(e.data);
       if(msg.type==='trade'&&msg.data){
@@ -410,8 +499,9 @@ function connectFinnhubWS(){
           const prev=Q[sym].prevClose||px;
           Q[sym]={...Q[sym],price:px,change:px-prev,changePct:prev?(px-prev)/prev*100:0,
             high:Math.max(Q[sym].high||px,px),low:Math.min(Q[sym].low||px,px)};
-          buildTape();refreshWLWidgets();liveScanUpdate();renderRecentBar();
+          refreshHistWidgets();liveScanUpdate();checkAlerts();
         });
+        renderHistBar();
       }
     };
     fhWS.onclose=()=>setTimeout(connectFinnhubWS,5000);
@@ -420,25 +510,13 @@ function connectFinnhubWS(){
 }
 
 async function refreshPrices(){
-  for(const sym of [...new Set([...wl,CUR])]){
-    await fetchQ(sym);buildTape();refreshWLWidgets();liveScanUpdate();
+  for(const sym of [...new Set([...histSyms.slice(0,8),...scanSyms])]) {
+    await fetchQ(sym);refreshHistWidgets();liveScanUpdate();
     await new Promise(r=>setTimeout(r,250));
   }
+  renderHistBar();
 }
 setInterval(refreshPrices,15000);
-
-// ── TAPE
-function buildTape(){
-  const syms=wl.filter(s=>Q[s]?.price);if(!syms.length)return;
-  const h=syms.map(s=>{
-    const q=Q[s],u=(q.changePct||0)>=0;
-    return `<div class="ti" onclick="selectSym('${s}')">
-      <span class="tsy">${s}</span><span class="tpx">$${fmtP(q.price)}</span>
-      <span class="tpc ${u?'up':'dn'}">${u?'▲':'▼'}${Math.abs(q.changePct||0).toFixed(2)}%</span>
-    </div><div class="tsp"></div>`;
-  }).join('');
-  document.getElementById('ttr').innerHTML=h+h;
-}
 
 async function selectSym(sym){
   sym=sym.toUpperCase().trim();
@@ -448,40 +526,60 @@ async function selectSym(sym){
   const si=document.getElementById('si');if(si)si.value='';
   closeDrop();
   if(!Q[sym])await fetchQ(sym);
-  refreshWLWidgets();
-  addSubTab(sym);
+  addToHistory(sym);
+  if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
+  refreshHistWidgets();
+  // Update news widgets
+  widgets.filter(w=>w.type==='news').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderNews(b,sym);});
+  openTVPopup(sym);
 }
 
-// Screener data comes from TradingView embed widgets
+function refreshHistWidgets(){
+  widgets.forEach(w=>{
+    const b=document.getElementById('wb-'+w.id);if(!b)return;
+    if(w.type==='history')renderHistory(b);
+  });
+}
 
 // ── WIDGET SYSTEM
-let widgets=JSON.parse(localStorage.getItem('sv_widgets4')||'null');
-if(!widgets){
-  widgets=[
-    {id:'w1',type:'watchlist', x:20, y:20, w:240, h:380},
-    {id:'w2',type:'gainers',   x:280,y:20, w:260, h:240},
-    {id:'w3',type:'losers',    x:560,y:20, w:260, h:240},
-    {id:'w4',type:'active',    x:840,y:20, w:260, h:240},
-    {id:'w5',type:'scanner',   x:280,y:280,w:400, h:320},
-    {id:'w6',type:'alerts',    x:700,y:280,w:240, h:240},
-    {id:'w7',type:'news',      x:960,y:20, w:320, h:520},
-  ];
-}
-function saveWidgets(){localStorage.setItem('sv_widgets4',JSON.stringify(widgets));}
-
 function addWidget(type){
   const id='w'+(++wIdC);
   const canvas=document.getElementById('canvas');
-  const cx=canvas.scrollLeft+60+Math.random()*100;
+  const cx=canvas.scrollLeft+60+Math.random()*80;
   const cy=canvas.scrollTop+60+Math.random()*60;
   widgets.push({id,type,x:Math.round(cx/SNAP)*SNAP,y:Math.round(cy/SNAP)*SNAP,w:280,h:320});
   saveWidgets();renderWidget(widgets[widgets.length-1]);
   document.getElementById('widgetMenu').classList.remove('open');
 }
-
 function removeWidget(id){
   widgets=widgets.filter(w=>w.id!==id);saveWidgets();
   const el=document.getElementById(id);if(el)el.remove();
+}
+function resetWidgetSettings(id){
+  const w=widgets.find(x=>x.id===id);if(!w)return;
+  // Reset label and pin — keep size/position as user set them
+  delete w.label;
+  w.pinned=false;
+  saveWidgets();
+  // Re-render widget header and body with defaults
+  const el=document.getElementById(id);
+  if(el){
+    el.innerHTML=widgetHTML(w);
+    el.classList.remove('pinned');
+    makeDraggable(el,w);makeResizable(el,w);
+    populateWidget(el,w);
+  }
+  // For scanner — reset filter inputs to defaults
+  const bid='wb-'+id;
+  const minp=document.getElementById(bid+'-minp');
+  const maxp=document.getElementById(bid+'-maxp');
+  const chg=document.getElementById(bid+'-chg');
+  const rv=document.getElementById(bid+'-rv');
+  if(minp)minp.value='1';
+  if(maxp)maxp.value='20';
+  if(chg)chg.value='10';
+  if(rv)rv.value='5';
+  document.querySelectorAll('.ws-panel.open').forEach(x=>x.classList.remove('open'));
 }
 
 function renderWidget(wData){
@@ -501,7 +599,7 @@ function widgetHTML(w){
     ${w.pinned?'<span class="pin-ind">📌</span>':''}
     <span class="wh-title">${title}</span>
     <div class="ws-wrap">
-      <button class="wh-btn" onclick="toggleWS('${w.id}',event)">⚙</button>
+      <button class="wh-btn" title="Settings" onclick="toggleWS('${w.id}',event)">⚙</button>
       <div class="ws-panel" id="wsp-${w.id}">
         <div class="ws-row">
           <span class="ws-label">Widget Name</span>
@@ -518,12 +616,13 @@ function widgetHTML(w){
           <button class="ws-tb${w.pinned?' on':''}" id="wspin-${w.id}"></button>
         </div>
         <button class="ws-save" onclick="saveWS('${w.id}')">✓ Save Settings</button>
-        <button class="ws-del" onclick="removeWidget('${w.id}')">Remove Widget</button>
+        <button class="ws-reset" onclick="resetWidgetSettings('${w.id}')">↺ Reset Filters & Settings</button>
+        <button class="ws-del" onclick="removeWidget('${w.id}')">✕ Remove Widget</button>
       </div>
     </div>
-    <button class="wh-btn" onclick="removeWidget('${w.id}')">✕</button>
+    <button class="wh-btn" title="Close" onclick="removeWidget('${w.id}')">✕</button>
   </div>
-  <div class="wb" id="wb-${w.id}"></div>
+  <div class="wb${IFRAME_TYPES.includes(w.type)?' iframe-body':''}" id="wb-${w.id}"></div>
   <div class="resize-br"></div>`;
 }
 
@@ -534,14 +633,12 @@ function toggleWS(id,e){
   document.querySelectorAll('.ws-panel.open').forEach(x=>x.classList.remove('open'));
   if(!isOpen)p.classList.add('open');
 }
-
 function togglePin(id){
   const w=widgets.find(x=>x.id===id);if(!w)return;
   w.pinned=!w.pinned;saveWidgets();
   const btn=document.getElementById('wspin-'+id);if(btn)btn.classList.toggle('on',w.pinned);
   const el=document.getElementById(id);if(el)el.classList.toggle('pinned',w.pinned);
 }
-
 function saveWS(id){
   const w=widgets.find(x=>x.id===id);if(!w)return;
   const lbl=document.getElementById('wsl-'+id)?.value.trim();
@@ -562,139 +659,213 @@ function saveWS(id){
 
 function populateWidget(el,w){
   const body=document.getElementById('wb-'+w.id);if(!body)return;
-  const iframeTypes=['gainers','losers','active','premarket'];
-  if(iframeTypes.includes(w.type)){
-    body.classList.add('iframe-body');
-  } else {
-    body.classList.remove('iframe-body');
-  }
-  if(w.type==='watchlist') renderWL(body);
-  else if(w.type==='alerts')   renderAL(body);
-  else if(w.type==='news')     renderNews(body,CUR);
-  else if(w.type==='scanner')  renderScanner(body);
+  if(w.type==='history') renderHistory(body);
+  else if(w.type==='alerts')  renderAL(body);
+  else if(w.type==='news')    renderNews(body,CUR);
+  else if(w.type==='scanner') renderScanner(body);
   else renderScreener(body,w.type);
 }
 
-function refreshWLWidgets(){
-  widgets.forEach(w=>{
-    const b=document.getElementById('wb-'+w.id);if(!b)return;
-    if(w.type==='watchlist')renderWL(b);
-  });
-  buildTape();
-}
-
-// ── WATCHLIST
-function saveWL(){localStorage.setItem('sv_wl',JSON.stringify(wl));}
-
-function renderWL(body){
-  body.innerHTML=`<div class="wla">
-    <input type="text" placeholder="Add symbol…" maxlength="10" spellcheck="false"
-      onkeydown="if(event.key==='Enter')addWLFrom(this)"/>
-    <button onclick="addWLFrom(this.previousElementSibling)">+</button>
-  </div>${wl.map(sym=>{
+// ── HISTORY WIDGET (replaces watchlist — shows clicked stocks)
+function renderHistory(body){
+  if(!histSyms.length){
+    body.innerHTML='<div style="font-size:10px;color:var(--mu);text-align:center;padding:20px;line-height:1.8">Your history is empty.<br>Search or click any stock<br>to start building your history.</div>';
+    return;
+  }
+  body.innerHTML=histSyms.map(sym=>{
     const q=Q[sym],u=(q?.changePct||0)>=0;
     return `<div class="wi${sym===CUR?' ac':''}" onclick="selectSym('${sym}')">
       <div class="wil"><span class="wis">${sym}</span><span class="win">${q?.name||'—'}</span></div>
       <div class="wir"><div class="wip">${q?'$'+fmtP(q.price):'—'}</div>
       <div class="wic ${u?'up':'dn'}">${q?(u?'+':'')+((q.changePct||0).toFixed(2))+'%':'—'}</div></div>
-      <button class="wid" onclick="event.stopPropagation();rmWL('${sym}')">✕</button>
+      <button class="wid" onclick="event.stopPropagation();removeFromHistory('${sym}')">✕</button>
     </div>`;
-  }).join('')}`;
+  }).join('');
+}
+function removeFromHistory(sym){
+  histSyms=histSyms.filter(s=>s!==sym);
+  localStorage.setItem('sv_hist',JSON.stringify(histSyms));
+  renderHistBar();refreshHistWidgets();
 }
 
-async function addWLFrom(inp){
-  const sym=inp.value.toUpperCase().trim();
-  if(!sym||wl.includes(sym))return;
-  wl.push(sym);saveWL();inp.value='';
-  if(!Q[sym])await fetchQ(sym);
-  if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
-  refreshWLWidgets();buildTape();updateAlSels();
-}
-function rmWL(sym){wl=wl.filter(s=>s!==sym);saveWL();refreshWLWidgets();buildTape();}
-
-// ── SCREENERS — TradingView embeddable widgets (free, real-time, no API needed)
-// TradingView screener widgets are officially supported embeds — no iframe blocking
-
-function renderScreener(body, type){
-  body.style.padding = '0';
-  body.style.overflow = 'hidden';
-
-  const screens = {
-    gainers:   'top_gainers',
-    losers:    'top_losers',
-    active:    'most_capitalized',
-    premarket: 'pre_market_gainers',
-  };
-
-  const screen = screens[type];
+// ── SCREENERS — TradingView embed widgets
+const SCREENER_SCREENS={gainers:'top_gainers',losers:'top_losers',active:'most_capitalized',premarket:'pre_market_gainers'};
+function renderScreener(body,type){
+  body.style.padding='0';body.style.overflow='hidden';
+  const screen=SCREENER_SCREENS[type];
   if(!screen){body.innerHTML='<div class="scan-empty">Unknown screener</div>';return;}
-
-  const params = encodeURIComponent(JSON.stringify({
-    width:         '100%',
-    height:        '100%',
-    defaultColumn: 'overview',
-    defaultScreen:  screen,
-    market:        'america',
-    showToolbar:    true,
-    colorTheme:    'dark',
-    locale:        'en',
-  }));
-
-  body.innerHTML = `<iframe
-    scrolling="no"
-    allowtransparency="true"
-    frameborder="0"
+  const params=encodeURIComponent(JSON.stringify({width:'100%',height:'100%',defaultColumn:'overview',defaultScreen:screen,market:'america',showToolbar:true,colorTheme:'dark',locale:'en'}));
+  body.innerHTML=`<iframe scrolling="no" allowtransparency="true" frameborder="0"
     src="https://www.tradingview.com/embed-widget/screener/?locale=en#${params}"
-    style="width:100%;height:100%;border:none;display:block;flex:1">
-  </iframe>`;
+    style="width:100%;height:100%;border:none;display:block"></iframe>`;
 }
 
-// ── ALERTS
-function saveAL(){localStorage.setItem('sv_al',JSON.stringify(alts));}
-function updateAlSels(){
-  document.querySelectorAll('.al-sel').forEach(sel=>{
-    const cur=sel.value;sel.innerHTML=wl.map(s=>`<option value="${s}">${s}</option>`).join('');
-    if(wl.includes(cur))sel.value=cur;
+// ── 5 PILLARS SCANNER (only shows qualifying stocks)
+const scanCache={};
+let scanDeepRunning=false;
+
+function renderScanner(body){
+  const bid=body.id;
+  body.innerHTML=`<div class="scan-filters">
+    <div class="flt-g"><span class="flt-l">Min Price $</span><input class="flt-i" type="number" value="1" step="0.5" id="${bid}-minp"/></div>
+    <div class="flt-g"><span class="flt-l">Max Price $</span><input class="flt-i" type="number" value="20" id="${bid}-maxp"/></div>
+    <div class="flt-g"><span class="flt-l">Min % Change</span><input class="flt-i" type="number" value="10" id="${bid}-chg"/></div>
+    <div class="flt-g"><span class="flt-l">Min RVol</span><input class="flt-i" type="number" value="5" step="0.5" id="${bid}-rv"/></div>
+  </div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+    <span style="font-size:8px;color:var(--dim)" id="${bid}-status">⚡ Live P1+P2 · Deep P3/P4/P5 every 15s · Thresholds auto-adjust by session</span>
+    <button style="background:var(--ac);border:none;border-radius:3px;color:#fff;font-family:'DM Mono',monospace;font-size:8px;padding:2px 7px;cursor:pointer" id="${bid}-btn" onclick="startDeepScan()">↺</button>
+  </div>
+  <div style="margin-bottom:6px">
+    <div style="font-size:7px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px">Symbols to scan</div>
+    <div id="${bid}-tags" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px">${getScanSyms().map(s=>`<span style="display:inline-flex;align-items:center;gap:2px;background:${histSyms.includes(s)?'#7c6aff12':'var(--s2)'};border:1px solid ${histSyms.includes(s)?'#7c6aff28':'var(--b2)'};border-radius:10px;padding:2px 6px;font-size:9px;color:${histSyms.includes(s)?'var(--ac2)':'var(--mu)'}">${s}${!histSyms.includes(s)?`<button onclick="rmScanSym('${s}')" style="background:none;border:none;color:var(--rd);cursor:pointer;font-size:9px;opacity:.5;line-height:1">×</button>`:''}</span>`).join('')}</div>
+    <div style="display:flex;gap:4px">
+      <input type="text" placeholder="Add symbol to scan…" id="${bid}-inp" onkeydown="if(event.key==='Enter')addScanSym('${bid}')"
+        style="flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:4px 6px;outline:none"/>
+      <button onclick="addScanSym('${bid}')" style="background:var(--ac);border:none;border-radius:4px;color:#fff;font-size:12px;width:22px;cursor:pointer">+</button>
+    </div>
+  </div>
+  <div id="${bid}-res"><div class="scan-empty">⚡ Scanning for qualifying stocks…<br><span style="font-size:8px;color:var(--dim)">Only stocks passing P1+P2 minimum will appear</span></div></div>`;
+  setTimeout(()=>startDeepScan(),400);
+}
+
+function getScanSyms(){return[...new Set([...histSyms,...scanSyms])];}
+function saveScanSyms(){localStorage.setItem('sv_scan',JSON.stringify(scanSyms));}
+function addScanSym(bid){
+  const inp=document.getElementById(bid+'-inp');if(!inp)return;
+  const sym=inp.value.toUpperCase().trim();
+  if(!sym||getScanSyms().includes(sym))return;
+  scanSyms.push(sym);saveScanSyms();inp.value='';
+  if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
+  widgets.filter(w=>w.type==='scanner').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderScanner(b);});
+}
+function rmScanSym(sym){
+  scanSyms=scanSyms.filter(s=>s!==sym);saveScanSyms();
+  delete scanCache[sym];
+  widgets.filter(w=>w.type==='scanner').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderScanner(b);});
+}
+
+// Live P1+P2 update — called on every WS tick
+function liveScanUpdate(){
+  widgets.filter(w=>w.type==='scanner').forEach(w=>{
+    const bid='wb-'+w.id;
+    const res=document.getElementById(bid+'-res');if(!res)return;
+    const minP=parseFloat(document.getElementById(bid+'-minp')?.value)||1;
+    const maxP=parseFloat(document.getElementById(bid+'-maxp')?.value)||20;
+    // Auto-adjust % change threshold by session
+    const baseMinC=parseFloat(document.getElementById(bid+'-chg')?.value)||10;
+    const session=document.getElementById('sessbdg')?.textContent||'';
+    const minC = session.includes('PRE-MARKET')||session.includes('AFTER HOURS') ? baseMinC*0.5 : baseMinC;
+    const results=[];
+    getScanSyms().forEach(sym=>{
+      const q=Q[sym];if(!q?.price)return;
+      const p1=q.price>=minP&&q.price<=maxP;
+      const p2=(q.changePct||0)>=minC;
+      const cached=scanCache[sym]||{};
+      const p3=cached.p3??null;
+      const p4=cached.p4??null;
+      const p5=cached.p5??null;
+      const score=[p1,p2,p3===true,p4===true,p5===true].filter(Boolean).length;
+      // Only show stocks passing at least 4 out of 5 pillars
+      if(score<4)return;
+      results.push({sym,q,p1,p2,p3,p4,p5,score,hasNews:cached.hasNews||false});
+    });
+    if(!results.length){
+      res.innerHTML='<div class="scan-empty">No stocks passing 4/5 pillars yet<br><span style="font-size:8px;color:var(--dim)">Requires 4 of: Price, %Change, News, RVol, Float</span></div>';
+      return;
+    }
+    results.sort((a,b)=>b.score-a.score||(b.q.changePct||0)-(a.q.changePct||0));
+    const pd=v=>v===true?'pass':v===false?'fail':'na';
+    res.innerHTML=results.map(r=>{
+      const u=(r.q.changePct||0)>=0,sc=r.score>=4?'s5':r.score===3?'s4':r.score>=2?'s3':'s0';
+      return `<div class="scan-row" onclick="selectSym('${r.sym}')">
+        <span class="scan-sym ${r.score>=4?'up':''}">${r.sym}${r.hasNews?' 🔥':''}</span>
+        <span class="scan-px">$${fmtP(r.q.price)}</span>
+        <span class="scan-chg ${u?'up':'dn'}">${u?'+':''}${(r.q.changePct||0).toFixed(2)}%</span>
+        <div class="scan-pills">
+          <span class="pill ${pd(r.p1)}" title="P1: Price $1-$20">P1</span>
+          <span class="pill ${pd(r.p2)}" title="P2: Change ≥10%">P2</span>
+          <span class="pill ${pd(r.p3)}" title="P3: News">P3</span>
+          <span class="pill ${pd(r.p4)}" title="P4: RVol ≥5x">P4</span>
+          <span class="pill ${pd(r.p5)}" title="P5: Float <10M">P5</span>
+        </div>
+        <span class="scan-score ${sc}">${r.score}/5</span>
+      </div>`;
+    }).join('');
   });
 }
 
+// Deep scan P3/P4/P5 every 15 seconds
+async function startDeepScan(){
+  if(scanDeepRunning)return;
+  scanDeepRunning=true;
+  for(const sym of getScanSyms()){
+    try{
+      if(!Q[sym])await fetchQ(sym);
+      let hasNews=false;
+      try{
+        const today=new Date().toISOString().split('T')[0];
+        const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];
+        const r=await fetch(`https://finnhub.io/api/v1/company-news?symbol=${sym}&from=${from}&to=${today}&token=${FHK}`);
+        const news=await r.json();hasNews=Array.isArray(news)&&news.length>0;
+      }catch(e){}
+      let p4=null,p5=null;
+      try{
+        const r=await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${sym}&metric=all&token=${FHK}`);
+        const d=await r.json();
+        const avgV=(d.metric?.['10DayAverageTradingVolume']||0)*1000000;
+        const rVol=avgV>0?(Q[sym]?.volume||0)/avgV:null;
+        // Use widget filter for RVol threshold
+        const rvBase = parseFloat(document.querySelector('[id$="-rv"]')?.value)||5;
+        // Lower RVol requirement for pre/after hours (less overall volume)
+        const sess=document.getElementById('sessbdg')?.textContent||'';
+        const rvThresh = sess.includes('PRE-MARKET')||sess.includes('AFTER HOURS') ? rvBase*0.4 : rvBase;
+        p4=rVol!==null?rVol>=rvThresh:null;
+        const floatVal=d.metric?.['float']??null;
+        p5=floatVal!==null?(floatVal<10):null;
+      }catch(e){}
+      scanCache[sym]={p3:hasNews,p4,p5,hasNews,ts:Date.now()};
+    }catch(e){}
+    await new Promise(r=>setTimeout(r,200));
+  }
+  scanDeepRunning=false;
+  const now=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.querySelectorAll('[id$="-status"]').forEach(el=>{
+    if(el.closest?.('.widget'))el.textContent=`⚡ Live P1+P2 · Last deep: ${now}`;
+  });
+  liveScanUpdate();
+}
+setInterval(()=>startDeepScan(),15000);
+
+// ── ALERTS
+function saveAL(){localStorage.setItem('sv_al',JSON.stringify(alts));}
 function renderAL(body){
   body.innerHTML=`<div class="alf">
-    <select class="al-sel">${wl.map(s=>`<option value="${s}">${s}</option>`).join('')}</select>
-    <select class="al-type">
-      <option>Price Above</option><option>Price Below</option>
-      <option>% Change Up</option><option>% Change Down</option>
-    </select>
+    <select class="al-sel">${[...new Set([...histSyms,...scanSyms])].map(s=>`<option value="${s}">${s}</option>`).join('')}</select>
+    <select class="al-type"><option>Price Above</option><option>Price Below</option><option>% Change Up</option><option>% Change Down</option></select>
     <input class="al-val" type="number" placeholder="Value e.g. 220.00" step="0.01"/>
     <button class="alcr" onclick="createAlertFrom(this)">+ CREATE ALERT</button>
   </div>${alts.map(a=>{
     const cls=a.triggered?'trig':a.active?'on':'off';
-    return `<div class="ali">
-      <div class="alil"><div class="ald ${cls}"></div>
-        <div><div class="als">${a.sym} <span style="font-size:8px;color:var(--mu)">${a.type}</span></div>
-        <div style="font-size:8px;color:var(--mu)">${a.type.includes('%')?a.val+'%':'$'+a.val}${a.triggered?' <span style="color:var(--gold)">✓</span>':''}</div></div>
-      </div>
+    return `<div class="ali"><div class="alil"><div class="ald ${cls}"></div>
+      <div><div class="als">${a.sym} <span style="font-size:8px;color:var(--mu)">${a.type}</span></div>
+      <div style="font-size:8px;color:var(--mu)">${a.type.includes('%')?a.val+'%':'$'+a.val}${a.triggered?' <span style="color:var(--gold)">✓</span>':''}</div></div></div>
       <div style="display:flex;gap:2px">
         <button class="alx" style="color:var(--mu)" onclick="togAL(${a.id})">${a.active?'⏸':'▶'}</button>
         <button class="alx" onclick="delAL(${a.id})">✕</button>
-      </div>
-    </div>`;
+      </div></div>`;
   }).join('')||'<div style="font-size:10px;color:var(--mu);text-align:center;padding:10px">No alerts</div>'}`;
 }
-
 function createAlertFrom(btn){
   const w=btn.closest('.alf');
-  const sym=w.querySelector('.al-sel').value;
-  const type=w.querySelector('.al-type').value;
-  const val=parseFloat(w.querySelector('.al-val').value);
+  const sym=w.querySelector('.al-sel').value,type=w.querySelector('.al-type').value,val=parseFloat(w.querySelector('.al-val').value);
   if(!sym||!val)return;
   alts.push({id:Date.now(),sym,type,val,active:true,triggered:false});
   saveAL();w.querySelector('.al-val').value='';
-  reRenderAlerts();
+  widgets.filter(w=>w.type==='alerts').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderAL(b);});
 }
-function delAL(id){alts=alts.filter(a=>a.id!==id);saveAL();reRenderAlerts();}
-function togAL(id){alts=alts.map(a=>a.id===id?{...a,active:!a.active,triggered:false}:a);saveAL();reRenderAlerts();}
-function reRenderAlerts(){widgets.filter(w=>w.type==='alerts').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderAL(b);});}
+function delAL(id){alts=alts.filter(a=>a.id!==id);saveAL();widgets.filter(w=>w.type==='alerts').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderAL(b);});}
+function togAL(id){alts=alts.map(a=>a.id===id?{...a,active:!a.active,triggered:false}:a);saveAL();widgets.filter(w=>w.type==='alerts').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderAL(b);});}
 function checkAlerts(){
   let ch=false;
   alts.forEach(a=>{
@@ -708,7 +879,7 @@ function checkAlerts(){
     if(hit){a.triggered=true;ch=true;
       if(Notification.permission==='granted')new Notification(`🔔 ${a.sym}`,{body:`${a.type} ${a.val}${a.type.includes('%')?'%':''} triggered`});}
   });
-  if(ch){saveAL();reRenderAlerts();}
+  if(ch){saveAL();widgets.filter(w=>w.type==='alerts').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderAL(b);});}
 }
 
 // ── NEWS
@@ -725,8 +896,7 @@ async function renderNews(body,sym){
       const age=timeAgo(new Date(n.datetime*1000));
       const s=n.sentiment>0.1?'p':n.sentiment<-0.1?'n':'u';
       const sl=n.sentiment>0.1?'▲':n.sentiment<-0.1?'▼':'●';
-      // News opens in sub-tab instead of new window
-      return `<div class="ni" onclick="addNewsSubTab('${n.url}','${(n.headline||'').replace(/'/g,'').slice(0,30)}')">
+      return `<div class="ni" onclick="openNewsPopup('${n.url}')">
         <div class="nisym">${n.related||sym}<span class="nisen ${s}">${sl}</span></div>
         <div class="nitl">${(n.headline||'').slice(0,90)}${(n.headline||'').length>90?'…':''}</div>
         <div class="nitm">${age} · ${n.source||''}</div>
@@ -736,202 +906,7 @@ async function renderNews(body,sym){
 }
 function timeAgo(d){const s=Math.floor((Date.now()-d)/1000);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';}
 
-// ── 5 PILLARS SCANNER — HYBRID LIVE SYSTEM
-// P1+P2: update live via WebSocket (price & % change, zero extra API calls)
-// P3+P4+P5: deep scan every 90 seconds (news, rvol, float)
-
-const scanCache = {};
-let scanDeepRunning = false;
-
-function renderScanner(body){
-  const bid=body.id;
-  body.innerHTML=`<div class="scan-filters">
-    <div class="flt-g"><span class="flt-l">Min Price</span><input class="flt-i" type="number" value="1" step="0.5" id="${bid}-minp"/></div>
-    <div class="flt-g"><span class="flt-l">Max Price</span><input class="flt-i" type="number" value="20" id="${bid}-maxp"/></div>
-    <div class="flt-g"><span class="flt-l">Min % Chg</span><input class="flt-i" type="number" value="10" id="${bid}-chg"/></div>
-    <div class="flt-g"><span class="flt-l">Min RVol</span><input class="flt-i" type="number" value="5" step="0.5" id="${bid}-rv"/></div>
-  </div>
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-    <div style="font-size:8px;color:var(--dim)" id="${bid}-status">⚡ Live · Deep scan every 15s</div>
-    <button class="scan-btn" style="flex:0;padding:3px 8px;font-size:8px" id="${bid}-btn" onclick="startDeepScan('${bid}')">↺</button>
-  </div>
-  <div class="scan-syms" id="${bid}-tags">${getScanSyms().map(s=>`<span class="scan-tag${wl.includes(s)?' wl':''}">${s}${!wl.includes(s)?`<button onclick="rmScanSym('${s}','${bid}')">x</button>`:''}</span>`).join('')}</div>
-  <div class="scan-add">
-    <input type="text" placeholder="Add symbol…" id="${bid}-inp" onkeydown="if(event.key==='Enter')addScanSymFrom('${bid}')"/>
-    <button onclick="addScanSymFrom('${bid}')">+</button>
-  </div>
-  <div id="${bid}-res"><div style="font-size:10px;color:var(--mu);text-align:center;padding:16px;display:flex;align-items:center;justify-content:center;gap:6px"><div style="width:10px;height:10px;border:2px solid var(--b2);border-top-color:var(--ac);border-radius:50%;animation:spin .6s linear infinite"></div>Initial deep scan…</div></div>`;
-  setTimeout(()=>startDeepScan(bid), 500);
-}
-
-function addScanSymFrom(bid){
-  const inp=document.getElementById(bid+'-inp');if(!inp)return;
-  const sym=inp.value.toUpperCase().trim();
-  if(!sym||getScanSyms().includes(sym))return;
-  scanSyms.push(sym);saveScanSyms();inp.value='';
-  if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
-  widgets.filter(w=>w.type==='scanner').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderScanner(b);});
-}
-
-function rmScanSym(sym,bid){
-  scanSyms=scanSyms.filter(s=>s!==sym);saveScanSyms();
-  delete scanCache[sym];
-  widgets.filter(w=>w.type==='scanner').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderScanner(b);});
-}
-
-// Called on every WebSocket price tick — zero API calls, instant P1+P2 update
-function liveScanUpdate(){
-  widgets.filter(w=>w.type==='scanner').forEach(w=>{
-    const bid='wb-'+w.id;
-    const res=document.getElementById(bid+'-res');if(!res)return;
-    const minP=parseFloat(document.getElementById(bid+'-minp')?.value)||1;
-    const maxP=parseFloat(document.getElementById(bid+'-maxp')?.value)||20;
-    const minC=parseFloat(document.getElementById(bid+'-chg')?.value)||10;
-    const results=[];
-    getScanSyms().forEach(sym=>{
-      const q=Q[sym];if(!q?.price)return;
-      const p1=q.price>=minP&&q.price<=maxP;
-      const p2=(q.changePct||0)>=minC;
-      const cached=scanCache[sym]||{};
-      const p3=cached.p3??null;
-      const p4=cached.p4??null;
-      const p5=cached.p5??null;
-      const score=[p1,p2,p3===true,p4===true,p5===true].filter(Boolean).length;
-      results.push({sym,q,p1,p2,p3,p4,p5,score,hasNews:cached.hasNews||false});
-    });
-    results.sort((a,b)=>b.score-a.score||(b.q.changePct||0)-(a.q.changePct||0));
-    if(!results.length) return;
-    const pd=v=>v===true?'pass':v===false?'fail':'na';
-    res.innerHTML=results.map(r=>{
-      const u=(r.q.changePct||0)>=0,sc=r.score>=4?'s5':r.score===3?'s4':r.score>=2?'s3':'s0';
-      return `<div class="scan-row" onclick="selectSym('${r.sym}')">
-        <span class="scan-sym ${r.p1&&r.p2?'up':''}">${r.sym}${r.hasNews?' 🔥':''}</span>
-        <span class="scan-px">$${fmtP(r.q.price)}</span>
-        <span class="scan-chg ${u?'up':'dn'}">${u?'+':''}${(r.q.changePct||0).toFixed(2)}%</span>
-        <div class="scan-pills">
-          <span class="pill ${pd(r.p1)}" title="P1: Price">P1</span>
-          <span class="pill ${pd(r.p2)}" title="P2: %Chg">P2</span>
-          <span class="pill ${pd(r.p3)}" title="P3: News">P3</span>
-          <span class="pill ${pd(r.p4)}" title="P4: RVol">P4</span>
-          <span class="pill ${pd(r.p5)}" title="P5: Float">P5</span>
-        </div>
-        <span class="scan-score ${sc}">${r.score}/5</span>
-      </div>`;
-    }).join('');
-  });
-}
-
-// Deep scan — fetches P3/P4/P5, runs every 90s
-async function startDeepScan(callerBid){
-  if(scanDeepRunning) return;
-  scanDeepRunning=true;
-  document.querySelectorAll('[id$="-status"]').forEach(el=>{
-    if(el.closest('.widget'))el.textContent='🔄 Deep scanning P3/P4/P5…';
-  });
-  document.querySelectorAll('[id$="-btn"]').forEach(btn=>{
-    if(btn.closest('.widget')&&btn.textContent==='↺'){btn.disabled=true;btn.textContent='…';}
-  });
-
-  for(const sym of getScanSyms()){
-    try{
-      if(!Q[sym]) await fetchQ(sym);
-      let hasNews=false;
-      try{
-        const today=new Date().toISOString().split('T')[0];
-        const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];
-        const r=await fetch(`https://finnhub.io/api/v1/company-news?symbol=${sym}&from=${from}&to=${today}&token=${FHK}`);
-        const news=await r.json();
-        hasNews=Array.isArray(news)&&news.length>0;
-      }catch(e){}
-      let p4=null,p5=null;
-      try{
-        const r=await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${sym}&metric=all&token=${FHK}`);
-        const d=await r.json();
-        const avgV=(d.metric?.['10DayAverageTradingVolume']||0)*1000000;
-        const rVol=avgV>0?(Q[sym]?.volume||0)/avgV:null;
-        const float=d.metric?.['float']||null;
-        p4=rVol!==null?rVol>=5:null;
-        p5=float!==null?float<10:null;
-      }catch(e){}
-      scanCache[sym]={p3:hasNews,p4,p5,hasNews,ts:Date.now()};
-    }catch(e){}
-    await new Promise(r=>setTimeout(r,150));
-  }
-
-  scanDeepRunning=false;
-  const now=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  document.querySelectorAll('[id$="-status"]').forEach(el=>{
-    if(el.closest('.widget'))el.textContent='⚡ Live P1+P2 · Last deep: '+now;
-  });
-  document.querySelectorAll('[id$="-btn"]').forEach(btn=>{
-    if(btn.closest('.widget')&&btn.textContent==='…'){btn.disabled=false;btn.textContent='↺';}
-  });
-  liveScanUpdate();
-}
-
-// Auto deep scan every 90 seconds
-setInterval(()=>startDeepScan(null), 15000);
-
-
-// ── DRAG & DROP
-function makeDraggable(el,wData){
-  const hdr=el.querySelector('.wh');
-  let ox=0,oy=0,sx=0,sy=0,dragging=false;
-  const canvas=document.getElementById('canvas');
-
-  hdr.addEventListener('mousedown',e=>{
-    if(e.target.tagName==='BUTTON'||e.target.closest('.ws-wrap'))return;
-    if(wData.pinned)return;
-    dragging=true;sx=e.clientX;sy=e.clientY;ox=wData.x;oy=wData.y;
-    el.classList.add('dragging');el.style.zIndex=1000;e.preventDefault();
-  });
-  document.addEventListener('mousemove',e=>{
-    if(!dragging)return;
-    const canvasRect=canvas.getBoundingClientRect();
-    const maxX=canvas.scrollWidth-wData.w;
-    const maxY=canvas.scrollHeight-wData.h;
-    const rx=Math.max(0,Math.min(maxX,ox+(e.clientX-sx)));
-    const ry=Math.max(0,Math.min(maxY,oy+(e.clientY-sy)));
-    wData.x=Math.round(rx/SNAP)*SNAP;
-    wData.y=Math.round(ry/SNAP)*SNAP;
-    el.style.left=wData.x+'px';el.style.top=wData.y+'px';
-  });
-  document.addEventListener('mouseup',()=>{
-    if(!dragging)return;dragging=false;
-    el.classList.remove('dragging');el.style.zIndex='';saveWidgets();
-  });
-}
-
-function makeResizable(el,wData){
-  const handle=el.querySelector('.resize-br');
-  let resizing=false,sx=0,sy=0,ow=0,oh=0;
-  handle.addEventListener('mousedown',e=>{
-    if(wData.pinned)return;
-    resizing=true;sx=e.clientX;sy=e.clientY;ow=wData.w;oh=wData.h;
-    el.classList.add('resizing');e.preventDefault();e.stopPropagation();
-  });
-  document.addEventListener('mousemove',e=>{
-    if(!resizing)return;
-    const canvas=document.getElementById('canvas');
-    const maxW=canvas.scrollWidth-wData.x;
-    const maxH=canvas.scrollHeight-wData.y;
-    const rw=Math.max(180,Math.min(maxW,ow+(e.clientX-sx)));
-    const rh=Math.max(120,Math.min(maxH,oh+(e.clientY-sy)));
-    wData.w=Math.round(rw/SNAP)*SNAP;
-    wData.h=Math.round(rh/SNAP)*SNAP;
-    el.style.width=wData.w+'px';el.style.height=wData.h+'px';
-  });
-  document.addEventListener('mouseup',()=>{
-    if(!resizing)return;resizing=false;el.classList.remove('resizing');saveWidgets();
-    // Force iframes to reflow after resize
-    el.querySelectorAll('iframe').forEach(f=>{
-      const s=f.style.width;f.style.width='99%';
-      requestAnimationFrame(()=>f.style.width=s||'100%');
-    });
-  });
-}
-
-// ── SEARCH
+// ── SEARCH — uses Finnhub symbol search + opens TradingView
 const inp=document.getElementById('si');
 const dd=document.getElementById('dd');
 const spin=document.getElementById('sspin');
@@ -944,11 +919,16 @@ async function doSearch(q){
     flt=(d.result||[]).filter(x=>x.symbol&&x.symbol.length<=10&&!x.symbol.includes('/')
       &&(x.type==='Common Stock'||x.type==='ETP'||x.type==='ADR'||x.type==='DR'||x.type===''))
       .sort((a,b)=>a.symbol.length-b.symbol.length).slice(0,10);
-    renderDrop('Results for "'+q+'"',flt);
-  }catch(e){}
+    renderDrop('Results — click to open in TradingView',flt);
+  }catch(e){dd.innerHTML='<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">Search error</div>';}
   spin.style.display='none';dd.classList.add('open');
 }
-function showPop(){flt=wl.map(s=>({symbol:s,description:Q[s]?.name||s}));renderDrop('Watchlist',flt);dd.classList.add('open');}
+function showPop(){
+  const items=histSyms.slice(0,8).map(s=>({symbol:s,description:Q[s]?.name||s}));
+  if(items.length)renderDrop('Recent History',items);
+  else dd.innerHTML='<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">Type to search any stock…</div>';
+  dd.classList.add('open');
+}
 function renderDrop(lbl,items){
   if(!items.length){dd.innerHTML='<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">No results</div>';return;}
   dd.innerHTML=`<div class="dlb">${lbl}</div>`+items.map((it,i)=>{
@@ -961,34 +941,96 @@ function renderDrop(lbl,items){
   hlt=-1;
 }
 function closeDrop(){dd.classList.remove('open');hlt=-1;}
-inp.addEventListener('input',e=>{const v=e.target.value.trim();clearTimeout(srt);if(!v){showPop();return;}spin.style.display='block';srt=setTimeout(()=>doSearch(v),350);});
-inp.addEventListener('focus',()=>{if(!inp.value.trim())showPop();});
+
+inp.addEventListener('input',e=>{
+  const v=e.target.value.trim();clearTimeout(srt);
+  if(!v){showPop();return;}
+  spin.style.display='block';
+  srt=setTimeout(()=>doSearch(v),350);
+});
+inp.addEventListener('focus',()=>showPop());
 inp.addEventListener('keydown',e=>{
   const its=dd.querySelectorAll('.dit');
   if(e.key==='ArrowDown'){e.preventDefault();hlt=Math.min(hlt+1,its.length-1);its.forEach((x,i)=>x.classList.toggle('hl',i===hlt));}
   else if(e.key==='ArrowUp'){e.preventDefault();hlt=Math.max(hlt-1,0);its.forEach((x,i)=>x.classList.toggle('hl',i===hlt));}
-  else if(e.key==='Enter'){const p=flt[hlt>=0?hlt:0];if(p){selectSym(p.symbol);closeDrop();}}
+  else if(e.key==='Enter'){const p=flt[hlt>=0?hlt:0]||(histSyms[hlt>=0?hlt:0]?{symbol:histSyms[hlt>=0?hlt:0]}:null);if(p){selectSym(p.symbol);closeDrop();}}
   else if(e.key==='Escape'){closeDrop();inp.blur();}
 });
+
+// ANY KEY press opens search box
+document.addEventListener('keydown',e=>{
+  if(e.target===inp)return;
+  if(e.metaKey||e.ctrlKey||e.altKey)return;
+  if(e.key.length===1&&/[a-zA-Z0-9]/.test(e.key)){
+    inp.focus();
+    inp.value=e.key;
+    doSearch(e.key);
+  }
+});
+
 document.addEventListener('click',e=>{
   if(!e.target.closest('.sw'))closeDrop();
   if(!e.target.closest('.wm-wrap'))document.getElementById('widgetMenu').classList.remove('open');
   if(!e.target.closest('.ws-wrap'))document.querySelectorAll('.ws-panel.open').forEach(x=>x.classList.remove('open'));
+  if(!e.target.closest('.modal')){}
 });
 document.getElementById('addWidgetBtn').addEventListener('click',e=>{document.getElementById('widgetMenu').classList.toggle('open');e.stopPropagation();});
+
+// ── DRAG & DROP
+function makeDraggable(el,wData){
+  const hdr=el.querySelector('.wh');
+  let ox=0,oy=0,sx=0,sy=0,dragging=false;
+  hdr.addEventListener('mousedown',e=>{
+    if(e.target.tagName==='BUTTON'||e.target.closest('.ws-wrap'))return;
+    if(wData.pinned)return;
+    dragging=true;sx=e.clientX;sy=e.clientY;ox=wData.x;oy=wData.y;
+    el.classList.add('dragging');el.style.zIndex=1000;e.preventDefault();
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!dragging)return;
+    const canvas=document.getElementById('canvas');
+    const maxX=Math.max(canvas.scrollWidth-wData.w,0);
+    const maxY=Math.max(canvas.scrollHeight-wData.h,0);
+    wData.x=Math.round(Math.max(0,Math.min(maxX,ox+(e.clientX-sx)))/SNAP)*SNAP;
+    wData.y=Math.round(Math.max(0,Math.min(maxY,oy+(e.clientY-sy)))/SNAP)*SNAP;
+    el.style.left=wData.x+'px';el.style.top=wData.y+'px';
+  });
+  document.addEventListener('mouseup',()=>{if(!dragging)return;dragging=false;el.classList.remove('dragging');el.style.zIndex='';saveWidgets();});
+}
+
+function makeResizable(el,wData){
+  const handle=el.querySelector('.resize-br');
+  let resizing=false,sx=0,sy=0,ow=0,oh=0;
+  handle.addEventListener('mousedown',e=>{
+    if(wData.pinned)return;
+    resizing=true;sx=e.clientX;sy=e.clientY;ow=wData.w;oh=wData.h;
+    el.classList.add('resizing');e.preventDefault();e.stopPropagation();
+  });
+  document.addEventListener('mousemove',e=>{
+    if(!resizing)return;
+    wData.w=Math.round(Math.max(180,ow+(e.clientX-sx))/SNAP)*SNAP;
+    wData.h=Math.round(Math.max(120,oh+(e.clientY-sy))/SNAP)*SNAP;
+    el.style.width=wData.w+'px';el.style.height=wData.h+'px';
+  });
+  document.addEventListener('mouseup',()=>{
+    if(!resizing)return;resizing=false;el.classList.remove('resizing');saveWidgets();
+    el.querySelectorAll('iframe').forEach(f=>{const s=f.style.width;f.style.width='99%';requestAnimationFrame(()=>f.style.width=s||'100%');});
+  });
+}
 
 if(Notification.permission==='default')Notification.requestPermission();
 
 // ── BOOT
 async function init(){
-  renderRecentBar(); // render history bar immediately (empty on first visit)
+  renderHistBar();
   widgets.forEach(w=>renderWidget(w));
-  for(const sym of wl){
-    await fetchQ(sym);buildTape();refreshWLWidgets();liveScanUpdate();
+  // Load prices for history symbols
+  for(const sym of histSyms.slice(0,10)){
+    await fetchQ(sym);renderHistBar();refreshHistWidgets();
     await new Promise(r=>setTimeout(r,150));
   }
-  renderRecentBar(); // re-render with prices loaded
   connectFinnhubWS();
+  startDeepScan();
 }
 init();
 </script>
