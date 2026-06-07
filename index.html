@@ -806,32 +806,39 @@ const SCR_LABELS={
 };
 
 
+// Global lock — only one screener fetches at a time, others wait
+let scrFetchLock=false;
 async function fetchScreenerData(type){
-  const symbolSets={
-    gainers: ['NVDA','AMD','AAPL','MSFT','META','TSLA','PLTR','COIN','SOFI','HOOD','MARA','RIOT','GME','AMC','SPHL','BNAI','CMND','ACMR','AEHR','BLNK'],
-    losers:  ['NVDA','AMD','AAPL','MSFT','META','TSLA','PLTR','COIN','SOFI','HOOD','MARA','RIOT','GME','AMC','NIO','RIVN','LCID','SNAP','PLUG','FCEL'],
-    active:  ['NVDA','AMD','AAPL','MSFT','META','TSLA','SPY','QQQ','SOXL','TQQQ','GME','AMC','PLTR','COIN','MSTR','SOFI','HOOD','MARA','RIOT','SNAP'],
-    premarket:['SPHL','BNAI','CMND','ACMR','AEHR','GME','AMC','MARA','RIOT','BTBT','HUT','CLSK','PLUG','FCEL','NKLA','NIO','RIVN','SOFI','HOOD','PLTR'],
-    gappers: ['SPHL','BNAI','CMND','ACMR','AEHR','GME','AMC','MARA','RIOT','BTBT','PLUG','FCEL','NKLA','NIO','RIVN','SOFI','HOOD','PLTR','COIN','BLNK'],
-    hod:     ['SPHL','BNAI','CMND','ACMR','AEHR','GME','AMC','MARA','RIOT','PLTR','COIN','SOFI','HOOD','NIO','RIVN','PLUG','FCEL','BLNK','BTBT','HUT'],
-    penny:   ['PLUG','FCEL','NKLA','BTBT','HUT','CLSK','BNAI','CMND','SPHL','ACMR','AEHR','BLNK','CLOV','SNDL','NOK','BB','NAKD','IDEX','WKHS','GOEV']
-  };
-  const syms=symbolSets[type]||symbolSets.gainers;
-  // Fetch uncached symbols in small batches of 5, 300ms apart — fast but safe
-  const toFetch=syms.filter(s=>!Q[s]?.price);
-  for(let i=0;i<toFetch.length;i+=5){
-    const batch=toFetch.slice(i,i+5);
-    await Promise.all(batch.map(sym=>fetchQDirect(sym)));
-    if(i+5<toFetch.length)await new Promise(r=>setTimeout(r,300));
+  // Wait if another screener is already fetching
+  while(scrFetchLock)await new Promise(r=>setTimeout(r,200));
+  scrFetchLock=true;
+  try{
+    const symbolSets={
+      gainers: ['NVDA','AMD','AAPL','MSFT','META','TSLA','PLTR','COIN','SOFI','HOOD','MARA','RIOT','GME','AMC','SPHL','BNAI','CMND','ACMR','AEHR','BLNK'],
+      losers:  ['NVDA','AMD','AAPL','MSFT','META','TSLA','PLTR','COIN','SOFI','HOOD','MARA','RIOT','GME','AMC','NIO','RIVN','LCID','SNAP','PLUG','FCEL'],
+      active:  ['NVDA','AMD','AAPL','MSFT','META','TSLA','SPY','QQQ','SOXL','TQQQ','GME','AMC','PLTR','COIN','MSTR','SOFI','HOOD','MARA','RIOT','SNAP'],
+      premarket:['SPHL','BNAI','CMND','ACMR','AEHR','GME','AMC','MARA','RIOT','BTBT','HUT','CLSK','PLUG','FCEL','NKLA','NIO','RIVN','SOFI','HOOD','PLTR'],
+      gappers: ['SPHL','BNAI','CMND','ACMR','AEHR','GME','AMC','MARA','RIOT','BTBT','PLUG','FCEL','NKLA','NIO','RIVN','SOFI','HOOD','PLTR','COIN','BLNK'],
+      hod:     ['SPHL','BNAI','CMND','ACMR','AEHR','GME','AMC','MARA','RIOT','PLTR','COIN','SOFI','HOOD','NIO','RIVN','PLUG','FCEL','BLNK','BTBT','HUT'],
+      penny:   ['PLUG','FCEL','NKLA','BTBT','HUT','CLSK','BNAI','CMND','SPHL','ACMR','AEHR','BLNK','CLOV','SNDL','NOK','BB','NAKD','IDEX','WKHS','GOEV']
+    };
+    const syms=symbolSets[type]||symbolSets.gainers;
+    const toFetch=syms.filter(s=>!Q[s]?.price);
+    for(const sym of toFetch){
+      await fetchQDirect(sym);
+      await new Promise(r=>setTimeout(r,1100));
+    }
+    const rows=syms.filter(s=>Q[s]?.price).map(s=>({
+      symbol:s,
+      regularMarketPrice:Q[s].price,
+      regularMarketChangePercent:Q[s].changePct||0,
+      regularMarketVolume:Q[s].volume||0,
+      shortName:Q[s].name||s
+    }));
+    if(rows.length)scrCache[type]={rows,ts:Date.now()};
+  }finally{
+    scrFetchLock=false;
   }
-  const rows=syms.filter(s=>Q[s]?.price).map(s=>({
-    symbol:s,
-    regularMarketPrice:Q[s].price,
-    regularMarketChangePercent:Q[s].changePct||0,
-    regularMarketVolume:Q[s].volume||0,
-    shortName:Q[s].name||s
-  }));
-  if(rows.length)scrCache[type]={rows,ts:Date.now()};
 }
 
 // Direct fetch — bypasses the queue for screener initial load
