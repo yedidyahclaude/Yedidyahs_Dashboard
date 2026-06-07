@@ -308,6 +308,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
       <div id="dd"></div>
     </div>
     <div class="hright">
+      <button class="hbtn" onclick="manualRefreshAll()" id="refreshBtn" title="Refresh all screeners and prices now">↺ Refresh</button>
       <button class="hbtn" onclick="openProfileModal()">👤 Profiles</button>
       <button class="hbtn" onclick="logout()">⏻ Sign Out</button>
       <div class="wm-wrap">
@@ -648,22 +649,74 @@ function showToast(msg){
   clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',3500);
 }
 
+// Global manual refresh — clears all screener caches and reloads everything
+async function manualRefreshAll(){
+  const btn=document.getElementById('refreshBtn');
+  if(btn){btn.textContent='↺ …';btn.disabled=true;}
+  // Clear all screener caches
+  Object.keys(scrCache).forEach(k=>delete scrCache[k]);
+  // Clear Q timestamp cache so prices re-fetch
+  Object.values(Q).forEach(q=>q._ts=0);
+  // Re-render all screener widgets
+  widgets.forEach(w=>{
+    if(SCREENER_TYPES.includes(w.type)){
+      const body=document.getElementById('wb-'+w.id);
+      if(body)renderScreener(body,w.type);
+    }
+  });
+  // Refresh prices for watched symbols
+  await refreshPrices();
+  showToast('↺ All widgets refreshed');
+  if(btn){btn.textContent='↺ Refresh';btn.disabled=false;}
+}
+
 // ═══════════════════════════════════════════════
 // PRICES & WEBSOCKET
+// Rate-limited Finnhub queue — max 40 calls/min shared across everything
 // ═══════════════════════════════════════════════
 function fmtP(p){return p?parseFloat(p).toFixed(2):'—';}
 function fmtV(n){if(!n||n<1)return'—';if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n+'';}
 
+// Global API queue — all Finnhub calls go through here, 1 call per 1.5s = 40/min
+const apiQueue=[];
+let apiRunning=false;
+function queueCall(fn){
+  return new Promise((resolve,reject)=>{
+    apiQueue.push({fn,resolve,reject});
+    if(!apiRunning)drainQueue();
+  });
+}
+async function drainQueue(){
+  if(apiRunning)return;
+  apiRunning=true;
+  while(apiQueue.length){
+    const {fn,resolve,reject}=apiQueue.shift();
+    try{resolve(await fn());}catch(e){reject(e);}
+    if(apiQueue.length)await new Promise(r=>setTimeout(r,1500)); // 1.5s between calls
+  }
+  apiRunning=false;
+}
+
 async function fetchQ(sym){
-  try{
-    const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FHK}`);
-    const q=await r.json();if(!q.c)return;
-    const pr=await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${FHK}`);
-    const p=await pr.json();
-    Q[sym]={symbol:sym,price:q.c,open:q.o,high:q.h,low:q.l,prevClose:q.pc,
-      change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,
-      volume:q.v||0,name:p.name||sym};
-  }catch(e){}
+  if(Q[sym]?._ts&&Date.now()-Q[sym]._ts<30000)return; // skip if cached < 30s
+  await queueCall(async()=>{
+    try{
+      const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FHK}`);
+      const q=await r.json();if(!q.c)return;
+      // Only fetch profile if we don't have the name yet
+      let name=Q[sym]?.name||sym;
+      if(!Q[sym]?.name||Q[sym]?.name===sym){
+        try{
+          const pr=await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${FHK}`);
+          const p=await pr.json();
+          name=p.name||sym;
+        }catch(e){}
+      }
+      Q[sym]={symbol:sym,price:q.c,open:q.o,high:q.h,low:q.l,prevClose:q.pc,
+        change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,
+        volume:q.v||0,name,_ts:Date.now()};
+    }catch(e){}
+  });
 }
 function connectFinnhubWS(){
   const syms=[...new Set([...histSyms,...scanSyms,...alts.map(a=>a.sym)])];
@@ -688,13 +741,15 @@ function connectFinnhubWS(){
   }catch(e){}
 }
 async function refreshPrices(){
-  for(const sym of [...new Set([...histSyms.slice(0,8),...scanSyms])]){
-    await fetchQ(sym);refreshHistWidgets();liveScanUpdate();
-    await new Promise(r=>setTimeout(r,250));
+  const syms=[...new Set([...histSyms.slice(0,6),...scanSyms.slice(0,4)])];
+  for(const sym of syms){
+    if(Q[sym])Q[sym]._ts=0;
+    await fetchQ(sym);
+    refreshHistWidgets();liveScanUpdate();
   }
   renderHistBar();updateCPPrice();
 }
-setInterval(refreshPrices,15000);
+setInterval(refreshPrices,15000); // every 15s
 
 // ═══════════════════════════════════════════════
 // SELECT SYM — central handler for ALL stock clicks
@@ -773,18 +828,17 @@ const FALLBACK_SYMS=[
 let fallbackRunning=false;
 async function buildScreenerFromFinnhub(type){
   if(scrCache[type]?.rows?.length)return;
-  // If another screener is already running the fallback, wait and reuse
   if(fallbackRunning){
-    await new Promise(r=>setTimeout(r,3000));
+    await new Promise(r=>setTimeout(r,5000));
     const rows=buildRowsFromQ();
     if(rows.length)scrCache[type]={rows,ts:Date.now(),isFallback:true};
     return;
   }
   fallbackRunning=true;
+  // Queue fetches for uncached symbols — the queue handles rate limiting automatically
   const toFetch=FALLBACK_SYMS.filter(s=>!Q[s]);
   for(const sym of toFetch){
-    await fetchQ(sym);
-    await new Promise(r=>setTimeout(r,600)); // 600ms = max ~100 calls/min, well within Finnhub 60/min
+    await fetchQ(sym); // fetchQ uses the queue, already rate-limited
   }
   fallbackRunning=false;
   const rows=buildRowsFromQ();
@@ -1045,7 +1099,7 @@ function renderScanner(body){
   const bid=body.id;
   body.innerHTML=`
   <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-bottom:1px solid var(--b1);flex-shrink:0">
-    <span style="font-size:8px;color:var(--dim)" id="${bid}-status">⚡ Live · Deep scan every 15s</span>
+    <span style="font-size:8px;color:var(--dim)" id="${bid}-status">⚡ Live · Deep scan every 30s</span>
     <div style="display:flex;gap:4px;align-items:center">
       <button onclick="toggleScanFilters('${bid}')" style="background:none;border:1px solid var(--b2);border-radius:3px;color:var(--mu);font-family:'DM Mono',monospace;font-size:8px;padding:2px 7px;cursor:pointer" title="Adjust filters">⚙ Filters</button>
       <button onclick="startDeepScan()" style="background:var(--ac);border:none;border-radius:3px;color:#fff;font-family:'DM Mono',monospace;font-size:8px;padding:2px 7px;cursor:pointer">↺</button>
@@ -1136,35 +1190,61 @@ async function startDeepScan(){
   for(const sym of getScanSyms()){
     try{
       if(!Q[sym])await fetchQ(sym);
-      let hasNews=false;
-      try{
-        const today=new Date().toISOString().split('T')[0];
-        const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];
-        const r=await fetch(`https://finnhub.io/api/v1/company-news?symbol=${sym}&from=${from}&to=${today}&token=${FHK}`);
-        const news=await r.json();hasNews=Array.isArray(news)&&news.length>0;
-      }catch(e){}
-      let p4=null,p5=null;
-      try{
-        const r=await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${sym}&metric=all&token=${FHK}`);
-        const d=await r.json();
-        const avgV=(d.metric?.['10DayAverageTradingVolume']||0)*1e6;
-        const rVol=avgV>0?(Q[sym]?.volume||0)/avgV:null;
-        const rvBase=parseFloat(document.querySelector('[id$="-rv"]')?.value)||5;
-        const rvT=getSession()==='pre'||getSession()==='aft'?rvBase*.4:rvBase;
-        p4=rVol!==null?rVol>=rvT:null;
-        const fv=d.metric?.['float']??null;
-        p5=fv!==null?fv<10:null;
-      }catch(e){}
+      const cached=scanCache[sym]||{};
+      const cacheAge=Date.now()-(cached.ts||0);
+      // Cache news/metric for 2 minutes — re-fetch if older
+      if(cacheAge<120000){continue;}
+      let hasNews=cached.hasNews??false;
+      let p4=cached.p4??null;
+      let p5=cached.p5??null;
+      await queueCall(async()=>{
+        try{
+          const today=new Date().toISOString().split('T')[0];
+          const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];
+          const r=await fetch(`https://finnhub.io/api/v1/company-news?symbol=${sym}&from=${from}&to=${today}&token=${FHK}`);
+          const news=await r.json();hasNews=Array.isArray(news)&&news.length>0;
+        }catch(e){}
+      });
+      await queueCall(async()=>{
+        try{
+          const r=await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${sym}&metric=all&token=${FHK}`);
+          const d=await r.json();
+          const avgV=(d.metric?.['10DayAverageTradingVolume']||0)*1e6;
+          const rVol=avgV>0?(Q[sym]?.volume||0)/avgV:null;
+          const rvBase=parseFloat(document.querySelector('[id$="-rv"]')?.value)||5;
+          const rvT=getSession()==='pre'||getSession()==='aft'?rvBase*.4:rvBase;
+          p4=rVol!==null?rVol>=rvT:null;
+          const fv=d.metric?.['float']??null;
+          p5=fv!==null?fv<10:null;
+        }catch(e){}
+      });
       scanCache[sym]={p3:hasNews,p4,p5,hasNews,ts:Date.now()};
     }catch(e){}
-    await new Promise(r=>setTimeout(r,200));
   }
   scanDeepRunning=false;
   const now=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
   document.querySelectorAll('[id$="-status"]').forEach(el=>{if(el.closest?.('.widget'))el.textContent=`⚡ Last deep scan: ${now}`;});
   liveScanUpdate();
 }
-setInterval(startDeepScan,15000);
+
+// Deep scan every 30s with countdown shown in widget
+let deepScanCountdown=30;
+setInterval(async()=>{
+  deepScanCountdown--;
+  document.querySelectorAll('[id$="-status"]').forEach(el=>{
+    if(el.closest?.('.widget')&&!scanDeepRunning){
+      const txt=el.textContent;
+      // Only update if it's showing the countdown or last scan time
+      if(!txt.includes('scanning')){
+        el.textContent=el.textContent.replace(/↺ \d+s/,'').trimEnd()+` ↺ ${deepScanCountdown}s`;
+      }
+    }
+  });
+  if(deepScanCountdown<=0){
+    deepScanCountdown=30;
+    await startDeepScan();
+  }
+},1000);
 
 // ═══════════════════════════════════════════════
 // ALERTS
