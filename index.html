@@ -232,18 +232,40 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 <!-- LOGIN WALL -->
 <div id="loginWall" style="position:fixed;inset:0;background:#07080f;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px">
   <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:#fff">Yedidyah's <span style="color:#a78bfa">Dashboard</span></div>
-  <div style="background:#0c0d1a;border:1px solid #242538;border-radius:10px;padding:28px;min-width:320px;display:flex;flex-direction:column;gap:12px">
-    <div style="font-size:11px;color:#606172;text-align:center;margin-bottom:4px">Sign in to continue</div>
-    <input id="loginUser" type="text" placeholder="Username" autocomplete="username"
+
+  <!-- LOGIN FORM -->
+  <div id="loginForm" style="background:#0c0d1a;border:1px solid #242538;border-radius:10px;padding:28px;min-width:320px;display:flex;flex-direction:column;gap:12px">
+    <div style="font-size:11px;color:#606172;text-align:center;margin-bottom:4px">Sign in with your email</div>
+    <input id="loginEmail" type="email" placeholder="Email address" autocomplete="email"
       style="background:#111220;border:1px solid #242538;border-radius:6px;color:#e0e1f0;font-family:'DM Mono',monospace;font-size:12px;padding:8px 12px;outline:none;width:100%"
       onkeydown="if(event.key==='Enter')tryLogin()"/>
     <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password"
       style="background:#111220;border:1px solid #242538;border-radius:6px;color:#e0e1f0;font-family:'DM Mono',monospace;font-size:12px;padding:8px 12px;outline:none;width:100%"
       onkeydown="if(event.key==='Enter')tryLogin()"/>
-    <div id="loginErr" style="font-size:10px;color:#f0506e;text-align:center;display:none">Incorrect username or password</div>
-    <button onclick="tryLogin()" style="background:#7c6aff;border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;padding:9px;cursor:pointer;margin-top:4px">Sign In →</button>
+    <div id="loginErr" style="font-size:10px;color:#f0506e;text-align:center;display:none"></div>
+    <button id="loginBtn" onclick="tryLogin()" style="background:#7c6aff;border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;padding:9px;cursor:pointer;margin-top:4px">Sign In →</button>
   </div>
-  <div style="font-size:9px;color:#383950">Private access only</div>
+
+  <div style="display:flex;gap:10px;align-items:center">
+    <span style="font-size:9px;color:#383950">Private access only</span>
+    <span style="font-size:9px;color:#383950">·</span>
+    <button onclick="showSignup()" style="background:none;border:none;color:#7c6aff;font-family:'DM Mono',monospace;font-size:9px;cursor:pointer;text-decoration:underline">Request Access</button>
+  </div>
+
+  <!-- SIGNUP FORM -->
+  <div id="signupForm" style="display:none;background:#0c0d1a;border:1px solid #242538;border-radius:10px;padding:24px;min-width:320px;flex-direction:column;gap:12px">
+    <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:2px">Request Access</div>
+    <div style="font-size:10px;color:#606172;margin-bottom:4px">Create your account — admin approval required before you can sign in.</div>
+    <input id="regEmail" type="email" placeholder="Your email address"
+      style="background:#111220;border:1px solid #242538;border-radius:6px;color:#e0e1f0;font-family:'DM Mono',monospace;font-size:12px;padding:8px 12px;outline:none;width:100%"/>
+    <input id="regPass" type="password" placeholder="Choose a password (min 6 chars)"
+      style="background:#111220;border:1px solid #242538;border-radius:6px;color:#e0e1f0;font-family:'DM Mono',monospace;font-size:12px;padding:8px 12px;outline:none;width:100%"/>
+    <div id="regMsg" style="font-size:10px;text-align:center;display:none"></div>
+    <div style="display:flex;gap:8px">
+      <button onclick="showLogin()" style="flex:1;background:#1c1d2e;border:1px solid #242538;border-radius:6px;color:#606172;font-family:'DM Mono',monospace;font-size:10px;padding:8px;cursor:pointer">Back</button>
+      <button onclick="trySignup()" style="flex:2;background:#7c6aff;border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;padding:8px;cursor:pointer">Create Account →</button>
+    </div>
+  </div>
 </div>
 
 <div class="app" id="mainApp" style="display:none">
@@ -299,6 +321,10 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
   <div class="modal-bg" id="profileModal">
     <div class="modal">
       <h2>👤 Profiles</h2>
+      <div id="adminPanel" style="display:none">
+        <div style="font-size:9px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">⚡ Pending Access Requests</div>
+        <div id="pendingRequests" style="margin-bottom:12px;max-height:140px;overflow-y:auto"></div>
+      </div>
       <div class="profile-list" id="profileList"></div>
       <div class="ws-row">
         <span class="ws-label">New Profile Name</span>
@@ -314,40 +340,121 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 </div><!-- end mainApp -->
 
 <script>
-// ── LOGIN WALL
-// Add authorized users here: {user, pass}
-const USERS = [
-  {user:'yedidyah', pass:'Test321!@#'},
-];
+// ── SUPABASE AUTH
+const SUPA_URL = 'https://yklxpcatopitwjzutolj.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrbHhwY2F0b3BpdHdqenV0b2xqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MDYyMTEsImV4cCI6MjA5NjM4MjIxMX0.KJotgJpSLziUvdZkUb66tV7vZXPEfMOjGOij2-vmk6Q';
 
-function tryLogin(){
-  const u=document.getElementById('loginUser').value.trim().toLowerCase();
-  const p=document.getElementById('loginPass').value.trim();
-  // Case-insensitive username, exact password match
-  const ok=USERS.some(x=>x.user.toLowerCase()===u && x.pass===p);
-  if(ok){
-    sessionStorage.setItem('sv_auth','1');
-    document.getElementById('loginWall').style.display='none';
-    document.getElementById('mainApp').style.removeProperty('display');
-    document.getElementById('mainApp').style.display='flex';
-    setTimeout(()=>init(),50);
-  } else {
-    const err=document.getElementById('loginErr');
-    err.textContent='Incorrect username or password. Try again.';
+async function supaFetch(path, opts={})){
+  const r = await fetch(SUPA_URL + path, {
+    ...opts,
+    headers: {
+      'apikey': SUPA_KEY,
+      'Content-Type': 'application/json',
+      ...(opts.headers||{})
+    }
+  });
+  return r;
+}
+
+let currentUser = null;
+
+async function tryLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value.trim();
+  const err   = document.getElementById('loginErr');
+  const btn   = document.getElementById('loginBtn');
+  if(!email||!pass){ err.textContent='Please enter email and password.'; err.style.display='block'; return; }
+  btn.textContent='Signing in…'; btn.disabled=true;
+  try{
+    const r = await supaFetch('/auth/v1/token?grant_type=password', {
+      method:'POST',
+      body: JSON.stringify({email, password:pass})
+    });
+    const d = await r.json();
+    if(!r.ok){
+      err.textContent = d.error_description||d.msg||'Invalid email or password.';
+      err.style.display='block';
+      btn.textContent='Sign In →'; btn.disabled=false;
+      return;
+    }
+    // Check if approved
+    const profR = await supaFetch('/rest/v1/profiles?select=approved&id=eq.'+d.user.id, {
+      headers: { 'Authorization': 'Bearer '+d.access_token }
+    });
+    const prof = await profR.json();
+    if(!prof?.[0]?.approved){
+      err.textContent = 'Your account is pending admin approval. Please wait.';
+      err.style.display='block';
+      btn.textContent='Sign In →'; btn.disabled=false;
+      return;
+    }
+    // Store session
+    sessionStorage.setItem('sv_token', d.access_token);
+    sessionStorage.setItem('sv_user_email', d.user.email);
+    sessionStorage.setItem('sv_user_id', d.user.id);
+    currentUser = d.user;
+    showApp();
+  } catch(e){
+    err.textContent='Connection error. Try again.';
     err.style.display='block';
-    document.getElementById('loginPass').value='';
-    setTimeout(()=>err.style.display='none',4000);
+    btn.textContent='Sign In →'; btn.disabled=false;
   }
 }
 
-// Check if already authenticated this session
-function checkAuth(){
-  if(sessionStorage.getItem('sv_auth')==='1'){
-    document.getElementById('loginWall').style.display='none';
-    document.getElementById('mainApp').style.removeProperty('display');
-    document.getElementById('mainApp').style.display='flex';
-    return true;
+async function trySignup(){
+  const email = document.getElementById('regEmail').value.trim();
+  const pass  = document.getElementById('regPass').value.trim();
+  const msg   = document.getElementById('regMsg');
+  if(!email||!pass){ msg.style.color='#f0506e'; msg.textContent='Please fill in all fields.'; msg.style.display='block'; return; }
+  if(pass.length<6){ msg.style.color='#f0506e'; msg.textContent='Password must be at least 6 characters.'; msg.style.display='block'; return; }
+  try{
+    const r = await supaFetch('/auth/v1/signup', {
+      method:'POST',
+      body: JSON.stringify({email, password:pass})
+    });
+    const d = await r.json();
+    if(!r.ok){
+      msg.style.color='#f0506e';
+      msg.textContent = d.error_description||d.msg||'Signup failed.';
+      msg.style.display='block'; return;
+    }
+    // Insert profile row (approved=false by default)
+    if(d.user?.id){
+      await supaFetch('/rest/v1/profiles', {
+        method:'POST',
+        headers: { 'Authorization': 'Bearer '+d.access_token, 'Prefer': 'return=minimal' },
+        body: JSON.stringify({id:d.user.id, email, approved:false})
+      });
+    }
+    msg.style.color='#19c48a';
+    msg.textContent='Account created! Waiting for admin approval before you can sign in.';
+    msg.style.display='block';
+    document.getElementById('regEmail').value='';
+    document.getElementById('regPass').value='';
+    setTimeout(()=>showLogin(), 4000);
+  } catch(e){
+    msg.style.color='#f0506e'; msg.textContent='Connection error.'; msg.style.display='block';
   }
+}
+
+function showSignup(){
+  document.getElementById('loginForm').style.display='none';
+  document.getElementById('signupForm').style.display='flex';
+}
+function showLogin(){
+  document.getElementById('signupForm').style.display='none';
+  document.getElementById('loginForm').style.display='flex';
+  document.getElementById('loginErr').style.display='none';
+}
+function showApp(){
+  document.getElementById('loginWall').style.display='none';
+  document.getElementById('mainApp').style.removeProperty('display');
+  document.getElementById('mainApp').style.display='flex';
+  setTimeout(()=>init(), 50);
+}
+function checkAuth(){
+  const token=sessionStorage.getItem('sv_token');
+  if(token){ showApp(); return true; }
   return false;
 }
 
@@ -362,13 +469,11 @@ const IFRAME_TYPES = ['gainers','losers','active','premarket'];
 
 // Default widget layout
 const DEFAULT_WIDGETS = [
-  {id:'w1',type:'history',  x:20,  y:20,  w:220, h:380},
-  {id:'w2',type:'gainers',  x:260, y:20,  w:380, h:260},
-  {id:'w3',type:'losers',   x:660, y:20,  w:380, h:260},
-  {id:'w4',type:'active',   x:1060,y:20,  w:380, h:260},
-  {id:'w5',type:'scanner',  x:260, y:300, w:420, h:340},
-  {id:'w6',type:'alerts',   x:700, y:300, w:240, h:260},
-  {id:'w7',type:'news',     x:960, y:300, w:320, h:520},
+  {id:'w1',type:'gainers',  x:20,  y:20,  w:460, h:340},
+  {id:'w2',type:'active',   x:20,  y:380, w:460, h:340},
+  {id:'w3',type:'scanner',  x:500, y:20,  w:440, h:700},
+  {id:'w4',type:'news',     x:960, y:20,  w:320, h:700},
+  {id:'w5',type:'history',  x:1300,y:20,  w:220, h:700},
 ];
 
 const Q = {};
@@ -385,12 +490,21 @@ let tvWin=null, newsWin=null;
 let profiles = JSON.parse(localStorage.getItem('sv_profiles')||'[]');
 let activeProfileId = localStorage.getItem('sv_active_profile')||null;
 
+const LAYOUT_VERSION = 'v6';
 function getWidgets(){
   if(activeProfileId){
     const p=profiles.find(x=>x.id===activeProfileId);
     if(p?.widgets)return p.widgets;
   }
-  return JSON.parse(localStorage.getItem('sv_widgets5')||'null')||JSON.parse(JSON.stringify(DEFAULT_WIDGETS));
+  // Reset if layout version changed
+  const saved = localStorage.getItem('sv_widgets5');
+  const ver   = localStorage.getItem('sv_layout_ver');
+  if(!saved || ver !== LAYOUT_VERSION){
+    localStorage.setItem('sv_layout_ver', LAYOUT_VERSION);
+    localStorage.removeItem('sv_widgets5');
+    return JSON.parse(JSON.stringify(DEFAULT_WIDGETS));
+  }
+  return JSON.parse(saved);
 }
 function saveWidgets(){
   const ws=getAllWidgetStates();
@@ -416,6 +530,8 @@ function closeProfileModal(){
   document.getElementById('profileModal').classList.remove('open');
 }
 function renderProfileList(){
+  // Load pending users from Supabase
+  renderPendingUsers();
   const el=document.getElementById('profileList');
   if(!profiles.length){
     el.innerHTML='<div style="font-size:10px;color:var(--mu);text-align:center;padding:10px">No saved profiles yet.<br>Save your current layout below.</div>';
@@ -433,6 +549,43 @@ function renderProfileList(){
       </div>
     </div>`).join('');
 }
+async function approveRequest(userId, btn){
+  btn.textContent='…'; btn.disabled=true;
+  const token=sessionStorage.getItem('sv_token');
+  const r=await supaFetch('/rest/v1/profiles?id=eq.'+userId,{
+    method:'PATCH',
+    headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},
+    body:JSON.stringify({approved:true})
+  });
+  if(r.ok){ renderPendingUsers(); }
+  else{ btn.textContent='✓'; btn.disabled=false; alert('Error approving. Check Supabase permissions.'); }
+}
+async function renderPendingUsers(){
+  const token=sessionStorage.getItem('sv_token');
+  if(!token)return;
+  const r=await supaFetch('/rest/v1/profiles?select=id,email,approved,created_at&order=created_at',{
+    headers:{'Authorization':'Bearer '+token}
+  });
+  const users=await r.json();
+  const pending=(users||[]).filter(u=>!u.approved);
+  const adminPanel=document.getElementById('adminPanel');
+  const pendingEl=document.getElementById('pendingRequests');
+  if(!adminPanel)return;
+  if(pending.length){
+    adminPanel.style.display='block';
+    pendingEl.innerHTML=pending.map(u=>`
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--s2);border:1px solid var(--b2);border-radius:5px;margin-bottom:4px">
+        <div>
+          <div style="font-size:11px;color:var(--tx)">${u.email}</div>
+          <div style="font-size:9px;color:var(--mu)">${new Date(u.created_at).toLocaleDateString()}</div>
+        </div>
+        <button onclick="approveRequest('${u.id}',this)" style="background:var(--gr);border:none;border-radius:4px;color:#000;font-family:'DM Mono',monospace;font-size:8px;padding:3px 8px;cursor:pointer">✓ Approve</button>
+      </div>`).join('');
+  } else {
+    adminPanel.style.display='none';
+  }
+}
+
 function saveNewProfile(){
   const name=document.getElementById('newProfileName').value.trim();
   if(!name)return;
