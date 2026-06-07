@@ -314,9 +314,12 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
         <button class="add-widget-btn" id="addWidgetBtn">+ Add Widget</button>
         <div class="widget-menu" id="widgetMenu">
           <div class="wm-sect">Screeners</div>
-          <button class="wm-item" onclick="addWidget('gainers')"><span>🚀</span> Top Gainers</button>
+          <button class="wm-item" onclick="addWidget('gainers')"><span>🚀</span> Top Gainers &lt;$20</button>
+          <button class="wm-item" onclick="addWidget('gappers')"><span>⚡</span> Top Gappers &lt;$20</button>
+          <button class="wm-item" onclick="addWidget('hod')"><span>📈</span> HOD Momentum</button>
           <button class="wm-item" onclick="addWidget('losers')"><span>📉</span> Top Losers</button>
           <button class="wm-item" onclick="addWidget('active')"><span>🔥</span> Most Active</button>
+          <button class="wm-item" onclick="addWidget('penny')"><span>💲</span> Penny Stocks</button>
           <button class="wm-item" onclick="addWidget('premarket')"><span>🌅</span> Gap Scanner</button>
           <div class="wm-sect">Tools</div>
           <button class="wm-item" onclick="addWidget('scanner')"><span>🎯</span> 5 Pillars Scanner</button>
@@ -426,10 +429,11 @@ function logout(){sessionStorage.clear();location.reload();}
 const FHK='d8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
 const SNAP=20;
 const LAYOUT_VER='v7';
-const SCREENER_TYPES=['gainers','losers','active','premarket'];
+const SCREENER_TYPES=['gainers','losers','active','premarket','gappers','hod','penny'];
 const WIDGET_TYPES={
   gainers:'🚀 Top Gainers',losers:'📉 Top Losers',
   active:'🔥 Most Active',premarket:'🌅 Gap Scanner',
+  gappers:'⚡ Top Gappers',hod:'📈 HOD Momentum',penny:'💲 Penny Stocks',
   scanner:'🎯 5 Pillars Scanner',history:'📋 History',
   alerts:'🔔 Alerts',news:'📰 News'
 };
@@ -720,17 +724,22 @@ function refreshHistWidgets(){
 // Gap Scanner: pre-market gaps from prev close (uses Yahoo quote data)
 // ═══════════════════════════════════════════════
 const SCR_LABELS={
-  gainers:'🚀 Top Gainers',
+  gainers:'🚀 Top Gainers  <$20',
   losers:'📉 Top Losers',
   active:'🔥 Most Active',
-  premarket:'🌅 Gap Scanner'
+  premarket:'🌅 Gap Scanner',
+  gappers:'⚡ Top Gappers  <$20',
+  hod:'📈 HOD Momentum',
+  penny:'💲 Penny Stocks  <$5'
 };
-// Yahoo Finance screener IDs
 const YAHOO_IDS={
   gainers:'day_gainers',
   losers:'day_losers',
   active:'most_actives',
-  premarket:'day_gainers' // gap scanner built from pre-market quote data
+  premarket:'day_gainers',
+  gappers:'day_gainers',   // filtered to pre-market gappers in paintScrRows
+  hod:'day_gainers',       // filtered to HOD criteria in paintScrRows
+  penny:'day_gainers'      // filtered to penny stocks in paintScrRows
 };
 
 async function fetchScreenerData(type){
@@ -822,11 +831,45 @@ function paintScrRows(type,uid){
     return;
   }
   let rows=[...data.rows];
-  // Sort by type
-  if(type==='gainers')rows.sort((a,b)=>(b.regularMarketChangePercent||0)-(a.regularMarketChangePercent||0));
+  // Sort and filter by type
+  if(type==='gainers'){
+    // Small cap gainers only: $0.50–$20
+    rows=rows.filter(q=>(q.regularMarketPrice||0)<=20&&(q.regularMarketPrice||0)>=0.5);
+    rows.sort((a,b)=>(b.regularMarketChangePercent||0)-(a.regularMarketChangePercent||0));
+  }
   else if(type==='losers')rows.sort((a,b)=>(a.regularMarketChangePercent||0)-(b.regularMarketChangePercent||0));
   else if(type==='active')rows.sort((a,b)=>(b.regularMarketVolume||0)-(a.regularMarketVolume||0));
-  else if(type==='premarket')rows.sort((a,b)=>Math.abs(b.regularMarketChangePercent||0)-Math.abs(a.regularMarketChangePercent||0));
+  else if(type==='premarket'){
+    rows.sort((a,b)=>Math.abs(b.regularMarketChangePercent||0)-Math.abs(a.regularMarketChangePercent||0));
+  }
+  else if(type==='gappers'){
+    // Top Gappers: stocks $0.50–$20 that gapped up 5%+ from prev close
+    rows=rows.filter(q=>{
+      const px=q.regularMarketPrice||0;
+      const chg=q.regularMarketChangePercent||0;
+      return px>=0.5&&px<=20&&chg>=5;
+    });
+    rows.sort((a,b)=>(b.regularMarketChangePercent||0)-(a.regularMarketChangePercent||0));
+  }
+  else if(type==='hod'){
+    // HOD Momentum: stocks making strong moves with high volume — price $1–$20, +5% or more
+    rows=rows.filter(q=>{
+      const px=q.regularMarketPrice||0;
+      const chg=q.regularMarketChangePercent||0;
+      return px>=1&&px<=20&&chg>=5;
+    });
+    // Sort by % change × volume (momentum score)
+    rows.sort((a,b)=>{
+      const scoreA=(a.regularMarketChangePercent||0)*(Math.log10((a.regularMarketVolume||1)+1));
+      const scoreB=(b.regularMarketChangePercent||0)*(Math.log10((b.regularMarketVolume||1)+1));
+      return scoreB-scoreA;
+    });
+  }
+  else if(type==='penny'){
+    // Penny stocks: under $5, moving
+    rows=rows.filter(q=>(q.regularMarketPrice||0)>0.1&&(q.regularMarketPrice||0)<=5);
+    rows.sort((a,b)=>(b.regularMarketChangePercent||0)-(a.regularMarketChangePercent||0));
+  }
   // Show fallback note if using Finnhub data
   if(data.isFallback&&tmr)tmr.textContent='↺ '+SCR_TTL+'s (local)';
   tbody.innerHTML=rows.slice(0,25).map(q=>{
@@ -990,27 +1033,40 @@ const scanCache={};
 let scanDeepRunning=false;
 function renderScanner(body){
   const bid=body.id;
-  body.innerHTML=`<div class="scan-filters">
-    <div class="flt-g"><span class="flt-l">Min Price $</span><input class="flt-i" type="number" value="1" step="0.5" id="${bid}-minp"/></div>
-    <div class="flt-g"><span class="flt-l">Max Price $</span><input class="flt-i" type="number" value="20" id="${bid}-maxp"/></div>
-    <div class="flt-g"><span class="flt-l">Min % Change</span><input class="flt-i" type="number" value="10" id="${bid}-chg"/></div>
-    <div class="flt-g"><span class="flt-l">Min RVol</span><input class="flt-i" type="number" value="5" step="0.5" id="${bid}-rv"/></div>
-  </div>
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-    <span style="font-size:8px;color:var(--dim)" id="${bid}-status">⚡ Live P1+P2 · Deep scan every 15s</span>
-    <button style="background:var(--ac);border:none;border-radius:3px;color:#fff;font-family:'DM Mono',monospace;font-size:8px;padding:2px 7px;cursor:pointer" onclick="startDeepScan()">↺</button>
-  </div>
-  <div style="margin-bottom:6px">
-    <div style="font-size:7px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px">Symbols to scan</div>
-    <div id="${bid}-tags" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px">${getScanSyms().map(s=>`<span style="display:inline-flex;align-items:center;gap:2px;background:${histSyms.includes(s)?'#7c6aff12':'var(--s2)'};border:1px solid ${histSyms.includes(s)?'#7c6aff28':'var(--b2)'};border-radius:10px;padding:2px 6px;font-size:9px;color:${histSyms.includes(s)?'var(--ac2)':'var(--mu)'}">${s}${!histSyms.includes(s)?`<button onclick="rmScanSym('${s}')" style="background:none;border:none;color:var(--rd);cursor:pointer;font-size:9px;opacity:.5;line-height:1">×</button>`:''}</span>`).join('')}</div>
-    <div style="display:flex;gap:4px">
-      <input type="text" placeholder="Add symbol…" id="${bid}-inp" onkeydown="if(event.key==='Enter')addScanSym('${bid}')"
-        style="flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:4px 6px;outline:none"/>
-      <button onclick="addScanSym('${bid}')" style="background:var(--ac);border:none;border-radius:4px;color:#fff;font-size:13px;width:24px;cursor:pointer;line-height:1">+</button>
+  body.innerHTML=`
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-bottom:1px solid var(--b1);flex-shrink:0">
+    <span style="font-size:8px;color:var(--dim)" id="${bid}-status">⚡ Live · Deep scan every 15s</span>
+    <div style="display:flex;gap:4px;align-items:center">
+      <button onclick="toggleScanFilters('${bid}')" style="background:none;border:1px solid var(--b2);border-radius:3px;color:var(--mu);font-family:'DM Mono',monospace;font-size:8px;padding:2px 7px;cursor:pointer" title="Adjust filters">⚙ Filters</button>
+      <button onclick="startDeepScan()" style="background:var(--ac);border:none;border-radius:3px;color:#fff;font-family:'DM Mono',monospace;font-size:8px;padding:2px 7px;cursor:pointer">↺</button>
     </div>
   </div>
-  <div id="${bid}-res"><div class="scan-empty">⚡ Scanning…<br><span style="font-size:8px;color:var(--dim)">Stocks passing 4/5 pillars appear here</span></div></div>`;
+  <!-- FILTERS — hidden by default, toggled by gear button -->
+  <div id="${bid}-filters" style="display:none;padding:6px 8px;border-bottom:1px solid var(--b1);background:var(--s3);flex-shrink:0">
+    <div class="scan-filters">
+      <div class="flt-g"><span class="flt-l">Min Price $</span><input class="flt-i" type="number" value="1" step="0.5" id="${bid}-minp"/></div>
+      <div class="flt-g"><span class="flt-l">Max Price $</span><input class="flt-i" type="number" value="20" id="${bid}-maxp"/></div>
+      <div class="flt-g"><span class="flt-l">Min % Change</span><input class="flt-i" type="number" value="10" id="${bid}-chg"/></div>
+      <div class="flt-g"><span class="flt-l">Min RVol</span><input class="flt-i" type="number" value="5" step="0.5" id="${bid}-rv"/></div>
+    </div>
+    <div style="margin-top:5px">
+      <div style="font-size:7px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px">Symbols to scan</div>
+      <div id="${bid}-tags" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px">${getScanSyms().map(s=>`<span style="display:inline-flex;align-items:center;gap:2px;background:${histSyms.includes(s)?'#7c6aff12':'var(--s2)'};border:1px solid ${histSyms.includes(s)?'#7c6aff28':'var(--b2)'};border-radius:10px;padding:2px 6px;font-size:9px;color:${histSyms.includes(s)?'var(--ac2)':'var(--mu)'}">${s}${!histSyms.includes(s)?`<button onclick="rmScanSym('${s}')" style="background:none;border:none;color:var(--rd);cursor:pointer;font-size:9px;opacity:.5;line-height:1">×</button>`:''}</span>`).join('')}</div>
+      <div style="display:flex;gap:4px">
+        <input type="text" placeholder="Add symbol…" id="${bid}-inp" onkeydown="if(event.key==='Enter')addScanSym('${bid}')"
+          style="flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:4px 6px;outline:none"/>
+        <button onclick="addScanSym('${bid}')" style="background:var(--ac);border:none;border-radius:4px;color:#fff;font-size:13px;width:24px;cursor:pointer;line-height:1">+</button>
+      </div>
+    </div>
+  </div>
+  <div id="${bid}-res" style="flex:1;overflow-y:auto;min-height:0">
+    <div class="scan-empty">⚡ Scanning…<br><span style="font-size:8px;color:var(--dim)">Stocks passing 4/5 pillars appear here</span></div>
+  </div>`;
   setTimeout(startDeepScan,400);
+}
+function toggleScanFilters(bid){
+  const f=document.getElementById(bid+'-filters');
+  if(f)f.style.display=f.style.display==='none'?'block':'none';
 }
 function getScanSyms(){return[...new Set([...histSyms,...scanSyms])];}
 function saveScanSyms(){localStorage.setItem('sv_scan',JSON.stringify(scanSyms));}
