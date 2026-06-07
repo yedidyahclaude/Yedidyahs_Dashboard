@@ -813,6 +813,7 @@ const SCR_LABELS={
 
 let scrFetchLock=false;
 async function fetchScreenerData(type){
+  // On refresh/reload — fetch only uncached symbols (most are already in Q from init)
   while(scrFetchLock)await new Promise(r=>setTimeout(r,200));
   scrFetchLock=true;
   try{
@@ -826,7 +827,7 @@ async function fetchScreenerData(type){
       penny:   ['PLUG','FCEL','NKLA','BTBT','HUT','CLSK','BNAI','CMND','SPHL','ACMR','AEHR','BLNK','CLOV','SNDL','NOK','BB','NAKD','IDEX','WKHS','GOEV']
     };
     const syms=symbolSets[type]||symbolSets.gainers;
-    // Queue fetches — only for symbols not already cached
+    // Only fetch symbols that somehow aren't in cache yet
     for(const sym of syms.filter(s=>!Q[s]?.price)) await fetchQ(sym);
     const rows=syms.filter(s=>Q[s]?.price).map(s=>({
       symbol:s,
@@ -1464,18 +1465,47 @@ function makeResizable(el,wData){
 // ═══════════════════════════════════════════════
 if(Notification.permission==='default')Notification.requestPermission();
 
+// All symbols needed across all screener types
+const ALL_SCREENER_SYMS=[...new Set([
+  'NVDA','AMD','AAPL','MSFT','META','TSLA','PLTR','COIN','SOFI','HOOD',
+  'MARA','RIOT','GME','AMC','SPHL','BNAI','CMND','ACMR','AEHR','BLNK',
+  'NIO','RIVN','LCID','SNAP','PLUG','FCEL','SPY','QQQ','SOXL','TQQQ',
+  'MSTR','BTBT','HUT','CLSK','NKLA','CLOV','SNDL','NOK','BB','NAKD',
+  'IDEX','WKHS','GOEV'
+])];
+
 async function init(){
   renderHistBar();
   widgets.forEach(w=>renderWidget(w));
-  // Load prices for history symbols
-  for(const sym of histSyms.slice(0,10)){
-    await fetchQ(sym);
-    renderHistBar();refreshHistWidgets();
-    await new Promise(r=>setTimeout(r,150));
-  }
   connectFinnhubWS();
-  // Delay deep scan by 60s so screeners get priority on the queue at startup
-  setTimeout(startDeepScan, 60000);
+
+  // Pre-fetch ALL screener symbols through queue first
+  // Screener widgets show "Fetching live data…" spinner until this completes
+  const toFetch=[...new Set([...histSyms.slice(0,5),...ALL_SCREENER_SYMS])];
+  showToast('Loading market data… (~'+Math.ceil(toFetch.length*1.05)+'s)');
+  for(const sym of toFetch){
+    await fetchQ(sym);
+  }
+
+  // Now all data is cached — re-render all screener widgets instantly
+  widgets.forEach(w=>{
+    if(SCREENER_TYPES.includes(w.type)){
+      const body=document.getElementById('wb-'+w.id);
+      if(body){
+        // Build cache from Q and paint
+        scrCache[w.type]=null; // force rebuild
+        const uid='scr'+w.type+body.id.replace(/\W/g,'');
+        loadAndRenderScr(w.type,uid);
+      }
+    }
+  });
+
+  // Refresh history bar with loaded prices
+  renderHistBar();refreshHistWidgets();
+  showToast('✓ Market data loaded');
+
+  // Deep scan after everything else is settled
+  setTimeout(startDeepScan,5000);
 }
 if(checkAuth())init();
 </script>
