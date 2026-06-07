@@ -234,7 +234,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 
 /* BOTTOM CHART PANEL */
 #chartPanel{flex-shrink:0;background:var(--s1);border-top:2px solid var(--b1);display:flex;flex-direction:column;transition:height .22s cubic-bezier(.4,0,.2,1);height:34px;position:relative;z-index:50}
-#chartPanel.open{height:44vh}
+#chartPanel.open{height:58vh}
 #chartPanelBar{display:flex;align-items:center;gap:8px;padding:0 12px;height:34px;cursor:pointer;flex-shrink:0;user-select:none;background:var(--s2);border-bottom:1px solid var(--b1)}
 #chartPanelBar:hover{background:#16172a}
 #cpSym{font-size:12px;font-weight:600;color:var(--mu);min-width:52px;transition:color .15s}
@@ -826,7 +826,7 @@ function renderScreener(body,type){
   body.innerHTML=`
     <div class="scr-iframe-wrap">
       <iframe scrolling="no" allowtransparency="true" frameborder="0"
-        sandbox="allow-scripts allow-same-origin"
+        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
         src="https://www.tradingview.com/embed-widget/screener/?locale=en#${params}"></iframe>
     </div>
     <div class="scr-input-bar">
