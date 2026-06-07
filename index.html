@@ -428,7 +428,7 @@ function logout(){sessionStorage.clear();location.reload();}
 // ═══════════════════════════════════════════════
 const FHK='d8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
 const SNAP=20;
-const LAYOUT_VER='v7';
+const LAYOUT_VER='v8';
 const SCREENER_TYPES=['gainers','losers','active','premarket','gappers','hod','penny'];
 const WIDGET_TYPES={
   gainers:'🚀 Top Gainers',losers:'📉 Top Losers',
@@ -745,11 +745,9 @@ const YAHOO_IDS={
 async function fetchScreenerData(type){
   const scrId=YAHOO_IDS[type];
   const url=`https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=false&scrIds=${scrId}&count=25`;
-  // Try multiple CORS proxies in order
   const proxies=[
     `https://corsproxy.io/?${encodeURIComponent(url)}`,
     `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-    `https://proxy.cors.sh/${url}`,
   ];
   for(const proxy of proxies){
     try{
@@ -760,34 +758,46 @@ async function fetchScreenerData(type){
       if(quotes.length){scrCache[type]={rows:quotes,ts:Date.now()};return;}
     }catch(e){}
   }
-  // All proxies failed — use Finnhub to build screener from known symbols
+  // All proxies failed — use Finnhub fallback (staggered to respect 60 calls/min limit)
   await buildScreenerFromFinnhub(type);
 }
 
-// Fallback: use Finnhub quotes on a curated symbol list, rank by the screener type
-const FALLBACK_SYMS=['NVDA','AMD','AAPL','MSFT','META','GOOGL','AMZN','TSLA','PLTR','COIN',
-  'MSTR','SOFI','NIO','RIVN','LCID','HOOD','UPST','AFRM','OPEN','RBLX','SNAP','UBER',
-  'GME','AMC','SOXL','TQQQ','SQQQ','SPXL','UVXY','SPY','QQQ','IWM',
-  'BNAI','CMND','SPHL','ACMR','AEHR','BLNK','BTBT','MARA','RIOT','HUT','CLSK',
-  'NVAX','MRNA','BNTX','SAVA','AGEN','ARDX','AVXL','AXSM','CRSP','BEAM'];
+// Finnhub fallback — staggered at 600ms per call (max ~100 calls/min, safe under 60/min limit with few active screeners)
+// Only fetches symbols not already in Q cache to avoid redundant calls
+const FALLBACK_SYMS=[
+  'NVDA','AMD','AAPL','MSFT','META','TSLA','PLTR','COIN','SOFI','HOOD',
+  'GME','AMC','MARA','RIOT','SOXL','TQQQ','UVXY','SPY','QQQ','IWM',
+  'BNAI','CMND','SPHL','ACMR','AEHR','BLNK','BTBT','HUT','CLSK',
+  'NVAX','SAVA','AGEN','ARDX','AVXL','AXSM'
+];
+let fallbackRunning=false;
 async function buildScreenerFromFinnhub(type){
-  if(scrCache[type]?.rows?.length)return; // already have data
-  const syms=FALLBACK_SYMS;
-  // Fetch quotes for symbols not yet cached, staggered
-  const toFetch=syms.filter(s=>!Q[s]).slice(0,20);
+  if(scrCache[type]?.rows?.length)return;
+  // If another screener is already running the fallback, wait and reuse
+  if(fallbackRunning){
+    await new Promise(r=>setTimeout(r,3000));
+    const rows=buildRowsFromQ();
+    if(rows.length)scrCache[type]={rows,ts:Date.now(),isFallback:true};
+    return;
+  }
+  fallbackRunning=true;
+  const toFetch=FALLBACK_SYMS.filter(s=>!Q[s]);
   for(const sym of toFetch){
     await fetchQ(sym);
-    await new Promise(r=>setTimeout(r,100));
+    await new Promise(r=>setTimeout(r,600)); // 600ms = max ~100 calls/min, well within Finnhub 60/min
   }
-  // Build rows from Q cache
-  const rows=syms.filter(s=>Q[s]?.price).map(s=>({
+  fallbackRunning=false;
+  const rows=buildRowsFromQ();
+  if(rows.length)scrCache[type]={rows,ts:Date.now(),isFallback:true};
+}
+function buildRowsFromQ(){
+  return FALLBACK_SYMS.filter(s=>Q[s]?.price).map(s=>({
     symbol:s,
     regularMarketPrice:Q[s].price,
     regularMarketChangePercent:Q[s].changePct||0,
     regularMarketVolume:Q[s].volume||0,
     shortName:Q[s].name||s
   }));
-  if(rows.length)scrCache[type]={rows,ts:Date.now(),isFallback:true};
 }
 
 function renderScreener(body,type){
