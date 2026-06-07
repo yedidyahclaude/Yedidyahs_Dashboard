@@ -794,10 +794,11 @@ function connectFinnhubWS(){
   }catch(e){}
 }
 async function refreshPrices(){
+  if(!appReady)return;
   const syms=[...new Set([...histSyms.slice(0,8),...scanSyms])];
   if(syms.length){
     syms.forEach(s=>{if(Q[s])Q[s]._ts=0;});
-    await fetchBatch(syms);
+    for(const sym of syms){await fetchQDirect(sym);await new Promise(r=>setTimeout(r,1100));}
     refreshHistWidgets();liveScanUpdate();
   }
   renderHistBar();updateCPPrice();
@@ -1232,6 +1233,7 @@ function liveScanUpdate(){
   });
 }
 async function startDeepScan(){
+  if(!appReady)return;
   if(scanDeepRunning)return;scanDeepRunning=true;
   for(const sym of getScanSyms()){
     try{
@@ -1495,27 +1497,27 @@ const ALL_SCREENER_SYMS=[...new Set([
   'IDEX','WKHS','GOEV'
 ])];
 
+let appReady=false; // blocks price refresh until initial load done
+
 async function init(){
   renderHistBar();
-  // Render widgets but skip populating screeners until data is loaded
   widgets.forEach(w=>renderWidget(w,true));
   connectFinnhubWS();
 
-  // Single sequential fetch — one call every 1.1s, no 429s
+  // Deduplicated symbol list
   const toFetch=[...new Set([...histSyms.slice(0,5),...ALL_SCREENER_SYMS])];
   let done=0;
   for(const sym of toFetch){
     await fetchQDirect(sym);
     done++;
-    showToast(`Loading… ${done}/${toFetch.length} symbols`);
+    showToast(`Loading… ${done}/${toFetch.length}`);
     await new Promise(r=>setTimeout(r,1100));
   }
 
-  // NOW populate all widgets — data is in cache, no API calls needed
+  appReady=true;
   widgets.forEach(w=>populateWidget(null,w));
-
   renderHistBar();refreshHistWidgets();
-  showToast('✓ Market data loaded');
+  showToast('✓ All data loaded');
   setTimeout(startDeepScan,3000);
 }
 if(checkAuth())init();
