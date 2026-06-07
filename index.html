@@ -317,24 +317,26 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 // ── LOGIN WALL
 // Add authorized users here: {user, pass}
 const USERS = [
-  {user:'Yedidyah', pass:'Test321!@#'},
+  {user:'yedidyah', pass:'Test321!@#'},
 ];
 
 function tryLogin(){
   const u=document.getElementById('loginUser').value.trim().toLowerCase();
-  const p=document.getElementById('loginPass').value;
-  const ok=USERS.some(x=>x.user===u&&x.pass===p);
+  const p=document.getElementById('loginPass').value.trim();
+  // Case-insensitive username, exact password match
+  const ok=USERS.some(x=>x.user.toLowerCase()===u && x.pass===p);
   if(ok){
-    // Save session
     sessionStorage.setItem('sv_auth','1');
     document.getElementById('loginWall').style.display='none';
+    document.getElementById('mainApp').style.removeProperty('display');
     document.getElementById('mainApp').style.display='flex';
-    init();
+    setTimeout(()=>init(),50);
   } else {
     const err=document.getElementById('loginErr');
+    err.textContent='Incorrect username or password. Try again.';
     err.style.display='block';
     document.getElementById('loginPass').value='';
-    setTimeout(()=>err.style.display='none',3000);
+    setTimeout(()=>err.style.display='none',4000);
   }
 }
 
@@ -342,6 +344,7 @@ function tryLogin(){
 function checkAuth(){
   if(sessionStorage.getItem('sv_auth')==='1'){
     document.getElementById('loginWall').style.display='none';
+    document.getElementById('mainApp').style.removeProperty('display');
     document.getElementById('mainApp').style.display='flex';
     return true;
   }
@@ -1110,11 +1113,11 @@ async function init(){
   connectFinnhubWS();
   startDeepScan();
 }
-// Only auto-init if already authenticated
-if(!checkAuth()){
-  // Show login wall — init() called after successful login
-  document.getElementById('loginPass')?.addEventListener('keydown',e=>{if(e.key==='Enter')tryLogin();});
+// Auto-init if already authenticated this session
+if(checkAuth()){
+  init();
 }
+// Otherwise wait for login — init() is called inside tryLogin()
 </script>
 </body>
 </html>
