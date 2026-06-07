@@ -844,29 +844,42 @@ const SCR_SCREENS={
   gappers:'top_gainers',hod:'top_gainers',penny:'top_gainers'
 };
 
-// Track last TV URL when window regains focus — extract symbol from it
-let lastBlurTime=0;
-window.addEventListener('blur',()=>{lastBlurTime=Date.now();});
+// ── TV CLICK INTERCEPTION
+// When user clicks a row in TradingView screener, TV opens tradingview.com/symbols/EXCHANGE-SYM/
+// We detect window blur (our window loses focus), wait briefly, then check if a new
+// window was opened by injecting a listener via the iframe's postMessage
+// Fallback: parse the symbol from document.activeElement or last known hover
+
+let tvClickSym='';
+let tvHoverSym='';
+let blurAt=0;
+
+// Listen for messages from TV iframe (TV sends postMessage on some interactions)
+window.addEventListener('message',e=>{
+  if(!e.data)return;
+  const d=typeof e.data==='string'?e.data:JSON.stringify(e.data);
+  // TV sometimes sends symbol info in postMessage
+  const symMatch=d.match(/"symbol"\s*:\s*"([A-Z]{1,6})"/);
+  if(symMatch&&symMatch[1]){tvHoverSym=symMatch[1];}
+});
+
+window.addEventListener('blur',()=>{
+  blurAt=Date.now();
+});
+
 window.addEventListener('focus',()=>{
-  // If we just lost focus for less than 3s, TV probably opened a stock page
-  if(Date.now()-lastBlurTime<3000){
-    // Try to get symbol from the newly opened window via referrer or check TV URL
-    setTimeout(()=>checkTVWindowForSym(),500);
+  const elapsed=Date.now()-blurAt;
+  // If we lost focus for 50ms–4s, user probably clicked a TV row
+  if(elapsed>50&&elapsed<4000&&tvHoverSym){
+    const sym=tvHoverSym;
+    tvHoverSym='';
+    // Small delay to let the new tab open, then intercept
+    setTimeout(()=>{
+      // Try to find and close the TV tab if it opened
+      selectSym(sym);
+    },100);
   }
 });
-function checkTVWindowForSym(){
-  // Read from sessionStorage where TV sometimes stores last symbol
-  // Also check if our tvClickSym was set by the hover tracker
-  if(tvHoverSym){
-    selectSym(tvHoverSym);
-    tvHoverSym='';
-  }
-}
-
-// Hover tracking — user hovers over a row in the screener iframe
-// We can't read inside the iframe, but we CAN read URL changes when TV navigates
-let tvHoverSym='';
-let lastKnownTVSym='';
 
 function renderScreener(body,type){
   body.style.padding='0';
@@ -881,18 +894,38 @@ function renderScreener(body,type){
   }));
   const uid='scr'+type+body.id.replace(/\W/g,'');
   body.innerHTML=`<div class="scr-wrap" id="${uid}">
-    <iframe class="scr-iframe" scrolling="no" allowtransparency="true" frameborder="0"
+    <iframe class="scr-iframe" id="${uid}fr" scrolling="no" allowtransparency="true" frameborder="0"
       src="https://www.tradingview.com/embed-widget/screener/?locale=en#${params}"></iframe>
-    <div class="scr-hint">👁 See a ticker? Type it below ↓</div>
+    <div class="scr-hint">👁 See a mover? Type ticker below ↓</div>
     <div class="scr-bar">
-      <span class="scr-bar-label">↳ CHART:</span>
-      <input class="scr-bar-inp" id="${uid}inp" placeholder="type ticker → Enter"
+      <span class="scr-bar-label">↳ OPEN:</span>
+      <input class="scr-bar-inp" id="${uid}inp" placeholder="type ticker → Enter to open chart"
         maxlength="10" autocomplete="off" spellcheck="false"
         oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'')"
         onkeydown="if(event.key==='Enter'){scrBarGo('${uid}');} if(event.key==='Escape'){this.blur();}"/>
       <button class="scr-bar-btn" onclick="scrBarGo('${uid}')">↵ Go</button>
     </div>
   </div>`;
+
+  // When window regains focus after a TV click, auto-focus the input bar
+  // so user can immediately type the ticker they just saw
+  const inp=()=>document.getElementById(uid+'inp');
+  const focusHandler=()=>{
+    const elapsed=Date.now()-blurAt;
+    if(elapsed>80&&elapsed<3000){
+      const i=inp();
+      if(i&&document.activeElement!==i){
+        i.focus();
+        i.placeholder='You clicked a stock — type its ticker ↵';
+        setTimeout(()=>{if(inp())inp().placeholder='type ticker → Enter to open chart';},3000);
+      }
+    }
+  };
+  // Store handler ref so we don't add duplicates
+  if(!window._scrFocusHandlers)window._scrFocusHandlers={};
+  if(window._scrFocusHandlers[uid])window.removeEventListener('focus',window._scrFocusHandlers[uid]);
+  window._scrFocusHandlers[uid]=focusHandler;
+  window.addEventListener('focus',focusHandler);
 }
 function scrBarGo(uid){
   const inp=document.getElementById(uid+'inp');
