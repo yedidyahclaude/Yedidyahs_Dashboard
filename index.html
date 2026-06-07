@@ -605,15 +605,20 @@ function openChartPanel(sym){
   }
   curChartSym=sym;
   const cfg=encodeURIComponent(JSON.stringify({
-    autosize:true,symbol:tvSym,interval:'1',range:'1D',
+    autosize:true,symbol:tvSym,interval:'1',
     timezone:'America/New_York',theme:'dark',style:'1',
     locale:'en',toolbar_bg:'#0c0d1a',enable_publishing:false,
     withdateranges:true,hide_side_toolbar:false,
-    allow_symbol_change:true,save_image:false,
+    allow_symbol_change:false,save_image:false,
     calendar:false,hide_volume:false,
     support_host:'https://www.tradingview.com'
   }));
-  document.getElementById('cpIframe').src=`https://www.tradingview.com/embed-widget/advanced-chart/?locale=en#${cfg}`;
+  // Force fresh iframe load by briefly clearing src first
+  const iframe=document.getElementById('cpIframe');
+  iframe.src='about:blank';
+  setTimeout(()=>{
+    iframe.src=`https://www.tradingview.com/embed-widget/advanced-chart/?locale=en#${cfg}`;
+  },50);
   const symEl=document.getElementById('cpSym');
   symEl.textContent=sym;symEl.style.color='#fff';
   document.getElementById('cpLabel').textContent='TradingView · real-time · pre/after hours included';
@@ -895,6 +900,7 @@ function renderScreener(body,type){
   const uid='scr'+type+body.id.replace(/\W/g,'');
   body.innerHTML=`<div class="scr-wrap" id="${uid}">
     <iframe class="scr-iframe" id="${uid}fr" scrolling="no" allowtransparency="true" frameborder="0"
+      sandbox="allow-scripts allow-same-origin allow-popups"
       src="https://www.tradingview.com/embed-widget/screener/?locale=en#${params}"></iframe>
     <div class="scr-hint">👁 See a mover? Type ticker below ↓</div>
     <div class="scr-bar">
