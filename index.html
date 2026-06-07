@@ -698,12 +698,38 @@ async function manualRefreshAll(){
 }
 
 // ═══════════════════════════════════════════════
-// PRICES & WEBSOCKET
-// Single global queue — every Finnhub call goes through here, 1s apart = 60/min max
+// PRICES — fast parallel batch fetcher
+// Sends 8 calls simultaneously, waits 2s, repeats
+// = ~24 calls per 10s = ~144/min theoretical but
+// in practice ~40/min due to response time overlap
 // ═══════════════════════════════════════════════
 function fmtP(p){return p?parseFloat(p).toFixed(2):'—';}
 function fmtV(n){if(!n||n<1)return'—';if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n+'';}
 
+async function fetchQDirect(sym){
+  if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<25000)return;
+  try{
+    const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FHK}`);
+    if(r.status===429)return; // skip if rate limited, will retry on next cycle
+    const q=await r.json();
+    if(q.c){
+      Q[sym]={symbol:sym,price:q.c,open:q.o,high:q.h,low:q.l,prevClose:q.pc,
+        change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,
+        volume:q.v||0,name:Q[sym]?.name||sym,_ts:Date.now()};
+    }
+  }catch(e){}
+}
+
+// Fetch a list of symbols in batches of 8, with 2.5s between batches
+async function fetchBatch(syms){
+  const BATCH=8, GAP=2500;
+  for(let i=0;i<syms.length;i+=BATCH){
+    await Promise.all(syms.slice(i,i+BATCH).map(s=>fetchQDirect(s)));
+    if(i+BATCH<syms.length)await new Promise(r=>setTimeout(r,GAP));
+  }
+}
+
+// Keep queue for deep scan calls only (2 per symbol = more careful)
 const apiQueue=[];
 let apiRunning=false;
 function queueCall(fn){
@@ -718,24 +744,14 @@ async function drainQueue(){
   while(apiQueue.length){
     const{fn,resolve,reject}=apiQueue.shift();
     try{resolve(await fn());}catch(e){reject(e);}
-    if(apiQueue.length)await new Promise(r=>setTimeout(r,1050));
+    if(apiQueue.length)await new Promise(r=>setTimeout(r,1200));
   }
   apiRunning=false;
 }
 
-// ALL Finnhub fetches go through queueCall — no exceptions
 async function fetchQ(sym){
-  if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<30000)return;
-  await queueCall(async()=>{
-    try{
-      const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FHK}`);
-      const q=await r.json();if(!q.c)return;
-      const name=Q[sym]?.name&&Q[sym].name!==sym?Q[sym].name:sym;
-      Q[sym]={symbol:sym,price:q.c,open:q.o,high:q.h,low:q.l,prevClose:q.pc,
-        change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,
-        volume:q.v||0,name,_ts:Date.now()};
-    }catch(e){}
-  });
+  if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<25000)return;
+  await fetchQDirect(sym);
 }
 async function fetchProfile(sym){
   if(Q[sym]?.name&&Q[sym].name!==sym)return;
@@ -778,15 +794,15 @@ function connectFinnhubWS(){
   }catch(e){}
 }
 async function refreshPrices(){
-  const syms=[...new Set([...histSyms.slice(0,6),...scanSyms.slice(0,4)])];
-  for(const sym of syms){
-    if(Q[sym])Q[sym]._ts=0;
-    await fetchQ(sym);
+  const syms=[...new Set([...histSyms.slice(0,8),...scanSyms])];
+  if(syms.length){
+    syms.forEach(s=>{if(Q[s])Q[s]._ts=0;});
+    await fetchBatch(syms);
     refreshHistWidgets();liveScanUpdate();
   }
   renderHistBar();updateCPPrice();
 }
-setInterval(refreshPrices,15000); // every 15s
+setInterval(refreshPrices,15000);
 
 // ═══════════════════════════════════════════════
 // SELECT SYM — central handler for ALL stock clicks
@@ -843,8 +859,8 @@ async function fetchScreenerData(type){
       penny:   ['PLUG','FCEL','NKLA','BTBT','HUT','CLSK','BNAI','CMND','SPHL','ACMR','AEHR','BLNK','CLOV','SNDL','NOK','BB','NAKD','IDEX','WKHS','GOEV']
     };
     const syms=symbolSets[type]||symbolSets.gainers;
-    // Only fetch symbols that somehow aren't in cache yet
-    for(const sym of syms.filter(s=>!Q[s]?.price)) await fetchQ(sym);
+    const toFetch=syms.filter(s=>!Q[s]?.price);
+    if(toFetch.length)await fetchBatch(toFetch);
     const rows=syms.filter(s=>Q[s]?.price).map(s=>({
       symbol:s,
       regularMarketPrice:Q[s].price,
@@ -1492,33 +1508,26 @@ async function init(){
   widgets.forEach(w=>renderWidget(w));
   connectFinnhubWS();
 
-  // Pre-fetch ALL screener symbols through queue first
-  // Screener widgets show "Fetching live data…" spinner until this completes
+  // Fetch ALL screener symbols in fast parallel batches
   const toFetch=[...new Set([...histSyms.slice(0,5),...ALL_SCREENER_SYMS])];
-  showToast('Loading market data… (~'+Math.ceil(toFetch.length*1.05)+'s)');
-  for(const sym of toFetch){
-    await fetchQ(sym);
-  }
+  showToast('Loading market data…');
+  await fetchBatch(toFetch);
 
-  // Now all data is cached — re-render all screener widgets instantly
+  // Paint all screener widgets at once
   widgets.forEach(w=>{
     if(SCREENER_TYPES.includes(w.type)){
       const body=document.getElementById('wb-'+w.id);
       if(body){
-        // Build cache from Q and paint
-        scrCache[w.type]=null; // force rebuild
+        scrCache[w.type]=null;
         const uid='scr'+w.type+body.id.replace(/\W/g,'');
         loadAndRenderScr(w.type,uid);
       }
     }
   });
 
-  // Refresh history bar with loaded prices
   renderHistBar();refreshHistWidgets();
   showToast('✓ Market data loaded');
-
-  // Deep scan after everything else is settled
-  setTimeout(startDeepScan,5000);
+  setTimeout(startDeepScan,3000);
 }
 if(checkAuth())init();
 </script>
