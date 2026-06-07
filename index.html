@@ -147,31 +147,20 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .resize-br::after{content:'';position:absolute;bottom:3px;right:3px;width:6px;height:6px;border-right:2px solid var(--dim);border-bottom:2px solid var(--dim)}
 .resize-br:hover::after{border-color:var(--ac)}
 
-/* SCREENER WIDGET */
-.scr-hdr{display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid var(--b1);flex-shrink:0;background:var(--s2)}
-.scr-badge{font-size:10px;font-weight:700;color:#fff;display:flex;align-items:center;gap:6px;letter-spacing:.02em}
-.scr-dot{width:6px;height:6px;border-radius:50%;background:var(--gr);animation:pulse 2s ease-in-out infinite;flex-shrink:0;box-shadow:0 0 6px var(--gr)}
+/* SCREENER WIDGET — TradingView iframe */
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
-.scr-timer{font-size:9px;color:var(--ac2);font-variant-numeric:tabular-nums;font-weight:600}
-.scr-cols{display:grid;grid-template-columns:1fr 68px 60px 54px;padding:4px 10px;border-bottom:1px solid var(--b1);flex-shrink:0;background:#0d0e1c}
-.scr-ch{font-size:8px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;font-weight:600}
-.scr-ch.r{text-align:right}
-.scr-rows{flex:1;overflow-y:auto;min-height:0}
-.scr-rows::-webkit-scrollbar{width:3px}
-.scr-rows::-webkit-scrollbar-thumb{background:var(--b2)}
-/* Alternating row backgrounds + bold ticker styling */
-.scr-row{display:grid;grid-template-columns:1fr 68px 60px 54px;padding:7px 10px;cursor:pointer;border-bottom:1px solid #0d0e1c;transition:all .07s;align-items:center}
-.scr-row:nth-child(odd){background:#0e0f1d}
-.scr-row:nth-child(even){background:#0a0b18}
-.scr-row:hover{background:#7c6aff14;border-left:2px solid var(--ac)}
-.scr-row:active{background:#7c6aff22}
-.scr-sym{font-size:13px;font-weight:700;color:#fff;line-height:1.2;letter-spacing:.02em}
-.scr-name{font-size:8px;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:1px}
-.scr-px{font-size:12px;font-weight:600;text-align:right;color:#e0e1f0}
-.scr-chg{font-size:12px;font-weight:700;text-align:right}
-.scr-vol{font-size:9px;color:#8890aa;text-align:right;font-weight:500}
-.scr-empty{text-align:center;padding:28px 12px;color:var(--mu);font-size:11px;line-height:1.9}
-.scr-spin{display:inline-block;width:12px;height:12px;border:2px solid var(--b2);border-top-color:var(--ac);border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:5px}
+.scr-wrap{position:relative;width:100%;height:100%;display:flex;flex-direction:column}
+.scr-iframe{flex:1;width:100%;border:none;display:block;min-height:0}
+/* Ticker input bar at bottom — type ticker you see, Enter to open chart */
+.scr-bar{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--s1);border-top:2px solid var(--ac)}
+.scr-bar-label{font-size:8px;color:var(--ac2);font-weight:700;letter-spacing:.06em;text-transform:uppercase;flex-shrink:0}
+.scr-bar-inp{flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;padding:4px 8px;outline:none;text-transform:uppercase;letter-spacing:.06em;transition:border-color .15s}
+.scr-bar-inp:focus{border-color:var(--ac);background:var(--s3)}
+.scr-bar-inp::placeholder{color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0;font-size:10px}
+.scr-bar-btn{background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:9px;font-weight:700;padding:4px 10px;cursor:pointer;white-space:nowrap}
+.scr-bar-btn:hover{opacity:.85}
+.scr-hint{position:absolute;bottom:48px;right:8px;font-size:8px;color:var(--dim);background:var(--s1);border:1px solid var(--b1);border-radius:4px;padding:2px 6px;pointer-events:none;opacity:0;transition:opacity .2s;white-space:nowrap}
+.scr-wrap:hover .scr-hint{opacity:1}
 
 /* HISTORY / WATCHLIST ROWS */
 .wi{display:flex;align-items:center;justify-content:space-between;padding:7px 8px;border-radius:5px;cursor:pointer;margin-bottom:3px;border:1px solid transparent;transition:all .08s}
@@ -844,157 +833,76 @@ const SCR_LABELS={
 };
 
 
-async function fetchScreenerData(type){
-  const symbolSets={
-    gainers: ['NVDA','AMD','AAPL','MSFT','META','TSLA','PLTR','COIN','SOFI','HOOD','MARA','RIOT','GME','AMC','SPHL','BNAI','CMND','ACMR','AEHR','BLNK'],
-    losers:  ['NVDA','AMD','AAPL','MSFT','META','TSLA','PLTR','COIN','SOFI','HOOD','MARA','RIOT','GME','AMC','NIO','RIVN','LCID','SNAP','PLUG','FCEL'],
-    active:  ['NVDA','AMD','AAPL','MSFT','META','TSLA','SPY','QQQ','SOXL','TQQQ','GME','AMC','PLTR','COIN','MSTR','SOFI','HOOD','MARA','RIOT','SNAP'],
-    premarket:['SPHL','BNAI','CMND','ACMR','AEHR','GME','AMC','MARA','RIOT','BTBT','HUT','CLSK','PLUG','FCEL','NKLA','NIO','RIVN','SOFI','HOOD','PLTR'],
-    gappers: ['SPHL','BNAI','CMND','ACMR','AEHR','GME','AMC','MARA','RIOT','BTBT','PLUG','FCEL','NKLA','NIO','RIVN','SOFI','HOOD','PLTR','COIN','BLNK'],
-    hod:     ['SPHL','BNAI','CMND','ACMR','AEHR','GME','AMC','MARA','RIOT','PLTR','COIN','SOFI','HOOD','NIO','RIVN','PLUG','FCEL','BLNK','BTBT','HUT'],
-    penny:   ['PLUG','FCEL','NKLA','BTBT','HUT','CLSK','BNAI','CMND','SPHL','ACMR','AEHR','BLNK','CLOV','SNDL','NOK','BB','NAKD','IDEX','WKHS','GOEV']
-  };
-  const syms=symbolSets[type]||symbolSets.gainers;
-  // Only fetch symbols missing from Q cache (init pre-loads everything, this is for manual refresh only)
-  const toFetch=syms.filter(s=>!Q[s]?.price);
-  if(toFetch.length)await fetchBatch(toFetch);
-  const rows=syms.filter(s=>Q[s]?.price).map(s=>({
-    symbol:s,regularMarketPrice:Q[s].price,
-    regularMarketChangePercent:Q[s].changePct||0,
-    regularMarketVolume:Q[s].volume||0,shortName:Q[s].name||s
-  }));
-  if(rows.length)scrCache[type]={rows,ts:Date.now()};
+// ═══════════════════════════════════════════════
+// SCREENERS — TradingView iframes (real market-wide live data)
+// Clicks in the iframe open TV's page — we intercept via window blur event
+// to detect the symbol and load it in the bottom panel + history
+// ═══════════════════════════════════════════════
+const SCR_SCREENS={
+  gainers:'top_gainers',losers:'top_losers',
+  active:'most_capitalized',premarket:'pre_market_gainers',
+  gappers:'top_gainers',hod:'top_gainers',penny:'top_gainers'
+};
+
+// Track last TV URL when window regains focus — extract symbol from it
+let lastBlurTime=0;
+window.addEventListener('blur',()=>{lastBlurTime=Date.now();});
+window.addEventListener('focus',()=>{
+  // If we just lost focus for less than 3s, TV probably opened a stock page
+  if(Date.now()-lastBlurTime<3000){
+    // Try to get symbol from the newly opened window via referrer or check TV URL
+    setTimeout(()=>checkTVWindowForSym(),500);
+  }
+});
+function checkTVWindowForSym(){
+  // Read from sessionStorage where TV sometimes stores last symbol
+  // Also check if our tvClickSym was set by the hover tracker
+  if(tvHoverSym){
+    selectSym(tvHoverSym);
+    tvHoverSym='';
+  }
 }
 
-function buildRowsFromQ(){
-  return Object.keys(Q).filter(s=>Q[s]?.price).map(s=>({
-    symbol:s,
-    regularMarketPrice:Q[s].price,
-    regularMarketChangePercent:Q[s].changePct||0,
-    regularMarketVolume:Q[s].volume||0,
-    shortName:Q[s].name||s
-  }));
-}
+// Hover tracking — user hovers over a row in the screener iframe
+// We can't read inside the iframe, but we CAN read URL changes when TV navigates
+let tvHoverSym='';
+let lastKnownTVSym='';
 
 function renderScreener(body,type){
   body.style.padding='0';
   body.style.overflow='hidden';
   body.style.display='flex';
   body.style.flexDirection='column';
+  const screen=SCR_SCREENS[type]||'top_gainers';
+  const params=encodeURIComponent(JSON.stringify({
+    width:'100%',height:'100%',defaultColumn:'overview',
+    defaultScreen:screen,market:'america',showToolbar:true,
+    colorTheme:'dark',locale:'en'
+  }));
   const uid='scr'+type+body.id.replace(/\W/g,'');
-  body.innerHTML=`<div class="scr-hdr">
-    <span class="scr-badge"><span class="scr-dot"></span>${SCR_LABELS[type]}</span>
-    <span class="scr-timer" id="${uid}t">loading…</span>
-  </div>
-  <div class="scr-cols">
-    <span class="scr-ch">TICKER</span>
-    <span class="scr-ch r">PRICE</span>
-    <span class="scr-ch r">CHG%</span>
-    <span class="scr-ch r">VOL</span>
-  </div>
-  <div class="scr-rows" id="${uid}r">
-    <div class="scr-empty"><span class="scr-spin"></span>Fetching live data…</div>
+  body.innerHTML=`<div class="scr-wrap" id="${uid}">
+    <iframe class="scr-iframe" scrolling="no" allowtransparency="true" frameborder="0"
+      src="https://www.tradingview.com/embed-widget/screener/?locale=en#${params}"></iframe>
+    <div class="scr-hint">👁 See a ticker? Type it below ↓</div>
+    <div class="scr-bar">
+      <span class="scr-bar-label">↳ CHART:</span>
+      <input class="scr-bar-inp" id="${uid}inp" placeholder="type ticker → Enter"
+        maxlength="10" autocomplete="off" spellcheck="false"
+        oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'')"
+        onkeydown="if(event.key==='Enter'){scrBarGo('${uid}');} if(event.key==='Escape'){this.blur();}"/>
+      <button class="scr-bar-btn" onclick="scrBarGo('${uid}')">↵ Go</button>
+    </div>
   </div>`;
-  loadAndRenderScr(type,uid);
-  startScrTimer(type,uid);
+}
+function scrBarGo(uid){
+  const inp=document.getElementById(uid+'inp');
+  const sym=inp?.value.trim();
+  if(sym){inp.value='';selectSym(sym);}
+  else inp?.focus();
 }
 
-async function loadAndRenderScr(type,uid){
-  const tmr=document.getElementById(uid+'t');
-  if(tmr)tmr.textContent='updating…';
-  if(!scrCache[type]||Date.now()-scrCache[type].ts>SCR_TTL*1000){
-    await fetchScreenerData(type);
-  }
-  paintScrRows(type,uid);
-  const tmr2=document.getElementById(uid+'t');
-  if(tmr2&&scrCache[type])tmr2.textContent='↺ '+SCR_TTL+'s';
-}
-
-function paintScrRows(type,uid){
-  const tbody=document.getElementById(uid+'r');if(!tbody)return;
-  const tmr=document.getElementById(uid+'t');
-  const data=scrCache[type];
-  if(!data?.rows?.length){
-    tbody.innerHTML='<div class="scr-empty"><span class="scr-spin"></span>Loading…</div>';
-    return;
-  }
-  let rows=[...data.rows];
-  // Sort and filter by type
-  if(type==='gainers'){
-    // Small cap gainers only: $0.50–$20
-    rows=rows.filter(q=>(q.regularMarketPrice||0)<=20&&(q.regularMarketPrice||0)>=0.5);
-    rows.sort((a,b)=>(b.regularMarketChangePercent||0)-(a.regularMarketChangePercent||0));
-  }
-  else if(type==='losers')rows.sort((a,b)=>(a.regularMarketChangePercent||0)-(b.regularMarketChangePercent||0));
-  else if(type==='active')rows.sort((a,b)=>(b.regularMarketVolume||0)-(a.regularMarketVolume||0));
-  else if(type==='premarket'){
-    rows.sort((a,b)=>Math.abs(b.regularMarketChangePercent||0)-Math.abs(a.regularMarketChangePercent||0));
-  }
-  else if(type==='gappers'){
-    // Top Gappers: stocks $0.50–$20 that gapped up 5%+ from prev close
-    rows=rows.filter(q=>{
-      const px=q.regularMarketPrice||0;
-      const chg=q.regularMarketChangePercent||0;
-      return px>=0.5&&px<=20&&chg>=5;
-    });
-    rows.sort((a,b)=>(b.regularMarketChangePercent||0)-(a.regularMarketChangePercent||0));
-  }
-  else if(type==='hod'){
-    // HOD Momentum: stocks making strong moves with high volume — price $1–$20, +5% or more
-    rows=rows.filter(q=>{
-      const px=q.regularMarketPrice||0;
-      const chg=q.regularMarketChangePercent||0;
-      return px>=1&&px<=20&&chg>=5;
-    });
-    // Sort by % change × volume (momentum score)
-    rows.sort((a,b)=>{
-      const scoreA=(a.regularMarketChangePercent||0)*(Math.log10((a.regularMarketVolume||1)+1));
-      const scoreB=(b.regularMarketChangePercent||0)*(Math.log10((b.regularMarketVolume||1)+1));
-      return scoreB-scoreA;
-    });
-  }
-  else if(type==='penny'){
-    // Penny stocks: under $5, moving
-    rows=rows.filter(q=>(q.regularMarketPrice||0)>0.1&&(q.regularMarketPrice||0)<=5);
-    rows.sort((a,b)=>(b.regularMarketChangePercent||0)-(a.regularMarketChangePercent||0));
-  }
-  // Show fallback note if using Finnhub data
-  if(data.isFallback&&tmr)tmr.textContent='↺ '+SCR_TTL+'s (local)';
-  tbody.innerHTML=rows.slice(0,25).map(q=>{
-    const sym=(q.symbol||'').toUpperCase().replace(/[^A-Z0-9./-]/g,'');
-    const px=q.regularMarketPrice||0;
-    const chg=q.regularMarketChangePercent||0;
-    const vol=q.regularMarketVolume||0;
-    const name=(q.shortName||q.longName||sym).slice(0,20);
-    const u=chg>=0;
-    return `<div class="scr-row" onclick="selectSym('${sym}')">
-      <div><div class="scr-sym">${sym}</div><div class="scr-name">${name}</div></div>
-      <div class="scr-px">$${px.toFixed(2)}</div>
-      <div class="scr-chg ${u?'up':'dn'}">${u?'+':''}${chg.toFixed(2)}%</div>
-      <div class="scr-vol">${fmtV(vol)}</div>
-    </div>`;
-  }).join('');
-}
-
-function startScrTimer(type,uid){
-  if(scrTimers[uid])clearInterval(scrTimers[uid]);
-  let secs=scrCache[type]?Math.max(5,SCR_TTL-Math.floor((Date.now()-scrCache[type].ts)/1000)):SCR_TTL;
-  const tmr=document.getElementById(uid+'t');
-  if(tmr)tmr.textContent=`↺ ${secs}s`;
-  scrTimers[uid]=setInterval(async()=>{
-    secs--;
-    const el=document.getElementById(uid+'t');
-    if(!el){clearInterval(scrTimers[uid]);delete scrTimers[uid];return;}
-    if(secs<=0){
-      secs=SCR_TTL;
-      scrCache[type]=null;
-      await loadAndRenderScr(type,uid);
-    } else {
-      el.textContent=`↺ ${secs}s`;
-    }
-  },1000);
-}
-
+// ═══════════════════════════════════════════════
+// WIDGET SYSTEM
 // ═══════════════════════════════════════════════
 // WIDGET SYSTEM
 // ═══════════════════════════════════════════════
@@ -1038,15 +946,14 @@ async function reloadWidget(id){
     renderAL(body);
   }
 }
-function renderWidget(wData,skipPopulate=false){
+function renderWidget(wData){
   const el=document.createElement('div');
   el.className='widget';el.id=wData.id;
   el.style.cssText=`left:${wData.x}px;top:${wData.y}px;width:${wData.w}px;height:${wData.h}px`;
   if(wData.pinned)el.classList.add('pinned');
   el.innerHTML=widgetHTML(wData);
   document.getElementById('grid').appendChild(el);
-  makeDraggable(el,wData);makeResizable(el,wData);
-  if(!skipPopulate)populateWidget(el,wData);
+  makeDraggable(el,wData);makeResizable(el,wData);populateWidget(el,wData);
 }
 function widgetHTML(w){
   const title=w.label||WIDGET_TYPES[w.type]||w.type;
@@ -1488,36 +1395,20 @@ function makeResizable(el,wData){
 // ═══════════════════════════════════════════════
 if(Notification.permission==='default')Notification.requestPermission();
 
-// All symbols needed across all screener types
-const ALL_SCREENER_SYMS=[...new Set([
-  'NVDA','AMD','AAPL','MSFT','META','TSLA','PLTR','COIN','SOFI','HOOD',
-  'MARA','RIOT','GME','AMC','SPHL','BNAI','CMND','ACMR','AEHR','BLNK',
-  'NIO','RIVN','LCID','SNAP','PLUG','FCEL','SPY','QQQ','SOXL','TQQQ',
-  'MSTR','BTBT','HUT','CLSK','NKLA','CLOV','SNDL','NOK','BB','NAKD',
-  'IDEX','WKHS','GOEV'
-])];
-
-let appReady=false; // blocks price refresh until initial load done
+let appReady=false;
 
 async function init(){
   renderHistBar();
-  widgets.forEach(w=>renderWidget(w,true));
+  widgets.forEach(w=>renderWidget(w));
   connectFinnhubWS();
-
-  // Deduplicated symbol list
-  const toFetch=[...new Set([...histSyms.slice(0,5),...ALL_SCREENER_SYMS])];
-  let done=0;
-  for(const sym of toFetch){
+  // Only load prices for history symbols — screeners are TV iframes, no Finnhub needed
+  const histToFetch=histSyms.slice(0,8).filter(s=>!Q[s]?.price);
+  for(const sym of histToFetch){
     await fetchQDirect(sym);
-    done++;
-    showToast(`Loading… ${done}/${toFetch.length}`);
     await new Promise(r=>setTimeout(r,1100));
   }
-
   appReady=true;
-  widgets.forEach(w=>populateWidget(null,w));
   renderHistBar();refreshHistWidgets();
-  showToast('✓ All data loaded');
   setTimeout(startDeepScan,3000);
 }
 if(checkAuth())init();
