@@ -127,7 +127,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .ws-label{font-size:8px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
 .ws-input{background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:5px 7px;outline:none;width:100%}
 .ws-input:focus{border-color:var(--ac)}
-.ws-select{background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:5px 6px;outline:none;width:100%;cursor:pointer;-webkit-appearance:auto;appearance:auto}
+.ws-select{background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:5px 6px;outline:none;width:100%;cursor:pointer}
 .ws-select option{background:#1a1b2e;color:var(--tx)}
 .ws-toggle{display:flex;align-items:center;justify-content:space-between;padding:5px 0;cursor:pointer;margin-bottom:4px}
 .ws-tl{font-size:10px;color:var(--tx)}
@@ -146,15 +146,24 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .wb{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px;border-radius:0 0 7px 7px;min-height:0}
 .wb::-webkit-scrollbar{width:3px}
 .wb::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
-.wb.iframe-body{padding:0;overflow:hidden;display:flex;flex-direction:column}
-.wb.iframe-body iframe{flex:1;width:100%;height:100%;border:none;display:block;min-height:0}
+/* Screener widgets need special body treatment */
+.wb.scr-body-wrap{padding:0;overflow:hidden;display:flex;flex-direction:column}
 
 /* RESIZE */
 .resize-br{position:absolute;bottom:0;right:0;width:14px;height:14px;cursor:se-resize;z-index:10}
 .resize-br::after{content:'';position:absolute;bottom:3px;right:3px;width:6px;height:6px;border-right:2px solid var(--dim);border-bottom:2px solid var(--dim)}
 .resize-br:hover::after{border-color:var(--ac)}
 
-
+/* SCREENER (TradingView iframe + input bar) */
+.scr-iframe-wrap{flex:1;position:relative;min-height:0;overflow:hidden}
+.scr-iframe-wrap iframe{width:100%;height:100%;border:none;display:block}
+.scr-input-bar{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:5px 7px;background:var(--s2);border-top:1px solid var(--b1)}
+.scr-input-bar label{font-size:8px;color:var(--dim);white-space:nowrap;letter-spacing:.05em;text-transform:uppercase;flex-shrink:0}
+.scr-inp{flex:1;background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;padding:4px 7px;outline:none;letter-spacing:.06em;text-transform:uppercase;transition:border-color .15s}
+.scr-inp:focus{border-color:var(--ac);background:var(--s2)}
+.scr-inp::placeholder{color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0}
+.scr-go{background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:9px;font-weight:600;padding:4px 9px;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.scr-go:hover{opacity:.85}
 
 /* HISTORY / WATCHLIST */
 .wi{display:flex;align-items:center;justify-content:space-between;padding:5px 6px;border-radius:4px;cursor:pointer;margin-bottom:2px;border:1px solid transparent;transition:background .08s}
@@ -173,7 +182,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 
 /* ALERTS */
 .alf{background:var(--s2);border:1px solid var(--b2);border-radius:6px;padding:8px;margin-bottom:8px}
-.alf select,.alf input{width:100%;background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:4px 6px;outline:none;margin-bottom:4px;-webkit-appearance:auto;appearance:auto;cursor:pointer}
+.alf select,.alf input{width:100%;background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:4px 6px;outline:none;margin-bottom:4px;cursor:pointer}
 .alf select option{background:#1a1b2e;color:var(--tx)}
 .alcr{width:100%;background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.05em;padding:5px;cursor:pointer}
 .ali{display:flex;align-items:center;justify-content:space-between;padding:5px 6px;background:var(--s2);border:1px solid var(--b2);border-radius:4px;margin-bottom:3px}
@@ -223,36 +232,29 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .s0{background:var(--b2);color:var(--mu)}
 .scan-empty{text-align:center;padding:20px;color:var(--mu);font-size:10px;line-height:1.6}
 
-/* POPUP BLOCKED TOAST */
-#popup-blocked-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#f59e0b;color:#000;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;padding:8px 16px;border-radius:6px;z-index:9999;box-shadow:0 4px 20px #00000066;pointer-events:none;opacity:0;transition:opacity .3s}
-
 /* BOTTOM CHART PANEL */
-#chartPanel{flex-shrink:0;background:var(--s1);border-top:2px solid var(--b1);display:flex;flex-direction:column;transition:height .25s cubic-bezier(.4,0,.2,1);height:32px;position:relative;z-index:50}
-#chartPanel.open{height:42vh}
-#chartPanelBar{display:flex;align-items:center;gap:8px;padding:0 12px;height:32px;cursor:pointer;flex-shrink:0;user-select:none;background:var(--s2);border-bottom:1px solid var(--b1)}
-#chartPanelBar:hover{background:#1a1b2c}
-#chartPanelSym{font-size:11px;font-weight:600;color:#fff;min-width:50px}
-#chartPanelPx{font-size:10px;min-width:60px}
-#chartPanelChg{font-size:10px;min-width:55px}
-#chartPanelLabel{font-size:8px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;flex:1}
-#chartPanelToggle{font-size:10px;color:var(--mu);transition:transform .25s}
-#chartPanel.open #chartPanelToggle{transform:rotate(180deg)}
+#chartPanel{flex-shrink:0;background:var(--s1);border-top:2px solid var(--b1);display:flex;flex-direction:column;transition:height .22s cubic-bezier(.4,0,.2,1);height:34px;position:relative;z-index:50}
+#chartPanel.open{height:44vh}
+#chartPanelBar{display:flex;align-items:center;gap:8px;padding:0 12px;height:34px;cursor:pointer;flex-shrink:0;user-select:none;background:var(--s2);border-bottom:1px solid var(--b1)}
+#chartPanelBar:hover{background:#16172a}
+#cpSym{font-size:12px;font-weight:600;color:var(--mu);min-width:52px;transition:color .15s}
+#cpPx{font-size:11px;min-width:62px}
+#cpChg{font-size:11px;min-width:58px}
+#cpLabel{font-size:8px;color:var(--dim);letter-spacing:.07em;text-transform:uppercase;flex:1}
+#cpPopup{background:none;border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-family:'DM Mono',monospace;font-size:8px;padding:2px 8px;cursor:pointer;transition:all .12s;white-space:nowrap;flex-shrink:0}
+#cpPopup:hover{color:var(--tx);border-color:var(--ac)}
+#cpToggle{font-size:10px;color:var(--mu);transition:transform .22s;flex-shrink:0}
+#chartPanel.open #cpToggle{transform:rotate(180deg)}
 #chartPanelIframe{flex:1;width:100%;border:none;display:block;min-height:0}
 
-/* SCREENER WIDGET */
-.scr-outer{position:relative;width:100%;height:100%;display:flex;flex-direction:column}
-.scr-iframe{flex:1;width:100%;border:none;display:block;min-height:0}
-/* Always-visible ticker input bar at the bottom — never blocks scrolling */
-.scr-bar{flex-shrink:0;background:var(--s2);border-top:1px solid var(--b1);padding:4px 6px}
-.scr-bar-inp{width:100%;background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:4px 8px;outline:none;transition:border-color .15s}
-.scr-bar-inp:focus{border-color:var(--ac);background:var(--s2)}
-.scr-bar-inp::placeholder{color:var(--dim)}
+/* TOAST */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#f59e0b;color:#000;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;padding:8px 18px;border-radius:6px;z-index:9999;box-shadow:0 4px 20px #00000066;pointer-events:none;opacity:0;transition:opacity .3s}
 
 .up{color:var(--gr)}.dn{color:var(--rd)}
 </style>
 </head>
 <body>
-<div id="popup-blocked-toast"></div>
+<div id="toast"></div>
 
 <!-- LOGIN WALL -->
 <div id="loginWall" style="position:fixed;inset:0;background:#07080f;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px">
@@ -275,7 +277,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
   </div>
   <div id="signupForm" style="display:none;background:#0c0d1a;border:1px solid #242538;border-radius:10px;padding:24px;min-width:320px;flex-direction:column;gap:12px">
     <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:2px">Request Access</div>
-    <div style="font-size:10px;color:#606172;margin-bottom:4px">Create your account — admin approval required before you can sign in.</div>
+    <div style="font-size:10px;color:#606172;margin-bottom:4px">Create your account — admin approval required.</div>
     <input id="regEmail" type="email" placeholder="Your email address"
       style="background:#111220;border:1px solid #242538;border-radius:6px;color:#e0e1f0;font-family:'DM Mono',monospace;font-size:12px;padding:8px 12px;outline:none;width:100%"/>
     <input id="regPass" type="password" placeholder="Choose a password (min 6 chars)"
@@ -302,7 +304,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
     </div>
     <div class="hright">
       <button class="hbtn" onclick="openProfileModal()">👤 Profiles</button>
-      <button class="hbtn" onclick="logout()" title="Sign out" style="font-size:9px">⏻ Sign Out</button>
+      <button class="hbtn" onclick="logout()" style="font-size:9px">⏻ Sign Out</button>
       <div class="wm-wrap">
         <button class="add-widget-btn" id="addWidgetBtn">+ Add Widget</button>
         <div class="widget-menu" id="widgetMenu">
@@ -327,23 +329,23 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
     <span class="hist-label" id="histLabel" style="display:none">History:</span>
   </div>
 
-  <div class="canvas" id="canvas">
-    <div id="grid"></div>
-  </div>
+  <div class="canvas" id="canvas"><div id="grid"></div></div>
 
   <!-- BOTTOM CHART PANEL -->
   <div id="chartPanel">
     <div id="chartPanelBar" onclick="toggleChartPanel()">
       <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ac);flex-shrink:0"><polyline points="1,12 5,7 8,10 12,4 15,6"/></svg>
-      <span id="chartPanelSym" style="color:var(--mu)">No chart</span>
-      <span id="chartPanelPx"></span>
-      <span id="chartPanelChg"></span>
-      <span id="chartPanelLabel">Click any stock to open chart here ↑</span>
-      <span id="chartPanelToggle">▲</span>
+      <span id="cpSym">—</span>
+      <span id="cpPx"></span>
+      <span id="cpChg"></span>
+      <span id="cpLabel">Click any stock to open chart ↑</span>
+      <button id="cpPopup" onclick="event.stopPropagation();openTVPopup()" title="Open full TradingView in popup">⤢ Popup</button>
+      <span id="cpToggle">▲</span>
     </div>
-    <iframe id="chartPanelIframe" src="about:blank" allowtransparency="true"></iframe>
+    <iframe id="chartPanelIframe" src="about:blank" allowtransparency="true" allow="fullscreen"></iframe>
   </div>
 
+  <!-- PROFILE MODAL -->
   <div class="modal-bg" id="profileModal">
     <div class="modal">
       <h2>👤 Profiles</h2>
@@ -354,23 +356,23 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
       <div class="profile-list" id="profileList"></div>
       <div class="ws-row">
         <span class="ws-label">New Profile Name</span>
-        <input class="modal-input" id="newProfileName" placeholder="e.g. Morning Session, Crypto…"/>
+        <input class="modal-input" id="newProfileName" placeholder="e.g. Morning Session…"/>
       </div>
       <div class="modal-footer">
         <button class="modal-btn sec" onclick="closeProfileModal()">Cancel</button>
-        <button class="modal-btn pri" onclick="saveNewProfile()">💾 Save Current Layout</button>
+        <button class="modal-btn pri" onclick="saveNewProfile()">💾 Save Layout</button>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-// ── SUPABASE
+// ─────────────────────────────────────────────
+// SUPABASE AUTH
+// ─────────────────────────────────────────────
 const SUPA_URL='https://yklxpcatopitwjzutolj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrbHhwY2F0b3BpdHdqenV0b2xqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MDYyMTEsImV4cCI6MjA5NjM4MjIxMX0.KJotgJpSLziUvdZkUb66tV7vZXPEfMOjGOij2-vmk6Q';
-async function supaFetch(path,opts={}){
-  return fetch(SUPA_URL+path,{...opts,headers:{'apikey':SUPA_KEY,'Content-Type':'application/json',...(opts.headers||{})}});
-}
+const sf=(p,o={})=>fetch(SUPA_URL+p,{...o,headers:{'apikey':SUPA_KEY,'Content-Type':'application/json',...(o.headers||{})}});
 
 async function tryLogin(){
   const email=document.getElementById('loginEmail').value.trim();
@@ -380,66 +382,59 @@ async function tryLogin(){
   if(!email||!pass){err.textContent='Please enter email and password.';err.style.display='block';return;}
   btn.textContent='Signing in…';btn.disabled=true;
   try{
-    const r=await supaFetch('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password:pass})});
+    const r=await sf('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password:pass})});
     const d=await r.json();
-    if(!r.ok){err.textContent=d.error_description||d.msg||'Invalid email or password.';err.style.display='block';btn.textContent='Sign In →';btn.disabled=false;return;}
-    const profR=await supaFetch('/rest/v1/profiles?select=approved&id=eq.'+d.user.id,{headers:{'Authorization':'Bearer '+d.access_token}});
-    const prof=await profR.json();
-    if(!prof?.[0]?.approved){err.textContent='Your account is pending admin approval.';err.style.display='block';btn.textContent='Sign In →';btn.disabled=false;return;}
+    if(!r.ok){err.textContent=d.error_description||'Invalid email or password.';err.style.display='block';btn.textContent='Sign In →';btn.disabled=false;return;}
+    const pr=await sf('/rest/v1/profiles?select=approved&id=eq.'+d.user.id,{headers:{'Authorization':'Bearer '+d.access_token}});
+    const prof=await pr.json();
+    if(!prof?.[0]?.approved){err.textContent='Pending admin approval.';err.style.display='block';btn.textContent='Sign In →';btn.disabled=false;return;}
     sessionStorage.setItem('sv_token',d.access_token);
-    sessionStorage.setItem('sv_user_email',d.user.email);
-    sessionStorage.setItem('sv_user_id',d.user.id);
+    sessionStorage.setItem('sv_uid',d.user.id);
+    sessionStorage.setItem('sv_email',d.user.email);
     showApp();
-  }catch(e){err.textContent='Connection error. Try again.';err.style.display='block';btn.textContent='Sign In →';btn.disabled=false;}
+  }catch(e){err.textContent='Connection error.';err.style.display='block';btn.textContent='Sign In →';btn.disabled=false;}
 }
 async function trySignup(){
   const email=document.getElementById('regEmail').value.trim();
   const pass=document.getElementById('regPass').value.trim();
   const msg=document.getElementById('regMsg');
-  if(!email||!pass){msg.style.color='#f0506e';msg.textContent='Please fill in all fields.';msg.style.display='block';return;}
-  if(pass.length<6){msg.style.color='#f0506e';msg.textContent='Password must be at least 6 characters.';msg.style.display='block';return;}
+  if(!email||!pass){msg.style.color='#f0506e';msg.textContent='Fill in all fields.';msg.style.display='block';return;}
+  if(pass.length<6){msg.style.color='#f0506e';msg.textContent='Password min 6 chars.';msg.style.display='block';return;}
   try{
-    const r=await supaFetch('/auth/v1/signup',{method:'POST',body:JSON.stringify({email,password:pass})});
+    const r=await sf('/auth/v1/signup',{method:'POST',body:JSON.stringify({email,password:pass})});
     const d=await r.json();
-    if(!r.ok){msg.style.color='#f0506e';msg.textContent=d.error_description||d.msg||'Signup failed.';msg.style.display='block';return;}
-    if(d.user?.id)await supaFetch('/rest/v1/profiles',{method:'POST',headers:{'Authorization':'Bearer '+d.access_token,'Prefer':'return=minimal'},body:JSON.stringify({id:d.user.id,email,approved:false})});
-    msg.style.color='#19c48a';msg.textContent='Account created! Waiting for admin approval.';msg.style.display='block';
-    document.getElementById('regEmail').value='';document.getElementById('regPass').value='';
+    if(!r.ok){msg.style.color='#f0506e';msg.textContent=d.error_description||'Signup failed.';msg.style.display='block';return;}
+    if(d.user?.id)await sf('/rest/v1/profiles',{method:'POST',headers:{'Authorization':'Bearer '+d.access_token,'Prefer':'return=minimal'},body:JSON.stringify({id:d.user.id,email,approved:false})});
+    msg.style.color='#19c48a';msg.textContent='Account created! Waiting for approval.';msg.style.display='block';
     setTimeout(()=>showLogin(),4000);
   }catch(e){msg.style.color='#f0506e';msg.textContent='Connection error.';msg.style.display='block';}
 }
 function showSignup(){document.getElementById('loginForm').style.display='none';document.getElementById('signupForm').style.display='flex';}
 function showLogin(){document.getElementById('signupForm').style.display='none';document.getElementById('loginForm').style.display='flex';document.getElementById('loginErr').style.display='none';}
-function showApp(){
-  document.getElementById('loginWall').style.display='none';
-  document.getElementById('mainApp').style.display='flex';
-  setTimeout(()=>init(),50);
-}
-function checkAuth(){
-  if(sessionStorage.getItem('sv_token')){showApp();return true;}
-  document.getElementById('loginWall').style.display='flex';
-  return false;
-}
-function logout(){sessionStorage.clear();window.location.reload();}
+function showApp(){document.getElementById('loginWall').style.display='none';document.getElementById('mainApp').style.display='flex';setTimeout(init,50);}
+function checkAuth(){if(sessionStorage.getItem('sv_token')){showApp();return true;}document.getElementById('loginWall').style.display='flex';return false;}
+function logout(){sessionStorage.clear();location.reload();}
 
-// ── CONSTANTS
+// ─────────────────────────────────────────────
+// CONSTANTS & STATE
+// ─────────────────────────────────────────────
 const FHK='d8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
 const SNAP=20;
+const SCREENER_TYPES=['gainers','losers','active','premarket'];
 const WIDGET_TYPES={
   history:'📋 History',gainers:'🚀 Top Gainers',losers:'📉 Top Losers',
   active:'🔥 Most Active',premarket:'🌅 Pre-Market',
   scanner:'🎯 5 Pillars Scanner',alerts:'🔔 Alerts',news:'📰 News'
 };
-
-
-
+const SCR_SCREENS={gainers:'top_gainers',losers:'top_losers',active:'most_capitalized',premarket:'pre_market_gainers'};
 const DEFAULT_WIDGETS=[
-  {id:'w1',type:'gainers', x:20, y:20, w:460,h:340},
-  {id:'w2',type:'active',  x:20, y:380,w:460,h:340},
-  {id:'w3',type:'scanner', x:500,y:20, w:440,h:700},
-  {id:'w4',type:'news',    x:960,y:20, w:320,h:700},
-  {id:'w5',type:'history', x:1300,y:20,w:220,h:700},
+  {id:'w1',type:'gainers', x:20,  y:20,  w:460,h:340},
+  {id:'w2',type:'active',  x:20,  y:380, w:460,h:340},
+  {id:'w3',type:'scanner', x:500, y:20,  w:440,h:700},
+  {id:'w4',type:'news',    x:960, y:20,  w:320,h:700},
+  {id:'w5',type:'history', x:1300,y:20,  w:220,h:700},
 ];
+const LAYOUT_VER='v6';
 
 const Q={};
 let CUR=localStorage.getItem('sv_s')||'AAPL';
@@ -449,17 +444,15 @@ let histSyms=JSON.parse(localStorage.getItem('sv_hist')||'[]');
 let fhWS=null;
 let srt=null,hlt=-1,flt=[];
 let wIdC=100;
-let newsWin=null;
-
-
+let tvWin=null,newsWin=null;
+let curChartSym='';
 let profiles=JSON.parse(localStorage.getItem('sv_profiles')||'[]');
 let activeProfileId=localStorage.getItem('sv_active_profile')||null;
-const LAYOUT_VERSION='v6';
 
 function getWidgets(){
   if(activeProfileId){const p=profiles.find(x=>x.id===activeProfileId);if(p?.widgets)return p.widgets;}
   const saved=localStorage.getItem('sv_widgets5'),ver=localStorage.getItem('sv_layout_ver');
-  if(!saved||ver!==LAYOUT_VERSION){localStorage.setItem('sv_layout_ver',LAYOUT_VERSION);localStorage.removeItem('sv_widgets5');return JSON.parse(JSON.stringify(DEFAULT_WIDGETS));}
+  if(!saved||ver!==LAYOUT_VER){localStorage.setItem('sv_layout_ver',LAYOUT_VER);localStorage.removeItem('sv_widgets5');return JSON.parse(JSON.stringify(DEFAULT_WIDGETS));}
   return JSON.parse(saved);
 }
 function saveWidgets(){
@@ -469,7 +462,9 @@ function saveWidgets(){
 }
 let widgets=getWidgets();
 
-// ── PROFILES
+// ─────────────────────────────────────────────
+// PROFILES
+// ─────────────────────────────────────────────
 function openProfileModal(){renderProfileList();document.getElementById('profileModal').classList.add('open');}
 function closeProfileModal(){document.getElementById('profileModal').classList.remove('open');}
 function renderProfileList(){
@@ -487,27 +482,24 @@ function renderProfileList(){
 }
 async function approveRequest(userId,btn){
   btn.textContent='…';btn.disabled=true;
-  const token=sessionStorage.getItem('sv_token');
-  const r=await supaFetch('/rest/v1/profiles?id=eq.'+userId,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},body:JSON.stringify({approved:true})});
-  if(r.ok)renderPendingUsers();
-  else{btn.textContent='Err';btn.disabled=false;}
+  const r=await sf('/rest/v1/profiles?id=eq.'+userId,{method:'PATCH',headers:{'Authorization':'Bearer '+sessionStorage.getItem('sv_token'),'Prefer':'return=minimal'},body:JSON.stringify({approved:true})});
+  if(r.ok)renderPendingUsers(); else btn.textContent='Err';
 }
 async function renderPendingUsers(){
   const token=sessionStorage.getItem('sv_token');if(!token)return;
-  const r=await supaFetch('/rest/v1/profiles?select=id,email,approved,created_at&order=created_at',{headers:{'Authorization':'Bearer '+token}});
+  const r=await sf('/rest/v1/profiles?select=id,email,approved,created_at&order=created_at',{headers:{'Authorization':'Bearer '+token}});
   const users=await r.json();
   const pending=(users||[]).filter(u=>!u.approved);
-  const adminPanel=document.getElementById('adminPanel');
-  const pendingEl=document.getElementById('pendingRequests');
-  if(!adminPanel)return;
+  const ap=document.getElementById('adminPanel'),pe=document.getElementById('pendingRequests');
+  if(!ap)return;
   if(pending.length){
-    adminPanel.style.display='block';
-    pendingEl.innerHTML=pending.map(u=>`
+    ap.style.display='block';
+    pe.innerHTML=pending.map(u=>`
       <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--s2);border:1px solid var(--b2);border-radius:5px;margin-bottom:4px">
         <div><div style="font-size:11px;color:var(--tx)">${u.email}</div><div style="font-size:9px;color:var(--mu)">${new Date(u.created_at).toLocaleDateString()}</div></div>
         <button onclick="approveRequest('${u.id}',this)" style="background:var(--gr);border:none;border-radius:4px;color:#000;font-family:'DM Mono',monospace;font-size:8px;padding:3px 8px;cursor:pointer">✓ Approve</button>
       </div>`).join('');
-  }else adminPanel.style.display='none';
+  } else ap.style.display='none';
 }
 function saveNewProfile(){
   const name=document.getElementById('newProfileName').value.trim();if(!name)return;
@@ -531,7 +523,9 @@ function deleteProfile(id){
   renderProfileList();
 }
 
-// ── CLOCK
+// ─────────────────────────────────────────────
+// CLOCK
+// ─────────────────────────────────────────────
 function tick(){
   const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
   const p=n=>String(n).padStart(2,'0');
@@ -546,7 +540,9 @@ function tick(){
 }
 setInterval(tick,1000);tick();
 
-// ── HISTORY BAR
+// ─────────────────────────────────────────────
+// HISTORY BAR
+// ─────────────────────────────────────────────
 function addToHistory(sym){
   histSyms=histSyms.filter(s=>s!==sym);histSyms.unshift(sym);
   if(histSyms.length>15)histSyms=histSyms.slice(0,15);
@@ -567,68 +563,68 @@ function renderHistBar(){
   });
 }
 
-// ── BOTTOM CHART PANEL — loads TradingView chart inline, no popup/tab
+// ─────────────────────────────────────────────
+// BOTTOM CHART PANEL
+// ─────────────────────────────────────────────
 function openChartPanel(sym){
   let tvSym=sym;
   if(sym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
   else if(sym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
-  // Use advanced-chart embed — real-time data, full toolbar
+  curChartSym=sym;
+  // advanced-chart embed — shows pre/after hours, full toolbar
   const cfg=encodeURIComponent(JSON.stringify({
-    autosize:true, symbol:tvSym, interval:'1', timezone:'America/New_York',
-    theme:'dark', style:'1', locale:'en', toolbar_bg:'#0c0d1a',
-    enable_publishing:false, withdateranges:true, hide_side_toolbar:false,
-    allow_symbol_change:true, save_image:false, calendar:false, support_host:'https://www.tradingview.com'
+    autosize:true,symbol:tvSym,interval:'1',timezone:'America/New_York',
+    theme:'dark',style:'1',locale:'en',toolbar_bg:'#0c0d1a',
+    enable_publishing:false,withdateranges:true,hide_side_toolbar:false,
+    allow_symbol_change:true,save_image:false,calendar:false,
+    hide_volume:false,support_host:'https://www.tradingview.com'
   }));
-  const url=`https://www.tradingview.com/embed-widget/advanced-chart/?locale=en#${cfg}`;
+  document.getElementById('chartPanelIframe').src=`https://www.tradingview.com/embed-widget/advanced-chart/?locale=en#${cfg}`;
+  const symEl=document.getElementById('cpSym');
+  symEl.textContent=sym;symEl.style.color='#fff';
+  document.getElementById('cpLabel').textContent='TradingView · pre/after hours included';
+  updateChartPanelPrice();
   const panel=document.getElementById('chartPanel');
-  const iframe=document.getElementById('chartPanelIframe');
-  const symEl=document.getElementById('chartPanelSym');
-  const pxEl=document.getElementById('chartPanelPx');
-  const chgEl=document.getElementById('chartPanelChg');
-  const lblEl=document.getElementById('chartPanelLabel');
-  iframe.src=url;
-  symEl.style.color='#fff';
-  symEl.textContent=sym;
-  lblEl.textContent='TradingView · real-time';
-  const q=Q[sym];
-  if(q){
-    const u=(q.changePct||0)>=0;
-    pxEl.textContent='$'+fmtP(q.price);
-    pxEl.className=u?'up':'dn';
-    chgEl.textContent=(u?'+':'')+q.changePct.toFixed(2)+'%';
-    chgEl.className=u?'up':'dn';
-  } else {
-    pxEl.textContent='';chgEl.textContent='';
-  }
   if(!panel.classList.contains('open'))panel.classList.add('open');
 }
-function toggleChartPanel(){
-  document.getElementById('chartPanel').classList.toggle('open');
-}
-// Update chart panel price display when prices refresh
+function toggleChartPanel(){document.getElementById('chartPanel').classList.toggle('open');}
 function updateChartPanelPrice(){
-  const sym=document.getElementById('chartPanelSym')?.textContent;
-  if(!sym||sym==='No chart')return;
-  const q=Q[sym];if(!q)return;
+  if(!curChartSym)return;
+  const q=Q[curChartSym];if(!q)return;
   const u=(q.changePct||0)>=0;
-  const pxEl=document.getElementById('chartPanelPx');
-  const chgEl=document.getElementById('chartPanelChg');
-  if(pxEl){pxEl.textContent='$'+fmtP(q.price);pxEl.className=u?'up':'dn';}
-  if(chgEl){chgEl.textContent=(u?'+':'')+q.changePct.toFixed(2)+'%';chgEl.className=u?'up':'dn';}
+  const px=document.getElementById('cpPx'),chg=document.getElementById('cpChg');
+  if(px){px.textContent='$'+fmtP(q.price);px.className=u?'up':'dn';}
+  if(chg){chg.textContent=(u?'+':'')+q.changePct.toFixed(2)+'%';chg.className=u?'up':'dn';}
+}
+// Popup — full TradingView.com in reusable popup window (guaranteed live feed)
+function openTVPopup(){
+  if(!curChartSym)return;
+  let tvSym=curChartSym;
+  if(curChartSym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
+  else if(curChartSym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
+  const url='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSym)+'&interval=1&theme=dark';
+  const pw=Math.floor(screen.width*.72),ph=Math.floor(screen.height*.85);
+  const pl=Math.floor((screen.width-pw)/2),pt=Math.floor((screen.height-ph)/10);
+  const feat=`width=${pw},height=${ph},left=${pl},top=${pt},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=no`;
+  try{if(tvWin&&!tvWin.closed){tvWin.location.href=url;tvWin.focus();return;}}catch(e){}
+  tvWin=window.open(url,'StockViewTV',feat);
+  if(!tvWin||tvWin.closed)showToast('⚠ Allow popups for this site in your browser settings');
 }
 function openNewsPopup(url){
   const w=Math.floor(screen.width*.65),h=Math.floor(screen.height*.85);
   const l=Math.floor((screen.width-w)/2),t=Math.floor((screen.height-h)/10);
   if(newsWin&&!newsWin.closed){newsWin.location.href=url;newsWin.focus();}
-  else newsWin=window.open(url,'StockViewNews',`width=${w},height=${h},left=${l},top=${t},resizable=yes,scrollbars=yes,toolbar=yes,menubar=no,location=yes`);
+  else newsWin=window.open(url,'StockViewNews',`width=${w},height=${h},left=${l},top=${t},resizable=yes,scrollbars=yes,toolbar=yes,location=yes`);
 }
 function showToast(msg){
-  const t=document.getElementById('popup-blocked-toast');
+  const t=document.getElementById('toast');
   t.textContent=msg;t.style.opacity='1';
-  clearTimeout(t._timer);t._timer=setTimeout(()=>t.style.opacity='0',4000);
+  clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',4000);
 }
 
-// ── PRICES
+// ─────────────────────────────────────────────
+// PRICES & WEBSOCKET
+// ─────────────────────────────────────────────
 function fmtP(p){return p?parseFloat(p).toFixed(2):'—';}
 function fmtV(n){if(!n||n<1)return'—';if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return''+n;}
 
@@ -644,10 +640,10 @@ async function fetchQ(sym){
 }
 
 function connectFinnhubWS(){
-  const allSyms=[...new Set([...histSyms,...scanSyms,...alts.map(a=>a.sym)])];
+  const syms=[...new Set([...histSyms,...scanSyms,...alts.map(a=>a.sym)])];
   try{
     fhWS=new WebSocket(`wss://ws.finnhub.io?token=${FHK}`);
-    fhWS.onopen=()=>allSyms.forEach(s=>fhWS.send(JSON.stringify({type:'subscribe',symbol:s})));
+    fhWS.onopen=()=>syms.forEach(s=>fhWS.send(JSON.stringify({type:'subscribe',symbol:s})));
     fhWS.onmessage=e=>{
       const msg=JSON.parse(e.data);
       if(msg.type==='trade'&&msg.data){
@@ -658,23 +654,25 @@ function connectFinnhubWS(){
             high:Math.max(Q[sym].high||px,px),low:Math.min(Q[sym].low||px,px)};
           refreshHistWidgets();liveScanUpdate();checkAlerts();
         });
-        renderHistBar();
-        updateChartPanelPrice();
+        renderHistBar();updateChartPanelPrice();
       }
     };
     fhWS.onclose=()=>setTimeout(connectFinnhubWS,5000);
     fhWS.onerror=()=>fhWS.close();
   }catch(e){}
 }
-
 async function refreshPrices(){
-  const syms=[...new Set([...histSyms.slice(0,8),...scanSyms])];
-  for(const sym of syms){await fetchQ(sym);refreshHistWidgets();liveScanUpdate();await new Promise(r=>setTimeout(r,250));}
+  for(const sym of [...new Set([...histSyms.slice(0,8),...scanSyms])]){
+    await fetchQ(sym);refreshHistWidgets();liveScanUpdate();
+    await new Promise(r=>setTimeout(r,250));
+  }
   renderHistBar();
 }
 setInterval(refreshPrices,15000);
 
-// ── SELECT SYM — every stock click in the whole app goes through here
+// ─────────────────────────────────────────────
+// SELECT SYM — central click handler for EVERY stock click
+// ─────────────────────────────────────────────
 async function selectSym(sym){
   sym=sym.toUpperCase().trim();if(!sym)return;
   if(sym==='BTC'||sym==='BITCOIN')sym='BTC/USD';
@@ -683,11 +681,11 @@ async function selectSym(sym){
   const si=document.getElementById('si');if(si)si.value='';
   closeDrop();
   if(!Q[sym])await fetchQ(sym);
-  addToHistory(sym);
+  addToHistory(sym);                   // always add to history
   if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
   refreshHistWidgets();renderHistBar();
   widgets.filter(w=>w.type==='news').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderNews(b,sym);});
-  openChartPanel(sym);
+  openChartPanel(sym);                 // open in bottom panel
 }
 
 function refreshHistWidgets(){
@@ -695,19 +693,21 @@ function refreshHistWidgets(){
   updateChartPanelPrice();
 }
 
-
-// ── WIDGET SYSTEM
+// ─────────────────────────────────────────────
+// WIDGET SYSTEM
+// ─────────────────────────────────────────────
 function addWidget(type){
   const id='w'+(++wIdC);
-  const canvas=document.getElementById('canvas');
-  const cx=canvas.scrollLeft+60+Math.random()*80,cy=canvas.scrollTop+60+Math.random()*60;
-  widgets.push({id,type,x:Math.round(cx/SNAP)*SNAP,y:Math.round(cy/SNAP)*SNAP,w:280,h:320});
+  const cv=document.getElementById('canvas');
+  const x=Math.round((cv.scrollLeft+60+Math.random()*80)/SNAP)*SNAP;
+  const y=Math.round((cv.scrollTop+60+Math.random()*60)/SNAP)*SNAP;
+  widgets.push({id,type,x,y,w:280,h:320});
   saveWidgets();renderWidget(widgets[widgets.length-1]);
   document.getElementById('widgetMenu').classList.remove('open');
 }
 function removeWidget(id){
   widgets=widgets.filter(w=>w.id!==id);saveWidgets();
-  const el=document.getElementById(id);if(el)el.remove();
+  document.getElementById(id)?.remove();
 }
 function resetWidgetSettings(id){
   const w=widgets.find(x=>x.id===id);if(!w)return;
@@ -727,6 +727,7 @@ function renderWidget(wData){
 }
 function widgetHTML(w){
   const title=w.label||WIDGET_TYPES[w.type]||w.type;
+  const isScrType=SCREENER_TYPES.includes(w.type);
   return `<div class="wh">
     ${w.pinned?'<span class="pin-ind">📌</span>':''}
     <span class="wh-title">${title}</span>
@@ -738,25 +739,25 @@ function widgetHTML(w){
           <select class="ws-select" id="wst-${w.id}">${Object.entries(WIDGET_TYPES).map(([k,v])=>`<option value="${k}"${w.type===k?' selected':''}>${v}</option>`).join('')}</select>
         </div>
         <div class="ws-toggle" onclick="togglePin('${w.id}')">
-          <span class="ws-tl">📌 Pin (lock position)</span>
+          <span class="ws-tl">📌 Pin widget</span>
           <button class="ws-tb${w.pinned?' on':''}" id="wspin-${w.id}"></button>
         </div>
-        <button class="ws-save" onclick="saveWS('${w.id}')">✓ Save Settings</button>
-        <button class="ws-reset" onclick="resetWidgetSettings('${w.id}')">↺ Reset Filters</button>
-        <button class="ws-del" onclick="removeWidget('${w.id}')">✕ Remove Widget</button>
+        <button class="ws-save" onclick="saveWS('${w.id}')">✓ Save</button>
+        <button class="ws-reset" onclick="resetWidgetSettings('${w.id}')">↺ Reset</button>
+        <button class="ws-del" onclick="removeWidget('${w.id}')">✕ Remove</button>
       </div>
     </div>
     <button class="wh-btn" onclick="removeWidget('${w.id}')">✕</button>
   </div>
-  <div class="wb${['gainers','losers','active','premarket'].includes(w.type)?' iframe-body':''}" id="wb-${w.id}"></div>
+  <div class="wb${isScrType?' scr-body-wrap':''}" id="wb-${w.id}"></div>
   <div class="resize-br"></div>`;
 }
 function toggleWS(id,e){
   e.stopPropagation();
   const p=document.getElementById('wsp-'+id);if(!p)return;
-  const isOpen=p.classList.contains('open');
+  const open=p.classList.contains('open');
   document.querySelectorAll('.ws-panel.open').forEach(x=>x.classList.remove('open'));
-  if(!isOpen)p.classList.add('open');
+  if(!open)p.classList.add('open');
 }
 function togglePin(id){
   const w=widgets.find(x=>x.id===id);if(!w)return;
@@ -769,7 +770,7 @@ function saveWS(id){
   const lbl=document.getElementById('wsl-'+id)?.value.trim();
   const tp=document.getElementById('wst-'+id)?.value;
   if(lbl)w.label=lbl;
-  const changed=tp&&tp!==w.type;if(changed)w.type=tp;
+  if(tp&&tp!==w.type)w.type=tp;
   saveWidgets();
   const el=document.getElementById(id);
   if(el){el.innerHTML=widgetHTML(w);makeDraggable(el,w);makeResizable(el,w);populateWidget(el,w);if(w.pinned)el.classList.add('pinned');}
@@ -781,21 +782,25 @@ function populateWidget(el,w){
   else if(w.type==='alerts')renderAL(body);
   else if(w.type==='news')renderNews(body,CUR);
   else if(w.type==='scanner')renderScanner(body);
-  else renderScreener(body,w.type);
+  else if(SCREENER_TYPES.includes(w.type))renderScreener(body,w.type);
 }
 
-// ── HISTORY WIDGET
+// ─────────────────────────────────────────────
+// HISTORY WIDGET
+// ─────────────────────────────────────────────
 function renderHistory(body){
   if(!histSyms.length){
-    body.innerHTML='<div style="font-size:10px;color:var(--mu);text-align:center;padding:20px;line-height:1.8">Click any stock ticker<br>to build your history.</div>';
+    body.innerHTML='<div style="font-size:10px;color:var(--mu);text-align:center;padding:20px;line-height:1.8">Click any stock<br>to build your history.</div>';
     return;
   }
   body.innerHTML=histSyms.map(sym=>{
     const q=Q[sym],u=(q?.changePct||0)>=0;
     return `<div class="wi${sym===CUR?' ac':''}" onclick="selectSym('${sym}')">
       <div class="wil"><span class="wis">${sym}</span><span class="win">${q?.name||'—'}</span></div>
-      <div class="wir"><div class="wip">${q?'$'+fmtP(q.price):'—'}</div>
-      <div class="wic ${u?'up':'dn'}">${q?(u?'+':'')+((q.changePct||0).toFixed(2))+'%':'—'}</div></div>
+      <div class="wir">
+        <div class="wip">${q?'$'+fmtP(q.price):'—'}</div>
+        <div class="wic ${u?'up':'dn'}">${q?(u?'+':'')+q.changePct.toFixed(2)+'%':'—'}</div>
+      </div>
       <button class="wid" onclick="event.stopPropagation();removeFromHistory('${sym}')">✕</button>
     </div>`;
   }).join('');
@@ -805,43 +810,50 @@ function removeFromHistory(sym){
   renderHistBar();refreshHistWidgets();
 }
 
-// ── SCREENERS — TradingView iframes
-// No overlay (would block scrolling). Instead a slim always-visible input bar
-// sits below the iframe — type ticker + Enter to open in bottom chart panel.
-const SCREENER_SCREENS={gainers:'top_gainers',losers:'top_losers',active:'most_capitalized',premarket:'pre_market_gainers'};
+// ─────────────────────────────────────────────
+// SCREENER WIDGETS — TradingView iframe + input bar
+// The iframe shows LIVE market-wide data (pre/after hours included with TV Essential)
+// Input bar lets you type any ticker you see → Enter → loads chart + adds to history
+// ─────────────────────────────────────────────
 function renderScreener(body,type){
-  body.style.padding='0';body.style.overflow='hidden';body.style.display='flex';body.style.flexDirection='column';
-  const screen=SCREENER_SCREENS[type];
-  if(!screen){body.innerHTML='<div style="padding:20px;text-align:center;font-size:10px;color:var(--mu)">Unknown screener</div>';return;}
-  const params=encodeURIComponent(JSON.stringify({width:'100%',height:'100%',defaultColumn:'overview',defaultScreen:screen,market:'america',showToolbar:true,colorTheme:'dark',locale:'en'}));
-  const uid='scr-'+type+'-'+body.id;
-  body.innerHTML=`<div class="scr-outer" id="${uid}">
-    <iframe class="scr-iframe" scrolling="no" allowtransparency="true" frameborder="0"
-      src="https://www.tradingview.com/embed-widget/screener/?locale=en#${params}"></iframe>
-    <div class="scr-bar">
-      <input class="scr-bar-inp" id="${uid}-sym" placeholder="type ticker → Enter to open chart"
-        maxlength="10" autocomplete="off" spellcheck="false"
-        oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/,'')"
-        onkeydown="handleScrInput(event,'${uid}')"/>
+  const screen=SCR_SCREENS[type];
+  const params=encodeURIComponent(JSON.stringify({
+    width:'100%',height:'100%',defaultColumn:'overview',
+    defaultScreen:screen,market:'america',showToolbar:true,
+    colorTheme:'dark',locale:'en'
+  }));
+  const uid='s'+type+body.id.replace(/\W/g,'');
+  body.innerHTML=`
+    <div class="scr-iframe-wrap">
+      <iframe scrolling="no" allowtransparency="true" frameborder="0"
+        src="https://www.tradingview.com/embed-widget/screener/?locale=en#${params}"></iframe>
     </div>
-  </div>`;
+    <div class="scr-input-bar">
+      <label>→ OPEN CHART:</label>
+      <input class="scr-inp" id="${uid}" placeholder="type ticker, press Enter"
+        maxlength="10" autocomplete="off" spellcheck="false"
+        oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'')"
+        onkeydown="scrInputKey(event,'${uid}')"/>
+      <button class="scr-go" onclick="scrGo('${uid}')">Go ↵</button>
+    </div>`;
 }
-function handleScrInput(e,uid){
-  if(e.key==='Enter'){
-    const sym=document.getElementById(uid+'-sym')?.value.trim();
-    if(sym){
-      document.getElementById(uid+'-sym').value='';
-      selectSym(sym);
-    }
-  }
-  // Esc just blurs — doesn't break scrolling
-  if(e.key==='Escape') document.getElementById(uid+'-sym')?.blur();
+function scrInputKey(e,uid){
+  if(e.key==='Enter'){e.preventDefault();scrGo(uid);}
+  // Esc blurs — never traps the user
+  if(e.key==='Escape'){document.getElementById(uid)?.blur();}
+}
+function scrGo(uid){
+  const inp=document.getElementById(uid);
+  const sym=inp?.value.trim();
+  if(sym){inp.value='';selectSym(sym);}
+  else inp?.focus();
 }
 
-// ── 5 PILLARS SCANNER
+// ─────────────────────────────────────────────
+// 5 PILLARS SCANNER
+// ─────────────────────────────────────────────
 const scanCache={};
 let scanDeepRunning=false;
-
 function renderScanner(body){
   const bid=body.id;
   body.innerHTML=`<div class="scan-filters">
@@ -863,8 +875,8 @@ function renderScanner(body){
       <button onclick="addScanSym('${bid}')" style="background:var(--ac);border:none;border-radius:4px;color:#fff;font-size:12px;width:22px;cursor:pointer">+</button>
     </div>
   </div>
-  <div id="${bid}-res"><div class="scan-empty">⚡ Scanning…<br><span style="font-size:8px;color:var(--dim)">Stocks passing 4/5 pillars will appear here</span></div></div>`;
-  setTimeout(()=>startDeepScan(),400);
+  <div id="${bid}-res"><div class="scan-empty">⚡ Scanning…<br><span style="font-size:8px;color:var(--dim)">Stocks passing 4/5 pillars appear here</span></div></div>`;
+  setTimeout(startDeepScan,400);
 }
 function getScanSyms(){return[...new Set([...histSyms,...scanSyms])];}
 function saveScanSyms(){localStorage.setItem('sv_scan',JSON.stringify(scanSyms));}
@@ -882,25 +894,23 @@ function rmScanSym(sym){
 }
 function liveScanUpdate(){
   widgets.filter(w=>w.type==='scanner').forEach(w=>{
-    const bid='wb-'+w.id;
-    const res=document.getElementById(bid+'-res');if(!res)return;
+    const bid='wb-'+w.id,res=document.getElementById(bid+'-res');if(!res)return;
     const minP=parseFloat(document.getElementById(bid+'-minp')?.value)||1;
     const maxP=parseFloat(document.getElementById(bid+'-maxp')?.value)||20;
-    const baseMinC=parseFloat(document.getElementById(bid+'-chg')?.value)||10;
-    const session=document.getElementById('sessbdg')?.textContent||'';
-    const minC=session.includes('PRE-MARKET')||session.includes('AFTER HOURS')?baseMinC*0.5:baseMinC;
+    const baseC=parseFloat(document.getElementById(bid+'-chg')?.value)||10;
+    const sess=document.getElementById('sessbdg')?.textContent||'';
+    const minC=sess.includes('PRE-MARKET')||sess.includes('AFTER HOURS')?baseC*.5:baseC;
     const results=[];
     getScanSyms().forEach(sym=>{
       const q=Q[sym];if(!q?.price)return;
       const p1=q.price>=minP&&q.price<=maxP;
       const p2=(q.changePct||0)>=minC;
-      const cached=scanCache[sym]||{};
-      const p3=cached.p3??null,p4=cached.p4??null,p5=cached.p5??null;
-      const score=[p1,p2,p3===true,p4===true,p5===true].filter(Boolean).length;
+      const c=scanCache[sym]||{};
+      const score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
       if(score<4)return;
-      results.push({sym,q,p1,p2,p3,p4,p5,score,hasNews:cached.hasNews||false});
+      results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false});
     });
-    if(!results.length){res.innerHTML='<div class="scan-empty">No stocks passing 4/5 pillars yet<br><span style="font-size:8px;color:var(--dim)">Requires 4 of: Price, %Change, News, RVol, Float</span></div>';return;}
+    if(!results.length){res.innerHTML='<div class="scan-empty">No stocks passing 4/5 pillars yet</div>';return;}
     results.sort((a,b)=>b.score-a.score||(b.q.changePct||0)-(a.q.changePct||0));
     const pd=v=>v===true?'pass':v===false?'fail':'na';
     res.innerHTML=results.map(r=>{
@@ -910,11 +920,11 @@ function liveScanUpdate(){
         <span class="scan-px">$${fmtP(r.q.price)}</span>
         <span class="scan-chg ${u?'up':'dn'}">${u?'+':''}${(r.q.changePct||0).toFixed(2)}%</span>
         <div class="scan-pills">
-          <span class="pill ${pd(r.p1)}" title="P1:Price">P1</span>
-          <span class="pill ${pd(r.p2)}" title="P2:Change">P2</span>
+          <span class="pill ${pd(r.p1)}" title="P1:Price $1-$20">P1</span>
+          <span class="pill ${pd(r.p2)}" title="P2:Change%">P2</span>
           <span class="pill ${pd(r.p3)}" title="P3:News">P3</span>
           <span class="pill ${pd(r.p4)}" title="P4:RVol">P4</span>
-          <span class="pill ${pd(r.p5)}" title="P5:Float">P5</span>
+          <span class="pill ${pd(r.p5)}" title="P5:Float<10M">P5</span>
         </div>
         <span class="scan-score ${sc}">${r.score}/5</span>
       </div>`;
@@ -937,14 +947,14 @@ async function startDeepScan(){
       try{
         const r=await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${sym}&metric=all&token=${FHK}`);
         const d=await r.json();
-        const avgV=(d.metric?.['10DayAverageTradingVolume']||0)*1000000;
+        const avgV=(d.metric?.['10DayAverageTradingVolume']||0)*1e6;
         const rVol=avgV>0?(Q[sym]?.volume||0)/avgV:null;
         const rvBase=parseFloat(document.querySelector('[id$="-rv"]')?.value)||5;
         const sess=document.getElementById('sessbdg')?.textContent||'';
-        const rvThresh=sess.includes('PRE-MARKET')||sess.includes('AFTER HOURS')?rvBase*0.4:rvBase;
-        p4=rVol!==null?rVol>=rvThresh:null;
-        const floatVal=d.metric?.['float']??null;
-        p5=floatVal!==null?floatVal<10:null;
+        const rvT=sess.includes('PRE-MARKET')||sess.includes('AFTER HOURS')?rvBase*.4:rvBase;
+        p4=rVol!==null?rVol>=rvT:null;
+        const fv=d.metric?.['float']??null;
+        p5=fv!==null?fv<10:null;
       }catch(e){}
       scanCache[sym]={p3:hasNews,p4,p5,hasNews,ts:Date.now()};
     }catch(e){}
@@ -955,9 +965,11 @@ async function startDeepScan(){
   document.querySelectorAll('[id$="-status"]').forEach(el=>{if(el.closest?.('.widget'))el.textContent=`⚡ Last deep: ${now}`;});
   liveScanUpdate();
 }
-setInterval(()=>startDeepScan(),15000);
+setInterval(startDeepScan,15000);
 
-// ── ALERTS
+// ─────────────────────────────────────────────
+// ALERTS
+// ─────────────────────────────────────────────
 function saveAL(){localStorage.setItem('sv_al',JSON.stringify(alts));}
 function renderAL(body){
   body.innerHTML=`<div class="alf">
@@ -969,7 +981,7 @@ function renderAL(body){
     const cls=a.triggered?'trig':a.active?'on':'off';
     return `<div class="ali"><div class="alil"><div class="ald ${cls}"></div>
       <div><div class="als">${a.sym} <span style="font-size:8px;color:var(--mu)">${a.type}</span></div>
-      <div style="font-size:8px;color:var(--mu)">${a.type.includes('%')?a.val+'%':'$'+a.val}${a.triggered?' <span style="color:var(--gold)">✓</span>':''}</div></div></div>
+      <div style="font-size:8px;color:var(--mu)">${a.type.includes('%')?a.val+'%':'$'+a.val}${a.triggered?' ✓':''}</div></div></div>
       <div style="display:flex;gap:2px">
         <button class="alx" style="color:var(--mu)" onclick="togAL(${a.id})">${a.active?'⏸':'▶'}</button>
         <button class="alx" onclick="delAL(${a.id})">✕</button>
@@ -996,12 +1008,14 @@ function checkAlerts(){
     if(a.type==='% Change Up'&&(q.changePct||0)>=a.val)hit=true;
     if(a.type==='% Change Down'&&(q.changePct||0)<=-a.val)hit=true;
     if(hit){a.triggered=true;ch=true;
-      if(Notification.permission==='granted')new Notification(`🔔 ${a.sym}`,{body:`${a.type} ${a.val}${a.type.includes('%')?'%':''} triggered`});}
+      if(Notification.permission==='granted')new Notification(`🔔 ${a.sym}`,{body:`${a.type} ${a.val}${a.type.includes('%')?'%':''}`});}
   });
   if(ch){saveAL();widgets.filter(w=>w.type==='alerts').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderAL(b);});}
 }
 
-// ── NEWS — ticker clicks → TradingView popup; article clicks → news popup
+// ─────────────────────────────────────────────
+// NEWS
+// ─────────────────────────────────────────────
 async function renderNews(body,sym){
   body.innerHTML='<div class="nlod">Loading…</div>';
   try{
@@ -1015,8 +1029,8 @@ async function renderNews(body,sym){
       const age=timeAgo(new Date(n.datetime*1000));
       const s=n.sentiment>0.1?'p':n.sentiment<-0.1?'n':'u';
       const sl=n.sentiment>0.1?'▲':n.sentiment<-0.1?'▼':'●';
-      const relSym=(n.related||sym).split(',')[0].trim().replace(/[^A-Z0-9./-]/g,'');
-      const safeUrl=n.url.replace(/'/g,"\\'");
+      const relSym=(n.related||sym).split(',')[0].trim().replace(/[^A-Z0-9./\-]/g,'');
+      const safeUrl=(n.url||'').replace(/'/g,"\\'");
       return `<div class="ni" onclick="openNewsPopup('${safeUrl}')">
         <div class="nisym" onclick="event.stopPropagation();selectSym('${relSym}')" title="Open ${relSym} chart">${relSym}<span class="nisen ${s}">${sl}</span></div>
         <div class="nitl">${(n.headline||'').slice(0,90)}${(n.headline||'').length>90?'…':''}</div>
@@ -1027,11 +1041,12 @@ async function renderNews(body,sym){
 }
 function timeAgo(d){const s=Math.floor((Date.now()-d)/1000);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';}
 
-// ── SEARCH — Finnhub (reliable, no CORS issues)
+// ─────────────────────────────────────────────
+// SEARCH
+// ─────────────────────────────────────────────
 const inp=document.getElementById('si');
 const dd=document.getElementById('dd');
 const spin=document.getElementById('sspin');
-
 async function doSearch(q){
   spin.style.display='block';flt=[];
   try{
@@ -1041,20 +1056,18 @@ async function doSearch(q){
       .filter(x=>x.symbol&&x.symbol.length<=10&&!x.symbol.includes('/')
         &&(x.type==='Common Stock'||x.type==='ETP'||x.type==='ADR'||x.type==='DR'||x.type===''))
       .sort((a,b)=>{
-        // Exact matches first, then by symbol length
-        const aExact=a.symbol.toUpperCase()===q.toUpperCase()?0:1;
-        const bExact=b.symbol.toUpperCase()===q.toUpperCase()?0:1;
-        return aExact-bExact||a.symbol.length-b.symbol.length;
-      })
-      .slice(0,10);
+        const ae=a.symbol.toUpperCase()===q.toUpperCase()?0:1;
+        const be=b.symbol.toUpperCase()===q.toUpperCase()?0:1;
+        return ae-be||a.symbol.length-b.symbol.length;
+      }).slice(0,10);
     renderDrop('Results — click to open chart',flt);
-  }catch(e){dd.innerHTML='<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">Search error — check your Finnhub key</div>';}
+  }catch(e){dd.innerHTML='<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">Search error</div>';}
   spin.style.display='none';dd.classList.add('open');
 }
 function showPop(){
   const items=histSyms.slice(0,8).map(s=>({symbol:s,description:Q[s]?.name||s}));
   if(items.length)renderDrop('Recent History',items);
-  else dd.innerHTML='<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">Type to search any stock…</div>';
+  else dd.innerHTML='<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">Type to search…</div>';
   dd.classList.add('open');
 }
 function renderDrop(lbl,items){
@@ -1099,7 +1112,9 @@ document.addEventListener('click',e=>{
 });
 document.getElementById('addWidgetBtn').addEventListener('click',e=>{document.getElementById('widgetMenu').classList.toggle('open');e.stopPropagation();});
 
-// ── DRAG & DROP
+// ─────────────────────────────────────────────
+// DRAG & RESIZE
+// ─────────────────────────────────────────────
 function makeDraggable(el,wData){
   const hdr=el.querySelector('.wh');
   let ox=0,oy=0,sx=0,sy=0,dragging=false;
@@ -1111,8 +1126,8 @@ function makeDraggable(el,wData){
   });
   document.addEventListener('mousemove',e=>{
     if(!dragging)return;
-    const canvas=document.getElementById('canvas');
-    const maxX=Math.max(canvas.scrollWidth-wData.w,0),maxY=Math.max(canvas.scrollHeight-wData.h,0);
+    const cv=document.getElementById('canvas');
+    const maxX=Math.max(cv.scrollWidth-wData.w,0),maxY=Math.max(cv.scrollHeight-wData.h,0);
     wData.x=Math.round(Math.max(0,Math.min(maxX,ox+(e.clientX-sx)))/SNAP)*SNAP;
     wData.y=Math.round(Math.max(0,Math.min(maxY,oy+(e.clientY-sy)))/SNAP)*SNAP;
     el.style.left=wData.x+'px';el.style.top=wData.y+'px';
@@ -1124,7 +1139,7 @@ function makeResizable(el,wData){
   let resizing=false,sx=0,sy=0,ow=0,oh=0;
   handle.addEventListener('mousedown',e=>{
     if(wData.pinned)return;resizing=true;sx=e.clientX;sy=e.clientY;ow=wData.w;oh=wData.h;
-    el.classList.add('resizing');e.preventDefault();e.stopPropagation();
+    e.preventDefault();e.stopPropagation();
   });
   document.addEventListener('mousemove',e=>{
     if(!resizing)return;
@@ -1132,12 +1147,14 @@ function makeResizable(el,wData){
     wData.h=Math.round(Math.max(120,oh+(e.clientY-sy))/SNAP)*SNAP;
     el.style.width=wData.w+'px';el.style.height=wData.h+'px';
   });
-  document.addEventListener('mouseup',()=>{if(!resizing)return;resizing=false;el.classList.remove('resizing');saveWidgets();});
+  document.addEventListener('mouseup',()=>{if(!resizing)return;resizing=false;saveWidgets();});
 }
 
+// ─────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────
 if(Notification.permission==='default')Notification.requestPermission();
 
-// ── BOOT
 async function init(){
   renderHistBar();
   widgets.forEach(w=>renderWidget(w));
@@ -1148,7 +1165,7 @@ async function init(){
   connectFinnhubWS();
   startDeepScan();
 }
-if(checkAuth()){init();}
+if(checkAuth())init();
 </script>
 </body>
 </html>
