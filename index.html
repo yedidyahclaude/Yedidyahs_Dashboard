@@ -25,8 +25,6 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .bico svg{width:13px;height:13px}
 .bnm{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:#fff}
 .bnm em{color:var(--ac2);font-style:normal}
-
-/* SEARCH */
 .sw{flex:1;max-width:340px;position:relative}
 .sico{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--mu);pointer-events:none}
 #si{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:7px;color:var(--tx);font-family:'DM Mono',monospace;font-size:12px;padding:6px 28px 6px 29px;outline:none;transition:border-color .15s}
@@ -44,8 +42,6 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .dil{display:flex;align-items:center;gap:7px}
 .dsy{font-size:12px;font-weight:500;color:#fff;min-width:55px;text-align:left}
 .dna{font-size:10px;color:var(--mu);text-align:left}
-
-/* HEADER RIGHT */
 .hright{display:flex;align-items:center;gap:8px;margin-left:auto}
 .sess{font-size:9px;padding:2px 7px;border-radius:9px;font-weight:600;letter-spacing:.04em}
 .sess.pre{background:#f59e0b12;color:var(--gold);border:1px solid #f59e0b25}
@@ -58,7 +54,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .add-widget-btn{background:var(--ac);border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.04em;padding:5px 10px;cursor:pointer}
 .add-widget-btn:hover{opacity:.85}
 .wm-wrap{position:relative}
-.widget-menu{position:absolute;top:calc(100% + 4px);right:0;background:var(--s2);border:1px solid var(--b2);border-radius:8px;z-index:500;min-width:190px;box-shadow:0 16px 40px #00000077;display:none}
+.widget-menu{position:absolute;top:calc(100% + 4px);right:0;background:var(--s2);border:1px solid var(--b2);border-radius:8px;z-index:500;min-width:200px;box-shadow:0 16px 40px #00000077;display:none}
 .widget-menu.open{display:block}
 .wm-sect{font-size:8px;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;padding:7px 12px 3px}
 .wm-item{display:flex;align-items:center;gap:8px;padding:7px 12px;cursor:pointer;border:none;background:none;width:100%;font-family:'DM Mono',monospace;font-size:11px;color:var(--tx);transition:background .08s}
@@ -72,45 +68,44 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .hist-label{font-size:8px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-right:4px;flex-shrink:0;white-space:nowrap}
 .htab{display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:4px;background:var(--s2);border:1px solid var(--b2);cursor:pointer;font-size:10px;color:var(--mu);white-space:nowrap;transition:all .1s;flex-shrink:0}
 .htab:hover{color:var(--tx);border-color:var(--ac)}
+.htab.active{background:#7c6aff14;border-color:var(--ac);color:var(--ac2)}
 .htab-sym{font-weight:500}
 .htab-px{font-size:9px}
 
-/* PROFILE MODAL */
+/* MODAL */
 .modal-bg{position:fixed;inset:0;background:#00000088;z-index:600;display:none;align-items:center;justify-content:center}
 .modal-bg.open{display:flex}
 .modal{background:var(--s1);border:1px solid var(--b2);border-radius:10px;padding:20px;min-width:340px;max-width:420px;box-shadow:0 20px 60px #000000aa}
 .modal h2{font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:#fff;margin-bottom:14px}
-.modal-row{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
-.modal-label{font-size:9px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase}
 .modal-input{background:var(--s2);border:1px solid var(--b2);border-radius:5px;color:var(--tx);font-family:'DM Mono',monospace;font-size:12px;padding:6px 9px;outline:none;width:100%}
 .modal-input:focus{border-color:var(--ac)}
 .profile-list{display:flex;flex-direction:column;gap:5px;margin-bottom:14px;max-height:200px;overflow-y:auto}
 .profile-item{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--s2);border:1px solid var(--b2);border-radius:6px;cursor:pointer;transition:all .1s}
-.profile-item:hover{border-color:var(--ac)}
-.profile-item.active{background:#7c6aff0e;border-color:var(--ac)}
+.profile-item:hover,.profile-item.active{border-color:var(--ac)}
+.profile-item.active{background:#7c6aff0e}
 .profile-name{font-size:12px;color:var(--tx)}
 .profile-meta{font-size:9px;color:var(--mu)}
 .profile-btns{display:flex;gap:4px}
-.modal-btn{border:none;border-radius:5px;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;padding:6px 12px;cursor:pointer;transition:opacity .1s}
-.modal-btn:hover{opacity:.85}
-.modal-btn.pri{background:var(--ac);color:#fff}
-.modal-btn.sec{background:var(--s2);border:1px solid var(--b2);color:var(--mu)}
-.modal-btn.sec:hover{color:var(--tx)}
-.modal-btn.dan{background:var(--rd);color:#fff}
-.modal-footer{display:flex;gap:8px;justify-content:flex-end}
+.mbtn{border:none;border-radius:5px;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;padding:6px 12px;cursor:pointer}
+.mbtn.pri{background:var(--ac);color:#fff}
+.mbtn.sec{background:var(--s2);border:1px solid var(--b2);color:var(--mu)}
+.mbtn.sec:hover{color:var(--tx)}
+.mbtn.dan{background:var(--rd);color:#fff}
+.mbtn.sm{padding:3px 8px;font-size:9px}
+.modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.ws-label{font-size:8px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:4px;display:block}
 
 /* CANVAS */
 .canvas{flex:1;overflow:hidden;position:relative;background:var(--bg);min-height:0}
 #grid{position:relative;width:100%;height:100%;overflow:auto}
-#grid::-webkit-scrollbar{width:5px;height:5px}
-#grid::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px}
+#grid::-webkit-scrollbar{width:4px;height:4px}
+#grid::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
 
 /* WIDGETS */
-.widget{position:absolute;background:var(--s1);border:1px solid var(--b1);border-radius:8px;display:flex;flex-direction:column;overflow:visible;min-width:180px;min-height:120px;box-shadow:0 2px 20px #00000040}
+.widget{position:absolute;background:var(--s1);border:1px solid var(--b1);border-radius:8px;display:flex;flex-direction:column;min-width:180px;min-height:120px;box-shadow:0 2px 20px #00000050;overflow:visible}
 .widget.dragging{box-shadow:0 8px 40px #0000009a;opacity:.95;z-index:1000}
 .widget.pinned .wh{cursor:default}
 .widget.pinned .resize-br{display:none}
-.pin-ind{font-size:10px;opacity:.7}
 
 /* WIDGET HEADER */
 .wh{display:flex;align-items:center;gap:5px;padding:5px 8px;background:var(--s2);border-bottom:1px solid var(--b1);cursor:grab;user-select:none;flex-shrink:0;border-radius:7px 7px 0 0}
@@ -118,27 +113,25 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .wh-title{font-size:10px;font-weight:500;color:var(--tx);letter-spacing:.03em;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .wh-btn{background:none;border:none;cursor:pointer;color:var(--mu);font-size:11px;padding:1px 4px;border-radius:3px;transition:all .1s;line-height:1;flex-shrink:0}
 .wh-btn:hover{color:var(--tx);background:var(--b2)}
+.pin-ind{font-size:10px;opacity:.7}
 
 /* SETTINGS PANEL */
 .ws-wrap{position:relative;flex-shrink:0}
 .ws-panel{position:absolute;top:0;right:30px;background:var(--s2);border:1px solid var(--b2);border-radius:7px;z-index:9999;min-width:190px;box-shadow:0 8px 30px #00000099;display:none;padding:10px}
 .ws-panel.open{display:block}
-.ws-row{display:flex;flex-direction:column;gap:3px;margin-bottom:8px}
-.ws-label{font-size:8px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:2px}
+.ws-row{margin-bottom:8px}
 .ws-input{background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:5px 7px;outline:none;width:100%}
 .ws-input:focus{border-color:var(--ac)}
 .ws-select{background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:5px 6px;outline:none;width:100%;cursor:pointer}
-.ws-select option{background:#1a1b2e;color:var(--tx)}
+.ws-select option{background:#1a1b2e}
 .ws-toggle{display:flex;align-items:center;justify-content:space-between;padding:5px 0;cursor:pointer;margin-bottom:4px}
 .ws-tl{font-size:10px;color:var(--tx)}
 .ws-tb{width:28px;height:15px;border-radius:8px;background:var(--b2);border:none;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
 .ws-tb::after{content:'';position:absolute;left:2px;top:2px;width:11px;height:11px;border-radius:50%;background:var(--mu);transition:all .2s}
 .ws-tb.on{background:var(--ac)}
 .ws-tb.on::after{left:15px;background:#fff}
-.ws-save{width:100%;background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;letter-spacing:.05em;padding:6px;cursor:pointer;margin-top:2px}
+.ws-save{width:100%;background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;padding:6px;cursor:pointer;margin-top:2px}
 .ws-save:hover{opacity:.85}
-.ws-reset{width:100%;background:none;border:1px solid var(--gold);border-radius:4px;color:var(--gold);font-family:'DM Mono',monospace;font-size:9px;padding:5px;cursor:pointer;margin-top:4px}
-.ws-reset:hover{background:var(--gold);color:#000}
 .ws-del{width:100%;background:none;border:1px solid var(--rd);border-radius:4px;color:var(--rd);font-family:'DM Mono',monospace;font-size:9px;padding:5px;cursor:pointer;margin-top:4px}
 .ws-del:hover{background:var(--rd);color:#fff}
 
@@ -146,26 +139,37 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .wb{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px;border-radius:0 0 7px 7px;min-height:0}
 .wb::-webkit-scrollbar{width:3px}
 .wb::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
-/* Screener widgets need special body treatment */
-.wb.scr-body-wrap{padding:0;overflow:hidden;display:flex;flex-direction:column}
+.wb.scr-wb{padding:0;overflow:hidden;display:flex;flex-direction:column}
 
-/* RESIZE */
+/* RESIZE HANDLE */
 .resize-br{position:absolute;bottom:0;right:0;width:14px;height:14px;cursor:se-resize;z-index:10}
 .resize-br::after{content:'';position:absolute;bottom:3px;right:3px;width:6px;height:6px;border-right:2px solid var(--dim);border-bottom:2px solid var(--dim)}
 .resize-br:hover::after{border-color:var(--ac)}
 
-/* SCREENER (TradingView iframe + input bar) */
-.scr-iframe-wrap{flex:1;position:relative;min-height:0;overflow:hidden}
-.scr-iframe-wrap iframe{width:100%;height:100%;border:none;display:block}
-.scr-input-bar{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:5px 7px;background:var(--s2);border-top:1px solid var(--b1)}
-.scr-input-bar label{font-size:8px;color:var(--dim);white-space:nowrap;letter-spacing:.05em;text-transform:uppercase;flex-shrink:0}
-.scr-inp{flex:1;background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:11px;font-weight:500;padding:4px 7px;outline:none;letter-spacing:.06em;text-transform:uppercase;transition:border-color .15s}
-.scr-inp:focus{border-color:var(--ac);background:var(--s2)}
-.scr-inp::placeholder{color:var(--dim);font-weight:400;text-transform:none;letter-spacing:0}
-.scr-go{background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:9px;font-weight:600;padding:4px 9px;cursor:pointer;white-space:nowrap;flex-shrink:0}
-.scr-go:hover{opacity:.85}
+/* SCREENER WIDGET */
+.scr-hdr{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-bottom:1px solid var(--b1);flex-shrink:0}
+.scr-badge{font-size:9px;font-weight:600;color:var(--tx);display:flex;align-items:center;gap:5px}
+.scr-dot{width:5px;height:5px;border-radius:50%;background:var(--gr);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+.scr-timer{font-size:8px;color:var(--dim);font-variant-numeric:tabular-nums}
+.scr-cols{display:grid;grid-template-columns:1fr 62px 54px 48px;padding:3px 8px;border-bottom:1px solid var(--b1);flex-shrink:0}
+.scr-ch{font-size:7px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.scr-ch.r{text-align:right}
+.scr-rows{flex:1;overflow-y:auto;min-height:0}
+.scr-rows::-webkit-scrollbar{width:3px}
+.scr-rows::-webkit-scrollbar-thumb{background:var(--b2)}
+.scr-row{display:grid;grid-template-columns:1fr 62px 54px 48px;padding:5px 8px;cursor:pointer;border-bottom:1px solid #0b0c16;transition:background .07s;align-items:center}
+.scr-row:hover{background:#7c6aff0e}
+.scr-row:active{background:#7c6aff1a}
+.scr-sym{font-size:11px;font-weight:600;color:#e0e1f0;line-height:1.2}
+.scr-name{font-size:8px;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-px{font-size:10px;text-align:right;color:var(--tx)}
+.scr-chg{font-size:10px;font-weight:600;text-align:right}
+.scr-vol{font-size:9px;color:var(--mu);text-align:right}
+.scr-empty{text-align:center;padding:28px 12px;color:var(--mu);font-size:10px;line-height:1.9}
+.scr-spin{display:inline-block;width:11px;height:11px;border:2px solid var(--b2);border-top-color:var(--ac);border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:4px}
 
-/* HISTORY / WATCHLIST */
+/* HISTORY / WATCHLIST ROWS */
 .wi{display:flex;align-items:center;justify-content:space-between;padding:5px 6px;border-radius:4px;cursor:pointer;margin-bottom:2px;border:1px solid transparent;transition:background .08s}
 .wi:hover{background:var(--s2);border-color:var(--b2)}
 .wi.ac{background:#7c6aff0c;border-color:#7c6aff28}
@@ -176,22 +180,21 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .wir{text-align:right;flex-shrink:0;margin-left:6px}
 .wip{font-size:11px;color:var(--tx)}
 .wic{font-size:9px;margin-top:1px}
-.wid{opacity:0;font-size:9px;color:var(--rd);background:none;border:none;cursor:pointer;margin-left:3px}
+.wid{opacity:0;font-size:9px;color:var(--rd);background:none;border:none;cursor:pointer;margin-left:3px;padding:0 2px}
 .wi:hover .wid{opacity:.5}
 .wid:hover{opacity:1!important}
 
 /* ALERTS */
 .alf{background:var(--s2);border:1px solid var(--b2);border-radius:6px;padding:8px;margin-bottom:8px}
 .alf select,.alf input{width:100%;background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:4px 6px;outline:none;margin-bottom:4px;cursor:pointer}
-.alf select option{background:#1a1b2e;color:var(--tx)}
+.alf select option{background:#1a1b2e}
 .alcr{width:100%;background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:9px;font-weight:600;letter-spacing:.05em;padding:5px;cursor:pointer}
 .ali{display:flex;align-items:center;justify-content:space-between;padding:5px 6px;background:var(--s2);border:1px solid var(--b2);border-radius:4px;margin-bottom:3px}
 .alil{display:flex;align-items:center;gap:5px}
 .ald{width:5px;height:5px;border-radius:50%;flex-shrink:0}
-.ald.on{background:var(--gr);animation:pu 2s ease-in-out infinite}
+.ald.on{background:var(--gr);animation:pulse 2s ease-in-out infinite}
 .ald.off{background:var(--dim)}
 .ald.trig{background:var(--gold)}
-@keyframes pu{0%,100%{opacity:1}50%{opacity:.3}}
 .als{font-size:10px;font-weight:500;color:var(--ac2)}
 .alx{background:none;border:none;color:var(--rd);opacity:.4;cursor:pointer;font-size:10px}
 .alx:hover{opacity:1}
@@ -199,7 +202,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 /* NEWS */
 .ni{padding:7px;background:var(--s2);border:1px solid var(--b2);border-radius:5px;margin-bottom:4px;cursor:pointer;display:block;transition:border-color .1s}
 .ni:hover{border-color:var(--ac)}
-.nisym{font-size:8px;color:var(--ac2);margin-bottom:2px;font-weight:500;cursor:pointer;display:inline-block;padding:1px 5px;border-radius:3px;transition:background .1s;border:1px solid transparent}
+.nisym{font-size:8px;color:var(--ac2);margin-bottom:2px;font-weight:500;cursor:pointer;display:inline-block;padding:1px 5px;border-radius:3px;border:1px solid transparent;transition:all .1s}
 .nisym:hover{background:#7c6aff20;border-color:#7c6aff40;color:#fff}
 .nitl{font-size:10px;color:var(--tx);line-height:1.4;margin-bottom:2px}
 .nitm{font-size:8px;color:var(--mu)}
@@ -217,7 +220,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .flt-i:focus{border-color:var(--ac)}
 .scan-row{display:flex;align-items:center;gap:4px;padding:5px 4px;border-bottom:1px solid #1a1b2a;cursor:pointer;transition:background .08s}
 .scan-row:hover{background:#7c6aff08}
-.scan-sym{font-size:10px;font-weight:500;flex:1;min-width:0}
+.scan-sym{font-size:10px;font-weight:500;flex:1}
 .scan-px{font-size:10px;width:46px;text-align:right}
 .scan-chg{font-size:9px;width:40px;text-align:right}
 .scan-pills{display:flex;gap:2px;width:70px;justify-content:center}
@@ -235,20 +238,21 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 /* BOTTOM CHART PANEL */
 #chartPanel{flex-shrink:0;background:var(--s1);border-top:2px solid var(--b1);display:flex;flex-direction:column;transition:height .22s cubic-bezier(.4,0,.2,1);height:34px;position:relative;z-index:50}
 #chartPanel.open{height:58vh}
-#chartPanelBar{display:flex;align-items:center;gap:8px;padding:0 12px;height:34px;cursor:pointer;flex-shrink:0;user-select:none;background:var(--s2);border-bottom:1px solid var(--b1)}
-#chartPanelBar:hover{background:#16172a}
-#cpSym{font-size:12px;font-weight:600;color:var(--mu);min-width:52px;transition:color .15s}
-#cpPx{font-size:11px;min-width:62px}
-#cpChg{font-size:11px;min-width:58px}
+#cpBar{display:flex;align-items:center;gap:8px;padding:0 12px;height:34px;cursor:pointer;flex-shrink:0;user-select:none;background:var(--s2);border-bottom:1px solid var(--b1);transition:background .1s}
+#cpBar:hover{background:#14152a}
+#cpIcon{color:var(--ac);flex-shrink:0}
+#cpSym{font-size:12px;font-weight:700;color:var(--mu);min-width:54px;transition:color .15s;letter-spacing:.04em}
+#cpPx{font-size:11px;min-width:64px;font-weight:500}
+#cpChg{font-size:11px;min-width:60px;font-weight:600}
 #cpLabel{font-size:8px;color:var(--dim);letter-spacing:.07em;text-transform:uppercase;flex:1}
-#cpPopup{background:none;border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-family:'DM Mono',monospace;font-size:8px;padding:2px 8px;cursor:pointer;transition:all .12s;white-space:nowrap;flex-shrink:0}
-#cpPopup:hover{color:var(--tx);border-color:var(--ac)}
-#cpToggle{font-size:10px;color:var(--mu);transition:transform .22s;flex-shrink:0}
+#cpPopupBtn{background:none;border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-family:'DM Mono',monospace;font-size:8px;padding:3px 9px;cursor:pointer;transition:all .12s;white-space:nowrap;flex-shrink:0;font-weight:600;letter-spacing:.04em}
+#cpPopupBtn:hover{color:var(--tx);border-color:var(--ac);background:#7c6aff12}
+#cpToggle{font-size:9px;color:var(--dim);transition:transform .22s;flex-shrink:0;font-weight:700}
 #chartPanel.open #cpToggle{transform:rotate(180deg)}
-#chartPanelIframe{flex:1;width:100%;border:none;display:block;min-height:0}
+#cpIframe{flex:1;width:100%;border:none;display:block;min-height:0}
 
 /* TOAST */
-#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#f59e0b;color:#000;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;padding:8px 18px;border-radius:6px;z-index:9999;box-shadow:0 4px 20px #00000066;pointer-events:none;opacity:0;transition:opacity .3s}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--gold);color:#000;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;padding:8px 18px;border-radius:6px;z-index:9999;box-shadow:0 4px 20px #00000066;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap}
 
 .up{color:var(--gr)}.dn{color:var(--rd)}
 </style>
@@ -258,17 +262,17 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 
 <!-- LOGIN WALL -->
 <div id="loginWall" style="position:fixed;inset:0;background:#07080f;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px">
-  <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:#fff">Yedidyah's <span style="color:#a78bfa">Dashboard</span></div>
+  <div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:#fff;letter-spacing:-.5px">Yedidyah's <span style="color:#a78bfa">Dashboard</span></div>
   <div id="loginForm" style="background:#0c0d1a;border:1px solid #242538;border-radius:10px;padding:28px;min-width:320px;display:flex;flex-direction:column;gap:12px">
-    <div style="font-size:11px;color:#606172;text-align:center;margin-bottom:4px">Sign in with your email</div>
+    <div style="font-size:11px;color:#606172;text-align:center;margin-bottom:4px">Sign in to access your dashboard</div>
     <input id="loginEmail" type="email" placeholder="Email address" autocomplete="email"
-      style="background:#111220;border:1px solid #242538;border-radius:6px;color:#e0e1f0;font-family:'DM Mono',monospace;font-size:12px;padding:8px 12px;outline:none;width:100%"
+      style="background:#111220;border:1px solid #242538;border-radius:6px;color:#e0e1f0;font-family:'DM Mono',monospace;font-size:12px;padding:8px 12px;outline:none;width:100%;transition:border-color .15s"
       onkeydown="if(event.key==='Enter')tryLogin()"/>
     <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password"
-      style="background:#111220;border:1px solid #242538;border-radius:6px;color:#e0e1f0;font-family:'DM Mono',monospace;font-size:12px;padding:8px 12px;outline:none;width:100%"
+      style="background:#111220;border:1px solid #242538;border-radius:6px;color:#e0e1f0;font-family:'DM Mono',monospace;font-size:12px;padding:8px 12px;outline:none;width:100%;transition:border-color .15s"
       onkeydown="if(event.key==='Enter')tryLogin()"/>
     <div id="loginErr" style="font-size:10px;color:#f0506e;text-align:center;display:none"></div>
-    <button id="loginBtn" onclick="tryLogin()" style="background:#7c6aff;border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;padding:9px;cursor:pointer;margin-top:4px">Sign In →</button>
+    <button id="loginBtn" onclick="tryLogin()" style="background:#7c6aff;border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;padding:9px;cursor:pointer;margin-top:2px;letter-spacing:.03em">Sign In →</button>
   </div>
   <div style="display:flex;gap:10px;align-items:center">
     <span style="font-size:9px;color:#383950">Private access only</span>
@@ -277,19 +281,20 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
   </div>
   <div id="signupForm" style="display:none;background:#0c0d1a;border:1px solid #242538;border-radius:10px;padding:24px;min-width:320px;flex-direction:column;gap:12px">
     <div style="font-size:13px;font-weight:600;color:#fff;margin-bottom:2px">Request Access</div>
-    <div style="font-size:10px;color:#606172;margin-bottom:4px">Create your account — admin approval required.</div>
+    <div style="font-size:10px;color:#606172;margin-bottom:4px">Admin approval required before you can sign in.</div>
     <input id="regEmail" type="email" placeholder="Your email address"
       style="background:#111220;border:1px solid #242538;border-radius:6px;color:#e0e1f0;font-family:'DM Mono',monospace;font-size:12px;padding:8px 12px;outline:none;width:100%"/>
     <input id="regPass" type="password" placeholder="Choose a password (min 6 chars)"
       style="background:#111220;border:1px solid #242538;border-radius:6px;color:#e0e1f0;font-family:'DM Mono',monospace;font-size:12px;padding:8px 12px;outline:none;width:100%"/>
     <div id="regMsg" style="font-size:10px;text-align:center;display:none"></div>
     <div style="display:flex;gap:8px">
-      <button onclick="showLogin()" style="flex:1;background:#1c1d2e;border:1px solid #242538;border-radius:6px;color:#606172;font-family:'DM Mono',monospace;font-size:10px;padding:8px;cursor:pointer">Back</button>
+      <button onclick="showLogin()" style="flex:1;background:#1c1d2e;border:1px solid #242538;border-radius:6px;color:#606172;font-family:'DM Mono',monospace;font-size:10px;padding:8px;cursor:pointer">← Back</button>
       <button onclick="trySignup()" style="flex:2;background:#7c6aff;border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:600;padding:8px;cursor:pointer">Create Account →</button>
     </div>
   </div>
 </div>
 
+<!-- MAIN APP -->
 <div class="app" id="mainApp" style="display:none">
   <header>
     <a class="brand" href="#">
@@ -298,26 +303,26 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
     </a>
     <div class="sw">
       <span class="sico"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
-      <input id="si" type="text" placeholder="Search any stock — press any key to open…" autocomplete="off" spellcheck="false"/>
+      <input id="si" type="text" placeholder="Search any stock — press any key" autocomplete="off" spellcheck="false"/>
       <div class="sspin" id="sspin"></div>
       <div id="dd"></div>
     </div>
     <div class="hright">
       <button class="hbtn" onclick="openProfileModal()">👤 Profiles</button>
-      <button class="hbtn" onclick="logout()" style="font-size:9px">⏻ Sign Out</button>
+      <button class="hbtn" onclick="logout()">⏻ Sign Out</button>
       <div class="wm-wrap">
         <button class="add-widget-btn" id="addWidgetBtn">+ Add Widget</button>
         <div class="widget-menu" id="widgetMenu">
-          <div class="wm-sect">My Tools</div>
-          <button class="wm-item" onclick="addWidget('history')"><span>📋</span> History</button>
-          <button class="wm-item" onclick="addWidget('alerts')"><span>🔔</span> Alerts</button>
-          <button class="wm-item" onclick="addWidget('news')"><span>📰</span> News</button>
-          <button class="wm-item" onclick="addWidget('scanner')"><span>🎯</span> 5 Pillars Scanner</button>
           <div class="wm-sect">Screeners</div>
           <button class="wm-item" onclick="addWidget('gainers')"><span>🚀</span> Top Gainers</button>
           <button class="wm-item" onclick="addWidget('losers')"><span>📉</span> Top Losers</button>
           <button class="wm-item" onclick="addWidget('active')"><span>🔥</span> Most Active</button>
-          <button class="wm-item" onclick="addWidget('premarket')"><span>🌅</span> Pre-Market</button>
+          <button class="wm-item" onclick="addWidget('premarket')"><span>🌅</span> Gap Scanner</button>
+          <div class="wm-sect">Tools</div>
+          <button class="wm-item" onclick="addWidget('scanner')"><span>🎯</span> 5 Pillars Scanner</button>
+          <button class="wm-item" onclick="addWidget('history')"><span>📋</span> History</button>
+          <button class="wm-item" onclick="addWidget('alerts')"><span>🔔</span> Alerts</button>
+          <button class="wm-item" onclick="addWidget('news')"><span>📰</span> News</button>
         </div>
       </div>
       <span class="htime" id="htime"></span>
@@ -326,23 +331,23 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
   </header>
 
   <div class="hist-bar" id="histBar">
-    <span class="hist-label" id="histLabel" style="display:none">History:</span>
+    <span class="hist-label" id="histLabel" style="display:none">HISTORY</span>
   </div>
 
   <div class="canvas" id="canvas"><div id="grid"></div></div>
 
   <!-- BOTTOM CHART PANEL -->
   <div id="chartPanel">
-    <div id="chartPanelBar" onclick="toggleChartPanel()">
-      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ac);flex-shrink:0"><polyline points="1,12 5,7 8,10 12,4 15,6"/></svg>
-      <span id="cpSym">—</span>
+    <div id="cpBar" onclick="toggleChartPanel()">
+      <svg id="cpIcon" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1,12 5,7 8,10 12,4 15,6"/></svg>
+      <span id="cpSym">— SELECT A STOCK —</span>
       <span id="cpPx"></span>
       <span id="cpChg"></span>
-      <span id="cpLabel">Click any stock to open chart ↑</span>
-      <button id="cpPopup" onclick="event.stopPropagation();openTVPopup()" title="Open full TradingView in popup">⤢ Popup</button>
+      <span id="cpLabel">Click any stock in any widget to open chart here</span>
+      <button id="cpPopupBtn" onclick="event.stopPropagation();openTVPopup()" title="Open in TradingView popup window">⤢ POP OUT</button>
       <span id="cpToggle">▲</span>
     </div>
-    <iframe id="chartPanelIframe" src="about:blank" allowtransparency="true" allow="fullscreen"></iframe>
+    <iframe id="cpIframe" src="about:blank" allowtransparency="true" allow="fullscreen"></iframe>
   </div>
 
   <!-- PROFILE MODAL -->
@@ -351,25 +356,25 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
       <h2>👤 Profiles</h2>
       <div id="adminPanel" style="display:none">
         <div style="font-size:9px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px">⚡ Pending Access Requests</div>
-        <div id="pendingRequests" style="margin-bottom:12px;max-height:140px;overflow-y:auto"></div>
+        <div id="pendingRequests" style="margin-bottom:12px;max-height:130px;overflow-y:auto"></div>
       </div>
       <div class="profile-list" id="profileList"></div>
-      <div class="ws-row">
-        <span class="ws-label">New Profile Name</span>
-        <input class="modal-input" id="newProfileName" placeholder="e.g. Morning Session…"/>
+      <div style="margin-bottom:0">
+        <span class="ws-label">Save Current Layout As</span>
+        <input class="modal-input" id="newProfileName" placeholder="e.g. Morning Session, Pre-Market…"/>
       </div>
       <div class="modal-footer">
-        <button class="modal-btn sec" onclick="closeProfileModal()">Cancel</button>
-        <button class="modal-btn pri" onclick="saveNewProfile()">💾 Save Layout</button>
+        <button class="mbtn sec" onclick="closeProfileModal()">Cancel</button>
+        <button class="mbtn pri" onclick="saveNewProfile()">💾 Save Layout</button>
       </div>
     </div>
   </div>
 </div>
 
 <script>
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 // SUPABASE AUTH
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 const SUPA_URL='https://yklxpcatopitwjzutolj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrbHhwY2F0b3BpdHdqenV0b2xqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MDYyMTEsImV4cCI6MjA5NjM4MjIxMX0.KJotgJpSLziUvdZkUb66tV7vZXPEfMOjGOij2-vmk6Q';
 const sf=(p,o={})=>fetch(SUPA_URL+p,{...o,headers:{'apikey':SUPA_KEY,'Content-Type':'application/json',...(o.headers||{})}});
@@ -387,25 +392,25 @@ async function tryLogin(){
     if(!r.ok){err.textContent=d.error_description||'Invalid email or password.';err.style.display='block';btn.textContent='Sign In →';btn.disabled=false;return;}
     const pr=await sf('/rest/v1/profiles?select=approved&id=eq.'+d.user.id,{headers:{'Authorization':'Bearer '+d.access_token}});
     const prof=await pr.json();
-    if(!prof?.[0]?.approved){err.textContent='Pending admin approval.';err.style.display='block';btn.textContent='Sign In →';btn.disabled=false;return;}
+    if(!prof?.[0]?.approved){err.textContent='Your account is pending admin approval.';err.style.display='block';btn.textContent='Sign In →';btn.disabled=false;return;}
     sessionStorage.setItem('sv_token',d.access_token);
     sessionStorage.setItem('sv_uid',d.user.id);
     sessionStorage.setItem('sv_email',d.user.email);
     showApp();
-  }catch(e){err.textContent='Connection error.';err.style.display='block';btn.textContent='Sign In →';btn.disabled=false;}
+  }catch(e){err.textContent='Connection error. Try again.';err.style.display='block';btn.textContent='Sign In →';btn.disabled=false;}
 }
 async function trySignup(){
   const email=document.getElementById('regEmail').value.trim();
   const pass=document.getElementById('regPass').value.trim();
   const msg=document.getElementById('regMsg');
-  if(!email||!pass){msg.style.color='#f0506e';msg.textContent='Fill in all fields.';msg.style.display='block';return;}
-  if(pass.length<6){msg.style.color='#f0506e';msg.textContent='Password min 6 chars.';msg.style.display='block';return;}
+  if(!email||!pass){msg.style.color='#f0506e';msg.textContent='Please fill in all fields.';msg.style.display='block';return;}
+  if(pass.length<6){msg.style.color='#f0506e';msg.textContent='Password must be at least 6 characters.';msg.style.display='block';return;}
   try{
     const r=await sf('/auth/v1/signup',{method:'POST',body:JSON.stringify({email,password:pass})});
     const d=await r.json();
     if(!r.ok){msg.style.color='#f0506e';msg.textContent=d.error_description||'Signup failed.';msg.style.display='block';return;}
     if(d.user?.id)await sf('/rest/v1/profiles',{method:'POST',headers:{'Authorization':'Bearer '+d.access_token,'Prefer':'return=minimal'},body:JSON.stringify({id:d.user.id,email,approved:false})});
-    msg.style.color='#19c48a';msg.textContent='Account created! Waiting for approval.';msg.style.display='block';
+    msg.style.color='#19c48a';msg.textContent='Account created! Awaiting admin approval.';msg.style.display='block';
     setTimeout(()=>showLogin(),4000);
   }catch(e){msg.style.color='#f0506e';msg.textContent='Connection error.';msg.style.display='block';}
 }
@@ -415,29 +420,31 @@ function showApp(){document.getElementById('loginWall').style.display='none';doc
 function checkAuth(){if(sessionStorage.getItem('sv_token')){showApp();return true;}document.getElementById('loginWall').style.display='flex';return false;}
 function logout(){sessionStorage.clear();location.reload();}
 
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 // CONSTANTS & STATE
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 const FHK='d8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
 const SNAP=20;
+const LAYOUT_VER='v7';
 const SCREENER_TYPES=['gainers','losers','active','premarket'];
 const WIDGET_TYPES={
-  history:'📋 History',gainers:'🚀 Top Gainers',losers:'📉 Top Losers',
-  active:'🔥 Most Active',premarket:'🌅 Pre-Market',
-  scanner:'🎯 5 Pillars Scanner',alerts:'🔔 Alerts',news:'📰 News'
+  gainers:'🚀 Top Gainers',losers:'📉 Top Losers',
+  active:'🔥 Most Active',premarket:'🌅 Gap Scanner',
+  scanner:'🎯 5 Pillars Scanner',history:'📋 History',
+  alerts:'🔔 Alerts',news:'📰 News'
 };
-const SCR_SCREENS={gainers:'top_gainers',losers:'top_losers',active:'most_capitalized',premarket:'pre_market_gainers'};
 const DEFAULT_WIDGETS=[
-  {id:'w1',type:'gainers', x:20,  y:20,  w:460,h:340},
-  {id:'w2',type:'active',  x:20,  y:380, w:460,h:340},
-  {id:'w3',type:'scanner', x:500, y:20,  w:440,h:700},
-  {id:'w4',type:'news',    x:960, y:20,  w:320,h:700},
-  {id:'w5',type:'history', x:1300,y:20,  w:220,h:700},
+  {id:'w1',type:'gainers', x:20,  y:20,  w:420,h:340},
+  {id:'w2',type:'active',  x:20,  y:380, w:420,h:300},
+  {id:'w3',type:'scanner', x:460, y:20,  w:400,h:660},
+  {id:'w4',type:'news',    x:880, y:20,  w:300,h:440},
+  {id:'w5',type:'history', x:880, y:480, w:300,h:200},
+  {id:'w6',type:'losers',  x:1200,y:20,  w:280,h:320},
+  {id:'w7',type:'premarket',x:1200,y:360,w:280,h:320},
 ];
-const LAYOUT_VER='v6';
 
 const Q={};
-let CUR=localStorage.getItem('sv_s')||'AAPL';
+let CUR='';
 let alts=JSON.parse(localStorage.getItem('sv_al')||'[]');
 let scanSyms=JSON.parse(localStorage.getItem('sv_scan')||'[]');
 let histSyms=JSON.parse(localStorage.getItem('sv_hist')||'[]');
@@ -448,6 +455,10 @@ let tvWin=null,newsWin=null;
 let curChartSym='';
 let profiles=JSON.parse(localStorage.getItem('sv_profiles')||'[]');
 let activeProfileId=localStorage.getItem('sv_active_profile')||null;
+// Screener cache & timers
+const scrCache={};
+const scrTimers={};
+const SCR_TTL=30; // refresh every 30 seconds
 
 function getWidgets(){
   if(activeProfileId){const p=profiles.find(x=>x.id===activeProfileId);if(p?.widgets)return p.widgets;}
@@ -462,28 +473,28 @@ function saveWidgets(){
 }
 let widgets=getWidgets();
 
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 // PROFILES
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 function openProfileModal(){renderProfileList();document.getElementById('profileModal').classList.add('open');}
 function closeProfileModal(){document.getElementById('profileModal').classList.remove('open');}
 function renderProfileList(){
   renderPendingUsers();
   const el=document.getElementById('profileList');
-  if(!profiles.length){el.innerHTML='<div style="font-size:10px;color:var(--mu);text-align:center;padding:10px">No saved profiles yet.</div>';return;}
+  if(!profiles.length){el.innerHTML='<div style="font-size:10px;color:var(--mu);text-align:center;padding:10px 0 14px">No saved profiles yet.</div>';return;}
   el.innerHTML=profiles.map(p=>`
     <div class="profile-item${p.id===activeProfileId?' active':''}" onclick="loadProfile('${p.id}')">
       <div><div class="profile-name">${p.name}</div><div class="profile-meta">${p.widgets?.length||0} widgets · ${new Date(p.saved).toLocaleDateString()}</div></div>
       <div class="profile-btns" onclick="event.stopPropagation()">
-        <button class="modal-btn pri" style="padding:3px 8px;font-size:9px" onclick="loadProfile('${p.id}')">Load</button>
-        <button class="modal-btn dan" style="padding:3px 8px;font-size:9px" onclick="deleteProfile('${p.id}')">Del</button>
+        <button class="mbtn pri sm" onclick="loadProfile('${p.id}')">Load</button>
+        <button class="mbtn dan sm" onclick="deleteProfile('${p.id}')">Del</button>
       </div>
     </div>`).join('');
 }
-async function approveRequest(userId,btn){
+async function approveRequest(uid,btn){
   btn.textContent='…';btn.disabled=true;
-  const r=await sf('/rest/v1/profiles?id=eq.'+userId,{method:'PATCH',headers:{'Authorization':'Bearer '+sessionStorage.getItem('sv_token'),'Prefer':'return=minimal'},body:JSON.stringify({approved:true})});
-  if(r.ok)renderPendingUsers(); else btn.textContent='Err';
+  const r=await sf('/rest/v1/profiles?id=eq.'+uid,{method:'PATCH',headers:{'Authorization':'Bearer '+sessionStorage.getItem('sv_token'),'Prefer':'return=minimal'},body:JSON.stringify({approved:true})});
+  if(r.ok)renderPendingUsers(); else{btn.textContent='✗';btn.disabled=false;}
 }
 async function renderPendingUsers(){
   const token=sessionStorage.getItem('sv_token');if(!token)return;
@@ -497,7 +508,7 @@ async function renderPendingUsers(){
     pe.innerHTML=pending.map(u=>`
       <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 8px;background:var(--s2);border:1px solid var(--b2);border-radius:5px;margin-bottom:4px">
         <div><div style="font-size:11px;color:var(--tx)">${u.email}</div><div style="font-size:9px;color:var(--mu)">${new Date(u.created_at).toLocaleDateString()}</div></div>
-        <button onclick="approveRequest('${u.id}',this)" style="background:var(--gr);border:none;border-radius:4px;color:#000;font-family:'DM Mono',monospace;font-size:8px;padding:3px 8px;cursor:pointer">✓ Approve</button>
+        <button onclick="approveRequest('${u.id}',this)" style="background:var(--gr);border:none;border-radius:4px;color:#000;font-family:'DM Mono',monospace;font-size:8px;font-weight:700;padding:4px 9px;cursor:pointer">✓ Approve</button>
       </div>`).join('');
   } else ap.style.display='none';
 }
@@ -507,7 +518,9 @@ function saveNewProfile(){
   profiles.push({id,name,widgets:widgets.map(w=>({...w})),saved:Date.now()});
   localStorage.setItem('sv_profiles',JSON.stringify(profiles));
   activeProfileId=id;localStorage.setItem('sv_active_profile',id);
-  document.getElementById('newProfileName').value='';renderProfileList();
+  document.getElementById('newProfileName').value='';
+  renderProfileList();
+  showToast('Layout saved: '+name);
 }
 function loadProfile(id){
   activeProfileId=id;localStorage.setItem('sv_active_profile',id);
@@ -523,26 +536,32 @@ function deleteProfile(id){
   renderProfileList();
 }
 
-// ─────────────────────────────────────────────
-// CLOCK
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
+// CLOCK & SESSION
+// ═══════════════════════════════════════════════
+function getSession(){
+  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const m=et.getHours()*60+et.getMinutes(),d=et.getDay();
+  if(d===0||d===6)return'cls';
+  if(m>=240&&m<570)return'pre';
+  if(m>=570&&m<960)return'mkt';
+  if(m>=960&&m<1200)return'aft';
+  return'cls';
+}
 function tick(){
   const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
   const p=n=>String(n).padStart(2,'0');
   document.getElementById('htime').textContent=`${p(et.getHours())}:${p(et.getMinutes())}:${p(et.getSeconds())} ET`;
-  const m=et.getHours()*60+et.getMinutes(),d=et.getDay();
   const el=document.getElementById('sessbdg');
-  if(d===0||d===6){el.textContent='CLOSED';el.className='sess cls';}
-  else if(m>=240&&m<570){el.textContent='PRE-MARKET';el.className='sess pre';}
-  else if(m>=570&&m<960){el.textContent='MARKET OPEN';el.className='sess mkt';}
-  else if(m>=960&&m<1200){el.textContent='AFTER HOURS';el.className='sess aft';}
-  else{el.textContent='CLOSED';el.className='sess cls';}
+  const sess=getSession();
+  const labels={pre:'PRE-MARKET',mkt:'MARKET OPEN',aft:'AFTER HOURS',cls:'CLOSED'};
+  el.textContent=labels[sess];el.className='sess '+sess;
 }
 setInterval(tick,1000);tick();
 
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 // HISTORY BAR
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 function addToHistory(sym){
   histSyms=histSyms.filter(s=>s!==sym);histSyms.unshift(sym);
   if(histSyms.length>15)histSyms=histSyms.slice(0,15);
@@ -557,38 +576,42 @@ function renderHistBar(){
   bar.querySelectorAll('.htab').forEach(x=>x.remove());
   histSyms.forEach(s=>{
     const q=Q[s],u=(q?.changePct||0)>=0;
-    const div=document.createElement('div');div.className='htab';
+    const div=document.createElement('div');
+    div.className='htab'+(s===curChartSym?' active':'');
     div.innerHTML=`<span class="htab-sym">${s}</span>${q?`<span class="htab-px ${u?'up':'dn'}">${u?'+':''}${(q.changePct||0).toFixed(1)}%</span>`:''}`;
-    div.onclick=()=>selectSym(s);bar.appendChild(div);
+    div.onclick=()=>selectSym(s);
+    bar.appendChild(div);
   });
 }
 
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 // BOTTOM CHART PANEL
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 function openChartPanel(sym){
   let tvSym=sym;
   if(sym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
   else if(sym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
   curChartSym=sym;
-  // advanced-chart embed — shows pre/after hours, full toolbar
   const cfg=encodeURIComponent(JSON.stringify({
-    autosize:true,symbol:tvSym,interval:'1',timezone:'America/New_York',
-    theme:'dark',style:'1',locale:'en',toolbar_bg:'#0c0d1a',
-    enable_publishing:false,withdateranges:true,hide_side_toolbar:false,
-    allow_symbol_change:true,save_image:false,calendar:false,
-    hide_volume:false,support_host:'https://www.tradingview.com'
+    autosize:true,symbol:tvSym,interval:'1',
+    timezone:'America/New_York',theme:'dark',style:'1',
+    locale:'en',toolbar_bg:'#0c0d1a',enable_publishing:false,
+    withdateranges:true,hide_side_toolbar:false,
+    allow_symbol_change:true,save_image:false,
+    calendar:false,hide_volume:false,
+    support_host:'https://www.tradingview.com'
   }));
-  document.getElementById('chartPanelIframe').src=`https://www.tradingview.com/embed-widget/advanced-chart/?locale=en#${cfg}`;
+  document.getElementById('cpIframe').src=`https://www.tradingview.com/embed-widget/advanced-chart/?locale=en#${cfg}`;
   const symEl=document.getElementById('cpSym');
   symEl.textContent=sym;symEl.style.color='#fff';
-  document.getElementById('cpLabel').textContent='TradingView · pre/after hours included';
-  updateChartPanelPrice();
+  document.getElementById('cpLabel').textContent='TradingView · real-time · pre/after hours included';
+  updateCPPrice();
   const panel=document.getElementById('chartPanel');
   if(!panel.classList.contains('open'))panel.classList.add('open');
+  renderHistBar(); // update active state in hist bar
 }
 function toggleChartPanel(){document.getElementById('chartPanel').classList.toggle('open');}
-function updateChartPanelPrice(){
+function updateCPPrice(){
   if(!curChartSym)return;
   const q=Q[curChartSym];if(!q)return;
   const u=(q.changePct||0)>=0;
@@ -596,19 +619,18 @@ function updateChartPanelPrice(){
   if(px){px.textContent='$'+fmtP(q.price);px.className=u?'up':'dn';}
   if(chg){chg.textContent=(u?'+':'')+q.changePct.toFixed(2)+'%';chg.className=u?'up':'dn';}
 }
-// Popup — full TradingView.com in reusable popup window (guaranteed live feed)
+// Popup — full tradingview.com in reusable popup window
 function openTVPopup(){
-  if(!curChartSym)return;
+  if(!curChartSym){showToast('Select a stock first');return;}
   let tvSym=curChartSym;
   if(curChartSym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
   else if(curChartSym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
   const url='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSym)+'&interval=1&theme=dark';
-  const pw=Math.floor(screen.width*.72),ph=Math.floor(screen.height*.85);
+  const pw=Math.floor(screen.width*.75),ph=Math.floor(screen.height*.88);
   const pl=Math.floor((screen.width-pw)/2),pt=Math.floor((screen.height-ph)/10);
-  const feat=`width=${pw},height=${ph},left=${pl},top=${pt},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=no`;
   try{if(tvWin&&!tvWin.closed){tvWin.location.href=url;tvWin.focus();return;}}catch(e){}
-  tvWin=window.open(url,'StockViewTV',feat);
-  if(!tvWin||tvWin.closed)showToast('⚠ Allow popups for this site in your browser settings');
+  tvWin=window.open(url,'StockViewTV',`width=${pw},height=${ph},left=${pl},top=${pt},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=no`);
+  if(!tvWin||tvWin.closed)showToast('⚠ Allow popups for this site in your browser');
 }
 function openNewsPopup(url){
   const w=Math.floor(screen.width*.65),h=Math.floor(screen.height*.85);
@@ -619,14 +641,14 @@ function openNewsPopup(url){
 function showToast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg;t.style.opacity='1';
-  clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',4000);
+  clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',3500);
 }
 
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 // PRICES & WEBSOCKET
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 function fmtP(p){return p?parseFloat(p).toFixed(2):'—';}
-function fmtV(n){if(!n||n<1)return'—';if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return''+n;}
+function fmtV(n){if(!n||n<1)return'—';if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n+'';}
 
 async function fetchQ(sym){
   try{
@@ -635,15 +657,15 @@ async function fetchQ(sym){
     const pr=await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${FHK}`);
     const p=await pr.json();
     Q[sym]={symbol:sym,price:q.c,open:q.o,high:q.h,low:q.l,prevClose:q.pc,
-      change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,volume:q.v||0,name:p.name||sym};
+      change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,
+      volume:q.v||0,name:p.name||sym};
   }catch(e){}
 }
-
 function connectFinnhubWS(){
   const syms=[...new Set([...histSyms,...scanSyms,...alts.map(a=>a.sym)])];
   try{
     fhWS=new WebSocket(`wss://ws.finnhub.io?token=${FHK}`);
-    fhWS.onopen=()=>syms.forEach(s=>fhWS.send(JSON.stringify({type:'subscribe',symbol:s})));
+    fhWS.onopen=()=>{syms.forEach(s=>fhWS.send(JSON.stringify({type:'subscribe',symbol:s})));};
     fhWS.onmessage=e=>{
       const msg=JSON.parse(e.data);
       if(msg.type==='trade'&&msg.data){
@@ -654,7 +676,7 @@ function connectFinnhubWS(){
             high:Math.max(Q[sym].high||px,px),low:Math.min(Q[sym].low||px,px)};
           refreshHistWidgets();liveScanUpdate();checkAlerts();
         });
-        renderHistBar();updateChartPanelPrice();
+        renderHistBar();updateCPPrice();
       }
     };
     fhWS.onclose=()=>setTimeout(connectFinnhubWS,5000);
@@ -666,13 +688,13 @@ async function refreshPrices(){
     await fetchQ(sym);refreshHistWidgets();liveScanUpdate();
     await new Promise(r=>setTimeout(r,250));
   }
-  renderHistBar();
+  renderHistBar();updateCPPrice();
 }
 setInterval(refreshPrices,15000);
 
-// ─────────────────────────────────────────────
-// SELECT SYM — central click handler for EVERY stock click
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
+// SELECT SYM — central handler for ALL stock clicks
+// ═══════════════════════════════════════════════
 async function selectSym(sym){
   sym=sym.toUpperCase().trim();if(!sym)return;
   if(sym==='BTC'||sym==='BITCOIN')sym='BTC/USD';
@@ -681,40 +703,159 @@ async function selectSym(sym){
   const si=document.getElementById('si');if(si)si.value='';
   closeDrop();
   if(!Q[sym])await fetchQ(sym);
-  addToHistory(sym);                   // always add to history
+  addToHistory(sym);
   if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
   refreshHistWidgets();renderHistBar();
   widgets.filter(w=>w.type==='news').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderNews(b,sym);});
-  openChartPanel(sym);                 // open in bottom panel
+  openChartPanel(sym);
 }
-
 function refreshHistWidgets(){
   widgets.forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b&&w.type==='history')renderHistory(b);});
-  updateChartPanelPrice();
+  updateCPPrice();
 }
 
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
+// SCREENERS — Yahoo Finance, no API key, real-time
+// Gainers / Losers / Most Active: refresh every 30s
+// Gap Scanner: pre-market gaps from prev close (uses Yahoo quote data)
+// ═══════════════════════════════════════════════
+const SCR_LABELS={
+  gainers:'🚀 Top Gainers',
+  losers:'📉 Top Losers',
+  active:'🔥 Most Active',
+  premarket:'🌅 Gap Scanner'
+};
+// Yahoo Finance screener IDs
+const YAHOO_IDS={
+  gainers:'day_gainers',
+  losers:'day_losers',
+  active:'most_actives',
+  premarket:'day_gainers' // gap scanner built from pre-market quote data
+};
+
+async function fetchScreenerData(type){
+  // Use Yahoo Finance v1 screener API directly — works from browser
+  const scrId=YAHOO_IDS[type];
+  const url=`https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=false&scrIds=${scrId}&count=25&corsDomain=finance.yahoo.com`;
+  try{
+    const r=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0'}});
+    const d=await r.json();
+    const quotes=d?.finance?.result?.[0]?.quotes||[];
+    if(quotes.length){
+      scrCache[type]={rows:quotes,ts:Date.now()};
+      return;
+    }
+  }catch(e){}
+  // CORS proxy fallback
+  try{
+    const proxy=`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+    const r=await fetch(proxy);
+    const d=await r.json();
+    const quotes=d?.finance?.result?.[0]?.quotes||[];
+    if(quotes.length)scrCache[type]={rows:quotes,ts:Date.now()};
+  }catch(e){}
+}
+
+function renderScreener(body,type){
+  body.style.padding='0';
+  body.style.overflow='hidden';
+  body.style.display='flex';
+  body.style.flexDirection='column';
+  const uid='scr'+type+body.id.replace(/\W/g,'');
+  body.innerHTML=`<div class="scr-hdr">
+    <span class="scr-badge"><span class="scr-dot"></span>${SCR_LABELS[type]}</span>
+    <span class="scr-timer" id="${uid}t">loading…</span>
+  </div>
+  <div class="scr-cols">
+    <span class="scr-ch">TICKER</span>
+    <span class="scr-ch r">PRICE</span>
+    <span class="scr-ch r">CHG%</span>
+    <span class="scr-ch r">VOL</span>
+  </div>
+  <div class="scr-rows" id="${uid}r">
+    <div class="scr-empty"><span class="scr-spin"></span>Fetching live data…</div>
+  </div>`;
+  loadAndRenderScr(type,uid);
+  startScrTimer(type,uid);
+}
+
+async function loadAndRenderScr(type,uid){
+  const tmr=document.getElementById(uid+'t');
+  if(tmr)tmr.textContent='updating…';
+  if(!scrCache[type]||Date.now()-scrCache[type].ts>SCR_TTL*1000){
+    await fetchScreenerData(type);
+  }
+  paintScrRows(type,uid);
+}
+
+function paintScrRows(type,uid){
+  const tbody=document.getElementById(uid+'r');if(!tbody)return;
+  const data=scrCache[type];
+  if(!data?.rows?.length){
+    tbody.innerHTML='<div class="scr-empty"><span class="scr-spin"></span>Fetching…<br><span style="font-size:8px;color:var(--dim)">Retrying in 10s</span></div>';
+    return;
+  }
+  let rows=data.rows;
+  // For gap scanner: sort by absolute % change from prev close (shows pre-market gaps)
+  if(type==='premarket'){
+    rows=[...rows].sort((a,b)=>Math.abs(b.regularMarketChangePercent||0)-Math.abs(a.regularMarketChangePercent||0));
+  }
+  tbody.innerHTML=rows.map(q=>{
+    const sym=(q.symbol||'').toUpperCase().replace(/[^A-Z0-9./-]/g,'');
+    const px=q.regularMarketPrice||0;
+    const chg=q.regularMarketChangePercent||0;
+    const vol=q.regularMarketVolume||0;
+    const name=(q.shortName||q.longName||sym).slice(0,20);
+    const u=chg>=0;
+    return `<div class="scr-row" onclick="selectSym('${sym}')">
+      <div><div class="scr-sym">${sym}</div><div class="scr-name">${name}</div></div>
+      <div class="scr-px">$${px.toFixed(2)}</div>
+      <div class="scr-chg ${u?'up':'dn'}">${u?'+':''}${chg.toFixed(2)}%</div>
+      <div class="scr-vol">${fmtV(vol)}</div>
+    </div>`;
+  }).join('');
+}
+
+function startScrTimer(type,uid){
+  if(scrTimers[uid])clearInterval(scrTimers[uid]);
+  let secs=scrCache[type]?Math.max(5,SCR_TTL-Math.floor((Date.now()-scrCache[type].ts)/1000)):SCR_TTL;
+  const tmr=document.getElementById(uid+'t');
+  if(tmr)tmr.textContent=`↺ ${secs}s`;
+  scrTimers[uid]=setInterval(async()=>{
+    secs--;
+    const el=document.getElementById(uid+'t');
+    if(!el){clearInterval(scrTimers[uid]);delete scrTimers[uid];return;}
+    if(secs<=0){
+      secs=SCR_TTL;
+      scrCache[type]=null;
+      await loadAndRenderScr(type,uid);
+    } else {
+      el.textContent=`↺ ${secs}s`;
+    }
+  },1000);
+}
+
+// ═══════════════════════════════════════════════
 // WIDGET SYSTEM
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 function addWidget(type){
   const id='w'+(++wIdC);
   const cv=document.getElementById('grid');
-  const x=Math.round((cv.scrollLeft+60+Math.random()*80)/SNAP)*SNAP;
-  const y=Math.round((cv.scrollTop+60+Math.random()*60)/SNAP)*SNAP;
+  const x=Math.round((cv.scrollLeft+40+Math.random()*60)/SNAP)*SNAP;
+  const y=Math.round((cv.scrollTop+40+Math.random()*60)/SNAP)*SNAP;
   widgets.push({id,type,x,y,w:280,h:320});
   saveWidgets();renderWidget(widgets[widgets.length-1]);
   document.getElementById('widgetMenu').classList.remove('open');
 }
 function removeWidget(id){
+  // Stop screener timer if applicable
+  const w=widgets.find(x=>x.id===id);
+  if(w&&SCREENER_TYPES.includes(w.type)){
+    const body=document.getElementById('wb-'+id);
+    if(body){const uid='scr'+w.type+body.id.replace(/\W/g,'');if(scrTimers[uid]){clearInterval(scrTimers[uid]);delete scrTimers[uid];}}
+  }
   widgets=widgets.filter(w=>w.id!==id);saveWidgets();
   document.getElementById(id)?.remove();
-}
-function resetWidgetSettings(id){
-  const w=widgets.find(x=>x.id===id);if(!w)return;
-  delete w.label;w.pinned=false;saveWidgets();
-  const el=document.getElementById(id);
-  if(el){el.innerHTML=widgetHTML(w);el.classList.remove('pinned');makeDraggable(el,w);makeResizable(el,w);populateWidget(el,w);}
-  document.querySelectorAll('.ws-panel.open').forEach(x=>x.classList.remove('open'));
 }
 function renderWidget(wData){
   const el=document.createElement('div');
@@ -727,29 +868,32 @@ function renderWidget(wData){
 }
 function widgetHTML(w){
   const title=w.label||WIDGET_TYPES[w.type]||w.type;
-  const isScrType=SCREENER_TYPES.includes(w.type);
+  const isScr=SCREENER_TYPES.includes(w.type);
   return `<div class="wh">
     ${w.pinned?'<span class="pin-ind">📌</span>':''}
     <span class="wh-title">${title}</span>
     <div class="ws-wrap">
-      <button class="wh-btn" onclick="toggleWS('${w.id}',event)">⚙</button>
+      <button class="wh-btn" onclick="toggleWS('${w.id}',event)" title="Settings">⚙</button>
       <div class="ws-panel" id="wsp-${w.id}">
-        <div class="ws-row"><span class="ws-label">Widget Name</span><input class="ws-input" id="wsl-${w.id}" value="${w.label||WIDGET_TYPES[w.type]||w.type}"/></div>
-        <div class="ws-row"><span class="ws-label">Widget Type</span>
+        <div class="ws-row">
+          <span class="ws-label">Widget Name</span>
+          <input class="ws-input" id="wsl-${w.id}" value="${w.label||WIDGET_TYPES[w.type]||w.type}"/>
+        </div>
+        <div class="ws-row">
+          <span class="ws-label">Widget Type</span>
           <select class="ws-select" id="wst-${w.id}">${Object.entries(WIDGET_TYPES).map(([k,v])=>`<option value="${k}"${w.type===k?' selected':''}>${v}</option>`).join('')}</select>
         </div>
         <div class="ws-toggle" onclick="togglePin('${w.id}')">
-          <span class="ws-tl">📌 Pin widget</span>
+          <span class="ws-tl">📌 Lock position</span>
           <button class="ws-tb${w.pinned?' on':''}" id="wspin-${w.id}"></button>
         </div>
-        <button class="ws-save" onclick="saveWS('${w.id}')">✓ Save</button>
-        <button class="ws-reset" onclick="resetWidgetSettings('${w.id}')">↺ Reset</button>
-        <button class="ws-del" onclick="removeWidget('${w.id}')">✕ Remove</button>
+        <button class="ws-save" onclick="saveWS('${w.id}')">✓ Apply</button>
+        <button class="ws-del" onclick="removeWidget('${w.id}')">✕ Remove Widget</button>
       </div>
     </div>
-    <button class="wh-btn" onclick="removeWidget('${w.id}')">✕</button>
+    <button class="wh-btn" onclick="removeWidget('${w.id}')" title="Close">✕</button>
   </div>
-  <div class="wb${isScrType?' scr-body-wrap':''}" id="wb-${w.id}"></div>
+  <div class="wb${isScr?' scr-wb':''}" id="wb-${w.id}"></div>
   <div class="resize-br"></div>`;
 }
 function toggleWS(id,e){
@@ -778,24 +922,24 @@ function saveWS(id){
 }
 function populateWidget(el,w){
   const body=document.getElementById('wb-'+w.id);if(!body)return;
-  if(w.type==='history')renderHistory(body);
+  if(SCREENER_TYPES.includes(w.type))renderScreener(body,w.type);
+  else if(w.type==='history')renderHistory(body);
   else if(w.type==='alerts')renderAL(body);
-  else if(w.type==='news')renderNews(body,CUR);
+  else if(w.type==='news')renderNews(body,CUR||'AAPL');
   else if(w.type==='scanner')renderScanner(body);
-  else if(SCREENER_TYPES.includes(w.type))renderScreener(body,w.type);
 }
 
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 // HISTORY WIDGET
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 function renderHistory(body){
   if(!histSyms.length){
-    body.innerHTML='<div style="font-size:10px;color:var(--mu);text-align:center;padding:20px;line-height:1.8">Click any stock<br>to build your history.</div>';
+    body.innerHTML='<div style="font-size:10px;color:var(--mu);text-align:center;padding:24px 10px;line-height:1.9">No history yet.<br>Click any stock to start.</div>';
     return;
   }
   body.innerHTML=histSyms.map(sym=>{
     const q=Q[sym],u=(q?.changePct||0)>=0;
-    return `<div class="wi${sym===CUR?' ac':''}" onclick="selectSym('${sym}')">
+    return `<div class="wi${sym===curChartSym?' ac':''}" onclick="selectSym('${sym}')">
       <div class="wil"><span class="wis">${sym}</span><span class="win">${q?.name||'—'}</span></div>
       <div class="wir">
         <div class="wip">${q?'$'+fmtP(q.price):'—'}</div>
@@ -810,49 +954,9 @@ function removeFromHistory(sym){
   renderHistBar();refreshHistWidgets();
 }
 
-// ─────────────────────────────────────────────
-// SCREENER WIDGETS — TradingView iframe + input bar
-// The iframe shows LIVE market-wide data (pre/after hours included with TV Essential)
-// Input bar lets you type any ticker you see → Enter → loads chart + adds to history
-// ─────────────────────────────────────────────
-function renderScreener(body,type){
-  const screen=SCR_SCREENS[type];
-  const params=encodeURIComponent(JSON.stringify({
-    width:'100%',height:'100%',defaultColumn:'overview',
-    defaultScreen:screen,market:'america',showToolbar:true,
-    colorTheme:'dark',locale:'en'
-  }));
-  const uid='s'+type+body.id.replace(/\W/g,'');
-  body.innerHTML=`
-    <div class="scr-iframe-wrap">
-      <iframe scrolling="no" allowtransparency="true" frameborder="0"
-        sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-        src="https://www.tradingview.com/embed-widget/screener/?locale=en#${params}"></iframe>
-    </div>
-    <div class="scr-input-bar">
-      <label>→ OPEN CHART:</label>
-      <input class="scr-inp" id="${uid}" placeholder="type ticker, press Enter"
-        maxlength="10" autocomplete="off" spellcheck="false"
-        oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'')"
-        onkeydown="scrInputKey(event,'${uid}')"/>
-      <button class="scr-go" onclick="scrGo('${uid}')">Go ↵</button>
-    </div>`;
-}
-function scrInputKey(e,uid){
-  if(e.key==='Enter'){e.preventDefault();scrGo(uid);}
-  // Esc blurs — never traps the user
-  if(e.key==='Escape'){document.getElementById(uid)?.blur();}
-}
-function scrGo(uid){
-  const inp=document.getElementById(uid);
-  const sym=inp?.value.trim();
-  if(sym){inp.value='';selectSym(sym);}
-  else inp?.focus();
-}
-
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 // 5 PILLARS SCANNER
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 const scanCache={};
 let scanDeepRunning=false;
 function renderScanner(body){
@@ -873,7 +977,7 @@ function renderScanner(body){
     <div style="display:flex;gap:4px">
       <input type="text" placeholder="Add symbol…" id="${bid}-inp" onkeydown="if(event.key==='Enter')addScanSym('${bid}')"
         style="flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:10px;padding:4px 6px;outline:none"/>
-      <button onclick="addScanSym('${bid}')" style="background:var(--ac);border:none;border-radius:4px;color:#fff;font-size:12px;width:22px;cursor:pointer">+</button>
+      <button onclick="addScanSym('${bid}')" style="background:var(--ac);border:none;border-radius:4px;color:#fff;font-size:13px;width:24px;cursor:pointer;line-height:1">+</button>
     </div>
   </div>
   <div id="${bid}-res"><div class="scan-empty">⚡ Scanning…<br><span style="font-size:8px;color:var(--dim)">Stocks passing 4/5 pillars appear here</span></div></div>`;
@@ -899,8 +1003,8 @@ function liveScanUpdate(){
     const minP=parseFloat(document.getElementById(bid+'-minp')?.value)||1;
     const maxP=parseFloat(document.getElementById(bid+'-maxp')?.value)||20;
     const baseC=parseFloat(document.getElementById(bid+'-chg')?.value)||10;
-    const sess=document.getElementById('sessbdg')?.textContent||'';
-    const minC=sess.includes('PRE-MARKET')||sess.includes('AFTER HOURS')?baseC*.5:baseC;
+    const sess=getSession();
+    const minC=sess==='pre'||sess==='aft'?baseC*.5:baseC;
     const results=[];
     getScanSyms().forEach(sym=>{
       const q=Q[sym];if(!q?.price)return;
@@ -911,20 +1015,20 @@ function liveScanUpdate(){
       if(score<4)return;
       results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false});
     });
-    if(!results.length){res.innerHTML='<div class="scan-empty">No stocks passing 4/5 pillars yet</div>';return;}
+    if(!results.length){res.innerHTML='<div class="scan-empty">No stocks passing 4/5 pillars yet<br><span style="font-size:8px;color:var(--dim)">Watching '+getScanSyms().length+' symbols</span></div>';return;}
     results.sort((a,b)=>b.score-a.score||(b.q.changePct||0)-(a.q.changePct||0));
     const pd=v=>v===true?'pass':v===false?'fail':'na';
     res.innerHTML=results.map(r=>{
       const u=(r.q.changePct||0)>=0,sc=r.score>=4?'s5':r.score===3?'s4':'s0';
       return `<div class="scan-row" onclick="selectSym('${r.sym}')">
-        <span class="scan-sym ${r.score>=4?'up':''}">${r.sym}${r.hasNews?' 🔥':''}</span>
+        <span class="scan-sym ${u?'up':''}">${r.sym}${r.hasNews?' 🔥':''}</span>
         <span class="scan-px">$${fmtP(r.q.price)}</span>
         <span class="scan-chg ${u?'up':'dn'}">${u?'+':''}${(r.q.changePct||0).toFixed(2)}%</span>
         <div class="scan-pills">
           <span class="pill ${pd(r.p1)}" title="P1:Price $1-$20">P1</span>
           <span class="pill ${pd(r.p2)}" title="P2:Change%">P2</span>
           <span class="pill ${pd(r.p3)}" title="P3:News">P3</span>
-          <span class="pill ${pd(r.p4)}" title="P4:RVol">P4</span>
+          <span class="pill ${pd(r.p4)}" title="P4:RVol≥5x">P4</span>
           <span class="pill ${pd(r.p5)}" title="P5:Float<10M">P5</span>
         </div>
         <span class="scan-score ${sc}">${r.score}/5</span>
@@ -951,8 +1055,7 @@ async function startDeepScan(){
         const avgV=(d.metric?.['10DayAverageTradingVolume']||0)*1e6;
         const rVol=avgV>0?(Q[sym]?.volume||0)/avgV:null;
         const rvBase=parseFloat(document.querySelector('[id$="-rv"]')?.value)||5;
-        const sess=document.getElementById('sessbdg')?.textContent||'';
-        const rvT=sess.includes('PRE-MARKET')||sess.includes('AFTER HOURS')?rvBase*.4:rvBase;
+        const rvT=getSession()==='pre'||getSession()==='aft'?rvBase*.4:rvBase;
         p4=rVol!==null?rVol>=rvT:null;
         const fv=d.metric?.['float']??null;
         p5=fv!==null?fv<10:null;
@@ -963,37 +1066,38 @@ async function startDeepScan(){
   }
   scanDeepRunning=false;
   const now=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  document.querySelectorAll('[id$="-status"]').forEach(el=>{if(el.closest?.('.widget'))el.textContent=`⚡ Last deep: ${now}`;});
+  document.querySelectorAll('[id$="-status"]').forEach(el=>{if(el.closest?.('.widget'))el.textContent=`⚡ Last deep scan: ${now}`;});
   liveScanUpdate();
 }
 setInterval(startDeepScan,15000);
 
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 // ALERTS
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 function saveAL(){localStorage.setItem('sv_al',JSON.stringify(alts));}
 function renderAL(body){
   body.innerHTML=`<div class="alf">
-    <select class="al-sel">${[...new Set([...histSyms,...scanSyms])].map(s=>`<option value="${s}">${s}</option>`).join('')}</select>
+    <select class="al-sel">${[...new Set([...histSyms,...scanSyms])].map(s=>`<option value="${s}">${s}</option>`).join('') || '<option>—</option>'}</select>
     <select class="al-type"><option>Price Above</option><option>Price Below</option><option>% Change Up</option><option>% Change Down</option></select>
-    <input class="al-val" type="number" placeholder="Value e.g. 220.00" step="0.01"/>
+    <input class="al-val" type="number" placeholder="Value  e.g. 25.00" step="0.01"/>
     <button class="alcr" onclick="createAlertFrom(this)">+ CREATE ALERT</button>
   </div>${alts.map(a=>{
     const cls=a.triggered?'trig':a.active?'on':'off';
     return `<div class="ali"><div class="alil"><div class="ald ${cls}"></div>
       <div><div class="als">${a.sym} <span style="font-size:8px;color:var(--mu)">${a.type}</span></div>
-      <div style="font-size:8px;color:var(--mu)">${a.type.includes('%')?a.val+'%':'$'+a.val}${a.triggered?' ✓':''}</div></div></div>
+      <div style="font-size:8px;color:var(--mu)">${a.type.includes('%')?a.val+'%':'$'+a.val}${a.triggered?' <span style="color:var(--gold)">✓ triggered</span>':''}</div></div></div>
       <div style="display:flex;gap:2px">
         <button class="alx" style="color:var(--mu)" onclick="togAL(${a.id})">${a.active?'⏸':'▶'}</button>
         <button class="alx" onclick="delAL(${a.id})">✕</button>
       </div></div>`;
-  }).join('')||'<div style="font-size:10px;color:var(--mu);text-align:center;padding:10px">No alerts</div>'}`;
+  }).join('')||'<div style="font-size:10px;color:var(--mu);text-align:center;padding:14px 0">No alerts yet</div>'}`;
 }
 function createAlertFrom(btn){
   const w=btn.closest('.alf');
   const sym=w.querySelector('.al-sel').value,type=w.querySelector('.al-type').value,val=parseFloat(w.querySelector('.al-val').value);
-  if(!sym||!val)return;
-  alts.push({id:Date.now(),sym,type,val,active:true,triggered:false});saveAL();w.querySelector('.al-val').value='';
+  if(!sym||sym==='—'||!val)return;
+  alts.push({id:Date.now(),sym,type,val,active:true,triggered:false});saveAL();
+  w.querySelector('.al-val').value='';
   widgets.filter(w=>w.type==='alerts').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderAL(b);});
 }
 function delAL(id){alts=alts.filter(a=>a.id!==id);saveAL();widgets.filter(w=>w.type==='alerts').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderAL(b);});}
@@ -1008,43 +1112,46 @@ function checkAlerts(){
     if(a.type==='Price Below'&&q.price<=a.val)hit=true;
     if(a.type==='% Change Up'&&(q.changePct||0)>=a.val)hit=true;
     if(a.type==='% Change Down'&&(q.changePct||0)<=-a.val)hit=true;
-    if(hit){a.triggered=true;ch=true;
-      if(Notification.permission==='granted')new Notification(`🔔 ${a.sym}`,{body:`${a.type} ${a.val}${a.type.includes('%')?'%':''}`});}
+    if(hit){
+      a.triggered=true;ch=true;
+      if(Notification.permission==='granted')new Notification(`🔔 ${a.sym}`,{body:`${a.type} ${a.val}${a.type.includes('%')?'%':''} triggered`});
+      showToast(`🔔 Alert: ${a.sym} ${a.type} ${a.val}${a.type.includes('%')?'%':''}`);
+    }
   });
   if(ch){saveAL();widgets.filter(w=>w.type==='alerts').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderAL(b);});}
 }
 
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 // NEWS
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
+function timeAgo(d){const s=Math.floor((Date.now()-d)/1000);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';}
 async function renderNews(body,sym){
-  body.innerHTML='<div class="nlod">Loading…</div>';
+  body.innerHTML='<div class="nlod">Loading news…</div>';
   try{
     const today=new Date().toISOString().split('T')[0];
     const from=new Date(Date.now()-3*86400000).toISOString().split('T')[0];
     let r=await fetch(`https://finnhub.io/api/v1/company-news?symbol=${sym}&from=${from}&to=${today}&token=${FHK}`);
     let items=await r.json();
     if(!items?.length){r=await fetch(`https://finnhub.io/api/v1/news?category=general&token=${FHK}`);items=await r.json();}
-    if(!items?.length){body.innerHTML='<div class="nlod">No news</div>';return;}
+    if(!items?.length){body.innerHTML='<div class="nlod">No news available</div>';return;}
     body.innerHTML=items.slice(0,20).map(n=>{
       const age=timeAgo(new Date(n.datetime*1000));
       const s=n.sentiment>0.1?'p':n.sentiment<-0.1?'n':'u';
       const sl=n.sentiment>0.1?'▲':n.sentiment<-0.1?'▼':'●';
-      const relSym=(n.related||sym).split(',')[0].trim().replace(/[^A-Z0-9./\-]/g,'');
+      const relSym=(n.related||sym).split(',')[0].trim().replace(/[^A-Z0-9./-]/g,'');
       const safeUrl=(n.url||'').replace(/'/g,"\\'");
       return `<div class="ni" onclick="openNewsPopup('${safeUrl}')">
         <div class="nisym" onclick="event.stopPropagation();selectSym('${relSym}')" title="Open ${relSym} chart">${relSym}<span class="nisen ${s}">${sl}</span></div>
-        <div class="nitl">${(n.headline||'').slice(0,90)}${(n.headline||'').length>90?'…':''}</div>
+        <div class="nitl">${(n.headline||'').slice(0,88)}${(n.headline||'').length>88?'…':''}</div>
         <div class="nitm">${age} · ${n.source||''}</div>
       </div>`;
     }).join('');
   }catch(e){body.innerHTML='<div class="nlod">News unavailable</div>';}
 }
-function timeAgo(d){const s=Math.floor((Date.now()-d)/1000);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';}
 
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 // SEARCH
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 const inp=document.getElementById('si');
 const dd=document.getElementById('dd');
 const spin=document.getElementById('sspin');
@@ -1061,42 +1168,45 @@ async function doSearch(q){
         const be=b.symbol.toUpperCase()===q.toUpperCase()?0:1;
         return ae-be||a.symbol.length-b.symbol.length;
       }).slice(0,10);
-    renderDrop('Results — click to open chart',flt);
-  }catch(e){dd.innerHTML='<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">Search error</div>';}
+    renderDrop(flt.length?'Results — click to open chart':'No results',flt);
+  }catch(e){dd.innerHTML='<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">Search error — check Finnhub key</div>';}
   spin.style.display='none';dd.classList.add('open');
 }
 function showPop(){
   const items=histSyms.slice(0,8).map(s=>({symbol:s,description:Q[s]?.name||s}));
   if(items.length)renderDrop('Recent History',items);
-  else dd.innerHTML='<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">Type to search…</div>';
-  dd.classList.add('open');
+  else{dd.innerHTML='<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">Type any stock symbol to search…</div>';dd.classList.add('open');}
 }
 function renderDrop(lbl,items){
-  if(!items.length){dd.innerHTML='<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">No results</div>';return;}
+  if(!items.length){dd.innerHTML=`<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">${lbl}</div>`;dd.classList.add('open');return;}
   dd.innerHTML=`<div class="dlb">${lbl}</div>`+items.map((it,i)=>{
     const s=it.symbol,q=Q[s],u=q?(q.changePct||0)>=0:true;
     return `<button class="dit" onclick="selectSym('${s}')" data-i="${i}">
       <div class="dil"><span class="dsy">${s}</span><span class="dna">${it.description||''}</span></div>
-      ${q?`<span class="${u?'up':'dn'}" style="font-size:10px">${u?'+':''}${(q.changePct||0).toFixed(2)}%</span>`:''}
+      ${q?`<span class="${u?'up':'dn'}" style="font-size:10px;flex-shrink:0">${u?'+':''}${(q.changePct||0).toFixed(2)}%</span>`:''}
     </button>`;
   }).join('');
-  hlt=-1;
+  hlt=-1;dd.classList.add('open');
 }
 function closeDrop(){dd.classList.remove('open');hlt=-1;}
 inp.addEventListener('input',e=>{
   const v=e.target.value.trim();clearTimeout(srt);
   if(!v){showPop();return;}
   spin.style.display='block';
-  srt=setTimeout(()=>doSearch(v),350);
+  srt=setTimeout(()=>doSearch(v),320);
 });
 inp.addEventListener('focus',()=>showPop());
 inp.addEventListener('keydown',e=>{
   const its=dd.querySelectorAll('.dit');
   if(e.key==='ArrowDown'){e.preventDefault();hlt=Math.min(hlt+1,its.length-1);its.forEach((x,i)=>x.classList.toggle('hl',i===hlt));}
   else if(e.key==='ArrowUp'){e.preventDefault();hlt=Math.max(hlt-1,0);its.forEach((x,i)=>x.classList.toggle('hl',i===hlt));}
-  else if(e.key==='Enter'){const p=flt[hlt>=0?hlt:0]||(histSyms[hlt>=0?hlt:0]?{symbol:histSyms[hlt>=0?hlt:0]}:null);if(p){selectSym(p.symbol);closeDrop();}}
+  else if(e.key==='Enter'){
+    const p=flt[hlt>=0?hlt:0]||(histSyms[hlt>=0?hlt:0]?{symbol:histSyms[0]}:null);
+    if(p){selectSym(p.symbol);closeDrop();}
+  }
   else if(e.key==='Escape'){closeDrop();inp.blur();}
 });
+// Press any key to open search (when not in another input)
 document.addEventListener('keydown',e=>{
   if(e.target===inp)return;
   const tag=e.target.tagName;
@@ -1111,11 +1221,13 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('.wm-wrap'))document.getElementById('widgetMenu').classList.remove('open');
   if(!e.target.closest('.ws-wrap'))document.querySelectorAll('.ws-panel.open').forEach(x=>x.classList.remove('open'));
 });
-document.getElementById('addWidgetBtn').addEventListener('click',e=>{document.getElementById('widgetMenu').classList.toggle('open');e.stopPropagation();});
+document.getElementById('addWidgetBtn').addEventListener('click',e=>{
+  document.getElementById('widgetMenu').classList.toggle('open');e.stopPropagation();
+});
 
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 // DRAG & RESIZE
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 function makeDraggable(el,wData){
   const hdr=el.querySelector('.wh');
   let ox=0,oy=0,sx=0,sy=0,dragging=false;
@@ -1136,31 +1248,33 @@ function makeDraggable(el,wData){
   document.addEventListener('mouseup',()=>{if(!dragging)return;dragging=false;el.classList.remove('dragging');el.style.zIndex='';saveWidgets();});
 }
 function makeResizable(el,wData){
-  const handle=el.querySelector('.resize-br');
-  let resizing=false,sx=0,sy=0,ow=0,oh=0;
-  handle.addEventListener('mousedown',e=>{
-    if(wData.pinned)return;resizing=true;sx=e.clientX;sy=e.clientY;ow=wData.w;oh=wData.h;
+  const h=el.querySelector('.resize-br');
+  let rs=false,sx=0,sy=0,ow=0,oh=0;
+  h.addEventListener('mousedown',e=>{
+    if(wData.pinned)return;rs=true;sx=e.clientX;sy=e.clientY;ow=wData.w;oh=wData.h;
     e.preventDefault();e.stopPropagation();
   });
   document.addEventListener('mousemove',e=>{
-    if(!resizing)return;
+    if(!rs)return;
     wData.w=Math.round(Math.max(180,ow+(e.clientX-sx))/SNAP)*SNAP;
     wData.h=Math.round(Math.max(120,oh+(e.clientY-sy))/SNAP)*SNAP;
     el.style.width=wData.w+'px';el.style.height=wData.h+'px';
   });
-  document.addEventListener('mouseup',()=>{if(!resizing)return;resizing=false;saveWidgets();});
+  document.addEventListener('mouseup',()=>{if(!rs)return;rs=false;saveWidgets();});
 }
 
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 // BOOT
-// ─────────────────────────────────────────────
+// ═══════════════════════════════════════════════
 if(Notification.permission==='default')Notification.requestPermission();
 
 async function init(){
   renderHistBar();
   widgets.forEach(w=>renderWidget(w));
+  // Load prices for history symbols
   for(const sym of histSyms.slice(0,10)){
-    await fetchQ(sym);renderHistBar();refreshHistWidgets();
+    await fetchQ(sym);
+    renderHistBar();refreshHistWidgets();
     await new Promise(r=>setTimeout(r,150));
   }
   connectFinnhubWS();
