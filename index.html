@@ -734,26 +734,51 @@ const YAHOO_IDS={
 };
 
 async function fetchScreenerData(type){
-  // Use Yahoo Finance v1 screener API directly — works from browser
   const scrId=YAHOO_IDS[type];
-  const url=`https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=false&scrIds=${scrId}&count=25&corsDomain=finance.yahoo.com`;
-  try{
-    const r=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0'}});
-    const d=await r.json();
-    const quotes=d?.finance?.result?.[0]?.quotes||[];
-    if(quotes.length){
-      scrCache[type]={rows:quotes,ts:Date.now()};
-      return;
-    }
-  }catch(e){}
-  // CORS proxy fallback
-  try{
-    const proxy=`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-    const r=await fetch(proxy);
-    const d=await r.json();
-    const quotes=d?.finance?.result?.[0]?.quotes||[];
-    if(quotes.length)scrCache[type]={rows:quotes,ts:Date.now()};
-  }catch(e){}
+  const url=`https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=false&scrIds=${scrId}&count=25`;
+  // Try multiple CORS proxies in order
+  const proxies=[
+    `https://corsproxy.io/?${encodeURIComponent(url)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    `https://proxy.cors.sh/${url}`,
+  ];
+  for(const proxy of proxies){
+    try{
+      const r=await fetch(proxy,{headers:{'x-requested-with':'XMLHttpRequest'}});
+      if(!r.ok)continue;
+      const d=await r.json();
+      const quotes=d?.finance?.result?.[0]?.quotes||[];
+      if(quotes.length){scrCache[type]={rows:quotes,ts:Date.now()};return;}
+    }catch(e){}
+  }
+  // All proxies failed — use Finnhub to build screener from known symbols
+  await buildScreenerFromFinnhub(type);
+}
+
+// Fallback: use Finnhub quotes on a curated symbol list, rank by the screener type
+const FALLBACK_SYMS=['NVDA','AMD','AAPL','MSFT','META','GOOGL','AMZN','TSLA','PLTR','COIN',
+  'MSTR','SOFI','NIO','RIVN','LCID','HOOD','UPST','AFRM','OPEN','RBLX','SNAP','UBER',
+  'GME','AMC','SOXL','TQQQ','SQQQ','SPXL','UVXY','SPY','QQQ','IWM',
+  'BNAI','CMND','SPHL','ACMR','AEHR','BLNK','BTBT','MARA','RIOT','HUT','CLSK',
+  'NVAX','MRNA','BNTX','SAVA','AGEN','ARDX','AVXL','AXSM','CRSP','BEAM'];
+async function buildScreenerFromFinnhub(type){
+  if(scrCache[type]?.rows?.length)return; // already have data
+  const syms=FALLBACK_SYMS;
+  // Fetch quotes for symbols not yet cached, staggered
+  const toFetch=syms.filter(s=>!Q[s]).slice(0,20);
+  for(const sym of toFetch){
+    await fetchQ(sym);
+    await new Promise(r=>setTimeout(r,100));
+  }
+  // Build rows from Q cache
+  const rows=syms.filter(s=>Q[s]?.price).map(s=>({
+    symbol:s,
+    regularMarketPrice:Q[s].price,
+    regularMarketChangePercent:Q[s].changePct||0,
+    regularMarketVolume:Q[s].volume||0,
+    shortName:Q[s].name||s
+  }));
+  if(rows.length)scrCache[type]={rows,ts:Date.now(),isFallback:true};
 }
 
 function renderScreener(body,type){
@@ -790,17 +815,21 @@ async function loadAndRenderScr(type,uid){
 
 function paintScrRows(type,uid){
   const tbody=document.getElementById(uid+'r');if(!tbody)return;
+  const tmr=document.getElementById(uid+'t');
   const data=scrCache[type];
   if(!data?.rows?.length){
-    tbody.innerHTML='<div class="scr-empty"><span class="scr-spin"></span>Fetching…<br><span style="font-size:8px;color:var(--dim)">Retrying in 10s</span></div>';
+    tbody.innerHTML='<div class="scr-empty"><span class="scr-spin"></span>Loading…</div>';
     return;
   }
-  let rows=data.rows;
-  // For gap scanner: sort by absolute % change from prev close (shows pre-market gaps)
-  if(type==='premarket'){
-    rows=[...rows].sort((a,b)=>Math.abs(b.regularMarketChangePercent||0)-Math.abs(a.regularMarketChangePercent||0));
-  }
-  tbody.innerHTML=rows.map(q=>{
+  let rows=[...data.rows];
+  // Sort by type
+  if(type==='gainers')rows.sort((a,b)=>(b.regularMarketChangePercent||0)-(a.regularMarketChangePercent||0));
+  else if(type==='losers')rows.sort((a,b)=>(a.regularMarketChangePercent||0)-(b.regularMarketChangePercent||0));
+  else if(type==='active')rows.sort((a,b)=>(b.regularMarketVolume||0)-(a.regularMarketVolume||0));
+  else if(type==='premarket')rows.sort((a,b)=>Math.abs(b.regularMarketChangePercent||0)-Math.abs(a.regularMarketChangePercent||0));
+  // Show fallback note if using Finnhub data
+  if(data.isFallback&&tmr)tmr.textContent='↺ '+SCR_TTL+'s (local)';
+  tbody.innerHTML=rows.slice(0,25).map(q=>{
     const sym=(q.symbol||'').toUpperCase().replace(/[^A-Z0-9./-]/g,'');
     const px=q.regularMarketPrice||0;
     const chg=q.regularMarketChangePercent||0;
