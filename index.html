@@ -287,6 +287,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 
     <div class="hright">
       <button class="hbtn" onclick="openProfileModal()">👤 Profiles</button>
+      <button class="hbtn" onclick="logout()" title="Sign out" style="font-size:9px">⏻ Sign Out</button>
       <div class="wm-wrap">
         <button class="add-widget-btn" id="addWidgetBtn">+ Add Widget</button>
         <div class="widget-menu" id="widgetMenu">
@@ -344,7 +345,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 const SUPA_URL = 'https://yklxpcatopitwjzutolj.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrbHhwY2F0b3BpdHdqenV0b2xqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MDYyMTEsImV4cCI6MjA5NjM4MjIxMX0.KJotgJpSLziUvdZkUb66tV7vZXPEfMOjGOij2-vmk6Q';
 
-async function supaFetch(path, opts={})){
+async function supaFetch(path, opts={}){
   const r = await fetch(SUPA_URL + path, {
     ...opts,
     headers: {
@@ -455,7 +456,17 @@ function showApp(){
 function checkAuth(){
   const token=sessionStorage.getItem('sv_token');
   if(token){ showApp(); return true; }
+  // Make sure login wall is visible
+  const lw=document.getElementById('loginWall');
+  if(lw)lw.style.display='flex';
   return false;
+}
+
+function logout(){
+  sessionStorage.removeItem('sv_token');
+  sessionStorage.removeItem('sv_user_email');
+  sessionStorage.removeItem('sv_user_id');
+  window.location.reload();
 }
 
 const FHK = 'd8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
