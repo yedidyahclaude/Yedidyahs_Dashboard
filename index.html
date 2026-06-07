@@ -100,10 +100,10 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .modal-footer{display:flex;gap:8px;justify-content:flex-end}
 
 /* CANVAS */
-.canvas{flex:1;overflow:auto;position:relative;background:var(--bg)}
-.canvas::-webkit-scrollbar{width:5px;height:5px}
-.canvas::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px}
-#grid{position:relative;min-width:100%;min-height:100%}
+.canvas{flex:1;overflow:hidden;position:relative;background:var(--bg);min-height:0}
+#grid{position:relative;width:100%;height:100%;overflow:auto}
+#grid::-webkit-scrollbar{width:5px;height:5px}
+#grid::-webkit-scrollbar-thumb{background:var(--b2);border-radius:3px}
 
 /* WIDGETS */
 .widget{position:absolute;background:var(--s1);border:1px solid var(--b1);border-radius:8px;display:flex;flex-direction:column;overflow:visible;min-width:180px;min-height:120px;box-shadow:0 2px 20px #00000040}
@@ -698,7 +698,7 @@ function refreshHistWidgets(){
 // ─────────────────────────────────────────────
 function addWidget(type){
   const id='w'+(++wIdC);
-  const cv=document.getElementById('canvas');
+  const cv=document.getElementById('grid');
   const x=Math.round((cv.scrollLeft+60+Math.random()*80)/SNAP)*SNAP;
   const y=Math.round((cv.scrollTop+60+Math.random()*60)/SNAP)*SNAP;
   widgets.push({id,type,x,y,w:280,h:320});
@@ -826,6 +826,7 @@ function renderScreener(body,type){
   body.innerHTML=`
     <div class="scr-iframe-wrap">
       <iframe scrolling="no" allowtransparency="true" frameborder="0"
+        sandbox="allow-scripts allow-same-origin"
         src="https://www.tradingview.com/embed-widget/screener/?locale=en#${params}"></iframe>
     </div>
     <div class="scr-input-bar">
@@ -1126,8 +1127,8 @@ function makeDraggable(el,wData){
   });
   document.addEventListener('mousemove',e=>{
     if(!dragging)return;
-    const cv=document.getElementById('canvas');
-    const maxX=Math.max(cv.scrollWidth-wData.w,0),maxY=Math.max(cv.scrollHeight-wData.h,0);
+    const cv=document.getElementById('grid');
+    const maxX=Math.max(cv.clientWidth-wData.w,0),maxY=Math.max(cv.clientHeight-wData.h,0);
     wData.x=Math.round(Math.max(0,Math.min(maxX,ox+(e.clientX-sx)))/SNAP)*SNAP;
     wData.y=Math.round(Math.max(0,Math.min(maxY,oy+(e.clientY-sy)))/SNAP)*SNAP;
     el.style.left=wData.x+'px';el.style.top=wData.y+'px';
