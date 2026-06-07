@@ -843,12 +843,8 @@ const SCR_LABELS={
 };
 
 
-let scrFetchLock=false;
 async function fetchScreenerData(type){
   // On refresh/reload — fetch only uncached symbols (most are already in Q from init)
-  while(scrFetchLock)await new Promise(r=>setTimeout(r,200));
-  scrFetchLock=true;
-  try{
     const symbolSets={
       gainers: ['NVDA','AMD','AAPL','MSFT','META','TSLA','PLTR','COIN','SOFI','HOOD','MARA','RIOT','GME','AMC','SPHL','BNAI','CMND','ACMR','AEHR','BLNK'],
       losers:  ['NVDA','AMD','AAPL','MSFT','META','TSLA','PLTR','COIN','SOFI','HOOD','MARA','RIOT','GME','AMC','NIO','RIVN','LCID','SNAP','PLUG','FCEL'],
@@ -869,10 +865,6 @@ async function fetchScreenerData(type){
       shortName:Q[s].name||s
     }));
     if(rows.length)scrCache[type]={rows,ts:Date.now()};
-  }finally{scrFetchLock=false;}
-}
-
-// Direct fetch — bypasses the queue for screener initial load
 
 function buildRowsFromQ(){
   return Object.keys(Q).filter(s=>Q[s]?.price).map(s=>({
