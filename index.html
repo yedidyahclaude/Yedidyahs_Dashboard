@@ -26,7 +26,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .bnm{font-family:'Syne',sans-serif;font-size:14px;font-weight:800;color:#fff}
 .bnm em{color:var(--ac2);font-style:normal}
 
-/* SEARCH — connected to TradingView */
+/* SEARCH */
 .sw{flex:1;max-width:340px;position:relative}
 .sico{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--mu);pointer-events:none}
 #si{width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:7px;color:var(--tx);font-family:'DM Mono',monospace;font-size:12px;padding:6px 28px 6px 29px;outline:none;transition:border-color .15s}
@@ -191,9 +191,10 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .alx:hover{opacity:1}
 
 /* NEWS */
-.ni{padding:7px;background:var(--s2);border:1px solid var(--b2);border-radius:5px;margin-bottom:4px;cursor:pointer;text-decoration:none;display:block;transition:border-color .1s}
+.ni{padding:7px;background:var(--s2);border:1px solid var(--b2);border-radius:5px;margin-bottom:4px;cursor:pointer;display:block;transition:border-color .1s}
 .ni:hover{border-color:var(--ac)}
-.nisym{font-size:8px;color:var(--ac2);margin-bottom:2px;font-weight:500}
+.nisym{font-size:8px;color:var(--ac2);margin-bottom:2px;font-weight:500;cursor:pointer;display:inline-block;padding:1px 4px;border-radius:3px;transition:background .1s}
+.nisym:hover{background:#7c6aff20;color:#fff}
 .nitl{font-size:10px;color:var(--tx);line-height:1.4;margin-bottom:2px}
 .nitm{font-size:8px;color:var(--mu)}
 .nisen{display:inline-block;font-size:7px;padding:1px 3px;border-radius:3px;margin-left:2px}
@@ -378,7 +379,6 @@ async function tryLogin(){
       btn.textContent='Sign In →'; btn.disabled=false;
       return;
     }
-    // Check if approved
     const profR = await supaFetch('/rest/v1/profiles?select=approved&id=eq.'+d.user.id, {
       headers: { 'Authorization': 'Bearer '+d.access_token }
     });
@@ -389,7 +389,6 @@ async function tryLogin(){
       btn.textContent='Sign In →'; btn.disabled=false;
       return;
     }
-    // Store session
     sessionStorage.setItem('sv_token', d.access_token);
     sessionStorage.setItem('sv_user_email', d.user.email);
     sessionStorage.setItem('sv_user_id', d.user.id);
@@ -419,7 +418,6 @@ async function trySignup(){
       msg.textContent = d.error_description||d.msg||'Signup failed.';
       msg.style.display='block'; return;
     }
-    // Insert profile row (approved=false by default)
     if(d.user?.id){
       await supaFetch('/rest/v1/profiles', {
         method:'POST',
@@ -456,7 +454,6 @@ function showApp(){
 function checkAuth(){
   const token=sessionStorage.getItem('sv_token');
   if(token){ showApp(); return true; }
-  // Make sure login wall is visible
   const lw=document.getElementById('loginWall');
   if(lw)lw.style.display='flex';
   return false;
@@ -478,7 +475,6 @@ const WIDGET_TYPES = {
 };
 const IFRAME_TYPES = ['gainers','losers','active','premarket'];
 
-// Default widget layout
 const DEFAULT_WIDGETS = [
   {id:'w1',type:'gainers',  x:20,  y:20,  w:460, h:340},
   {id:'w2',type:'active',   x:20,  y:380, w:460, h:340},
@@ -491,7 +487,7 @@ const Q = {};
 let CUR  = localStorage.getItem('sv_s')||'AAPL';
 let alts = JSON.parse(localStorage.getItem('sv_al')||'[]');
 let scanSyms = JSON.parse(localStorage.getItem('sv_scan')||'[]');
-let histSyms = JSON.parse(localStorage.getItem('sv_hist')||'[]'); // history = clicked stocks
+let histSyms = JSON.parse(localStorage.getItem('sv_hist')||'[]');
 let fhWS = null;
 let srt=null, hlt=-1, flt=[];
 let wIdC = 100;
@@ -507,7 +503,6 @@ function getWidgets(){
     const p=profiles.find(x=>x.id===activeProfileId);
     if(p?.widgets)return p.widgets;
   }
-  // Reset if layout version changed
   const saved = localStorage.getItem('sv_widgets5');
   const ver   = localStorage.getItem('sv_layout_ver');
   if(!saved || ver !== LAYOUT_VERSION){
@@ -541,7 +536,6 @@ function closeProfileModal(){
   document.getElementById('profileModal').classList.remove('open');
 }
 function renderProfileList(){
-  // Load pending users from Supabase
   renderPendingUsers();
   const el=document.getElementById('profileList');
   if(!profiles.length){
@@ -613,7 +607,6 @@ function loadProfile(id){
   localStorage.setItem('sv_active_profile',id);
   const p=profiles.find(x=>x.id===id);
   if(!p?.widgets)return;
-  // Clear and reload widgets
   document.getElementById('grid').innerHTML='';
   widgets=JSON.parse(JSON.stringify(p.widgets));
   widgets.forEach(w=>renderWidget(w));
@@ -642,7 +635,7 @@ function tick(){
 }
 setInterval(tick,1000);tick();
 
-// ── HISTORY BAR — fills as you click stocks
+// ── HISTORY BAR
 function addToHistory(sym){
   histSyms=histSyms.filter(s=>s!==sym);
   histSyms.unshift(sym);
@@ -655,7 +648,6 @@ function renderHistBar(){
   const lbl=document.getElementById('histLabel');
   if(!histSyms.length){if(lbl)lbl.style.display='none';bar.querySelectorAll('.htab').forEach(x=>x.remove());return;}
   if(lbl)lbl.style.display='';
-  // Remove old tabs
   bar.querySelectorAll('.htab').forEach(x=>x.remove());
   histSyms.forEach(s=>{
     const q=Q[s],u=(q?.changePct||0)>=0;
@@ -667,7 +659,7 @@ function renderHistBar(){
   });
 }
 
-// ── TRADINGVIEW POPUP
+// ── TRADINGVIEW POPUP — reuses same window, never opens a tab
 function openTVPopup(sym){
   let tvSym=sym;
   if(sym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
@@ -678,7 +670,6 @@ function openTVPopup(sym){
   const pl=Math.floor((screen.width-pw)/2);
   const pt=Math.floor((screen.height-ph)/10);
   const features='width='+pw+',height='+ph+',left='+pl+',top='+pt+',resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=no';
-  // Always try reusing existing popup first
   try{
     if(tvWin&&!tvWin.closed){
       tvWin.location.href=url;
@@ -686,13 +677,28 @@ function openTVPopup(sym){
       return;
     }
   }catch(e){}
-  // Open new popup
   tvWin=window.open(url,'StockViewTV',features);
+  // If popup blocked, DO NOT fall back to _blank tab — warn user instead
   if(!tvWin||tvWin.closed){
-    // Popup was blocked — open in new tab as fallback
-    window.open(url,'_blank');
+    showPopupBlockedWarning();
   }
 }
+
+// Show a non-intrusive toast warning when popup is blocked
+function showPopupBlockedWarning(){
+  let toast=document.getElementById('popup-blocked-toast');
+  if(!toast){
+    toast=document.createElement('div');
+    toast.id='popup-blocked-toast';
+    toast.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#f59e0b;color:#000;font-family:"DM Mono",monospace;font-size:11px;font-weight:600;padding:8px 16px;border-radius:6px;z-index:9999;box-shadow:0 4px 20px #00000066;pointer-events:none';
+    document.body.appendChild(toast);
+  }
+  toast.textContent='⚠ Popup blocked — please allow popups for this site in your browser';
+  toast.style.opacity='1';
+  clearTimeout(toast._t);
+  toast._t=setTimeout(()=>toast.style.opacity='0',4000);
+}
+
 function openNewsPopup(url){
   const w=Math.floor(screen.width*.65),h=Math.floor(screen.height*.85);
   const l=Math.floor((screen.width-w)/2),t=Math.floor((screen.height-h)/10);
@@ -751,8 +757,10 @@ async function refreshPrices(){
 }
 setInterval(refreshPrices,15000);
 
+// ── SELECT SYM — central function called by EVERY stock click anywhere
 async function selectSym(sym){
   sym=sym.toUpperCase().trim();
+  if(!sym)return;
   if(sym==='BTC'||sym==='BITCOIN')sym='BTC/USD';
   if(sym==='ETH'||sym==='ETHEREUM')sym='ETH/USD';
   CUR=sym;localStorage.setItem('sv_s',sym);
@@ -760,7 +768,7 @@ async function selectSym(sym){
   closeDrop();
   // Fetch price if not cached
   if(!Q[sym])await fetchQ(sym);
-  // Add to history AFTER price is fetched so % shows immediately
+  // Add to history — every click, every time
   addToHistory(sym);
   // Subscribe to live feed
   if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
@@ -769,7 +777,7 @@ async function selectSym(sym){
   renderHistBar();
   // Update news widgets for this symbol
   widgets.filter(w=>w.type==='news').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderNews(b,sym);});
-  // Open TradingView popup
+  // Open TradingView popup (never a tab)
   openTVPopup(sym);
 }
 
@@ -796,11 +804,9 @@ function removeWidget(id){
 }
 function resetWidgetSettings(id){
   const w=widgets.find(x=>x.id===id);if(!w)return;
-  // Reset label and pin — keep size/position as user set them
   delete w.label;
   w.pinned=false;
   saveWidgets();
-  // Re-render widget header and body with defaults
   const el=document.getElementById(id);
   if(el){
     el.innerHTML=widgetHTML(w);
@@ -808,7 +814,6 @@ function resetWidgetSettings(id){
     makeDraggable(el,w);makeResizable(el,w);
     populateWidget(el,w);
   }
-  // For scanner — reset filter inputs to defaults
   const bid='wb-'+id;
   const minp=document.getElementById(bid+'-minp');
   const maxp=document.getElementById(bid+'-maxp');
@@ -905,10 +910,10 @@ function populateWidget(el,w){
   else renderScreener(body,w.type);
 }
 
-// ── HISTORY WIDGET (replaces watchlist — shows clicked stocks)
+// ── HISTORY WIDGET
 function renderHistory(body){
   if(!histSyms.length){
-    body.innerHTML='<div style="font-size:10px;color:var(--mu);text-align:center;padding:20px;line-height:1.8">Your history is empty.<br>Search or click any stock<br>to start building your history.</div>';
+    body.innerHTML='<div style="font-size:10px;color:var(--mu);text-align:center;padding:20px;line-height:1.8">Your history is empty.<br>Click any stock ticker<br>to start building your history.</div>';
     return;
   }
   body.innerHTML=histSyms.map(sym=>{
@@ -939,7 +944,7 @@ function renderScreener(body,type){
     style="width:100%;height:100%;border:none;display:block"></iframe>`;
 }
 
-// ── 5 PILLARS SCANNER (only shows qualifying stocks)
+// ── 5 PILLARS SCANNER
 const scanCache={};
 let scanDeepRunning=false;
 
@@ -984,14 +989,12 @@ function rmScanSym(sym){
   widgets.filter(w=>w.type==='scanner').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderScanner(b);});
 }
 
-// Live P1+P2 update — called on every WS tick
 function liveScanUpdate(){
   widgets.filter(w=>w.type==='scanner').forEach(w=>{
     const bid='wb-'+w.id;
     const res=document.getElementById(bid+'-res');if(!res)return;
     const minP=parseFloat(document.getElementById(bid+'-minp')?.value)||1;
     const maxP=parseFloat(document.getElementById(bid+'-maxp')?.value)||20;
-    // Auto-adjust % change threshold by session
     const baseMinC=parseFloat(document.getElementById(bid+'-chg')?.value)||10;
     const session=document.getElementById('sessbdg')?.textContent||'';
     const minC = session.includes('PRE-MARKET')||session.includes('AFTER HOURS') ? baseMinC*0.5 : baseMinC;
@@ -1005,7 +1008,6 @@ function liveScanUpdate(){
       const p4=cached.p4??null;
       const p5=cached.p5??null;
       const score=[p1,p2,p3===true,p4===true,p5===true].filter(Boolean).length;
-      // Only show stocks passing at least 4 out of 5 pillars
       if(score<4)return;
       results.push({sym,q,p1,p2,p3,p4,p5,score,hasNews:cached.hasNews||false});
     });
@@ -1034,7 +1036,6 @@ function liveScanUpdate(){
   });
 }
 
-// Deep scan P3/P4/P5 every 15 seconds
 async function startDeepScan(){
   if(scanDeepRunning)return;
   scanDeepRunning=true;
@@ -1054,9 +1055,7 @@ async function startDeepScan(){
         const d=await r.json();
         const avgV=(d.metric?.['10DayAverageTradingVolume']||0)*1000000;
         const rVol=avgV>0?(Q[sym]?.volume||0)/avgV:null;
-        // Use widget filter for RVol threshold
         const rvBase = parseFloat(document.querySelector('[id$="-rv"]')?.value)||5;
-        // Lower RVol requirement for pre/after hours (less overall volume)
         const sess=document.getElementById('sessbdg')?.textContent||'';
         const rvThresh = sess.includes('PRE-MARKET')||sess.includes('AFTER HOURS') ? rvBase*0.4 : rvBase;
         p4=rVol!==null?rVol>=rvThresh:null;
@@ -1121,7 +1120,7 @@ function checkAlerts(){
   if(ch){saveAL();widgets.filter(w=>w.type==='alerts').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderAL(b);});}
 }
 
-// ── NEWS
+// ── NEWS — ticker symbol clicks open TradingView popup; article title clicks open news popup
 async function renderNews(body,sym){
   body.innerHTML='<div class="nlod">Loading…</div>';
   try{
@@ -1135,8 +1134,11 @@ async function renderNews(body,sym){
       const age=timeAgo(new Date(n.datetime*1000));
       const s=n.sentiment>0.1?'p':n.sentiment<-0.1?'n':'u';
       const sl=n.sentiment>0.1?'▲':n.sentiment<-0.1?'▼':'●';
-      return `<div class="ni" onclick="openNewsPopup('${n.url}')">
-        <div class="nisym">${n.related||sym}<span class="nisen ${s}">${sl}</span></div>
+      const relSym=(n.related||sym).split(',')[0].trim();
+      // Ticker clicks → TradingView popup via selectSym
+      // Article title clicks → news article popup
+      return `<div class="ni" onclick="openNewsPopup('${n.url.replace(/'/g,"\\'")}')">
+        <div class="nisym" onclick="event.stopPropagation();selectSym('${relSym}')" title="Open ${relSym} in TradingView">${relSym}<span class="nisen ${s}">${sl}</span></div>
         <div class="nitl">${(n.headline||'').slice(0,90)}${(n.headline||'').length>90?'…':''}</div>
         <div class="nitm">${age} · ${n.source||''}</div>
       </div>`;
@@ -1145,23 +1147,53 @@ async function renderNews(body,sym){
 }
 function timeAgo(d){const s=Math.floor((Date.now()-d)/1000);if(s<60)return s+'s ago';if(s<3600)return Math.floor(s/60)+'m ago';if(s<86400)return Math.floor(s/3600)+'h ago';return Math.floor(s/86400)+'d ago';}
 
-// ── SEARCH — uses Finnhub symbol search + opens TradingView
+// ── SEARCH — TradingView Symbol Search API
 const inp=document.getElementById('si');
 const dd=document.getElementById('dd');
 const spin=document.getElementById('sspin');
 
 async function doSearch(q){
   spin.style.display='block';
+  flt=[];
   try{
-    const r=await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(q)}&token=${FHK}`);
+    // TradingView symbol search — more accurate than Finnhub
+    const r=await fetch(`https://symbol-search.tradingview.com/symbol_search/v3/?text=${encodeURIComponent(q)}&hl=1&exchange=&lang=en&search_type=undefined&domain=production&sort_by_country=US`);
     const d=await r.json();
-    flt=(d.result||[]).filter(x=>x.symbol&&x.symbol.length<=10&&!x.symbol.includes('/')
-      &&(x.type==='Common Stock'||x.type==='ETP'||x.type==='ADR'||x.type==='DR'||x.type===''))
-      .sort((a,b)=>a.symbol.length-b.symbol.length).slice(0,10);
+    const raw=(d.symbols||[]);
+    // Filter to US stocks / ETFs, dedupe, limit
+    flt=raw
+      .filter(x=>x.symbol&&(x.exchange==='NASDAQ'||x.exchange==='NYSE'||x.exchange==='AMEX'||x.exchange==='NYSE ARCA'||!x.exchange))
+      .slice(0,10)
+      .map(x=>({
+        symbol: x.symbol,
+        description: x.description||x.full_name||x.symbol,
+        exchange: x.exchange||''
+      }));
+    if(!flt.length){
+      // Fallback: show all results if no US exchange match
+      flt=raw.slice(0,10).map(x=>({
+        symbol:x.symbol,
+        description:x.description||x.full_name||x.symbol,
+        exchange:x.exchange||''
+      }));
+    }
     renderDrop('Results — click to open in TradingView',flt);
-  }catch(e){dd.innerHTML='<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">Search error</div>';}
+  }catch(e){
+    // Fallback to Finnhub if TradingView search fails
+    try{
+      const r2=await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(q)}&token=${FHK}`);
+      const d2=await r2.json();
+      flt=(d2.result||[]).filter(x=>x.symbol&&x.symbol.length<=10&&!x.symbol.includes('/')
+        &&(x.type==='Common Stock'||x.type==='ETP'||x.type==='ADR'||x.type==='DR'||x.type===''))
+        .sort((a,b)=>a.symbol.length-b.symbol.length).slice(0,10);
+      renderDrop('Results — click to open in TradingView',flt);
+    }catch(e2){
+      dd.innerHTML='<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">Search error</div>';
+    }
+  }
   spin.style.display='none';dd.classList.add('open');
 }
+
 function showPop(){
   const items=histSyms.slice(0,8).map(s=>({symbol:s,description:Q[s]?.name||s}));
   if(items.length)renderDrop('Recent History',items);
@@ -1172,8 +1204,9 @@ function renderDrop(lbl,items){
   if(!items.length){dd.innerHTML='<div style="padding:10px;font-size:11px;color:var(--mu);text-align:center">No results</div>';return;}
   dd.innerHTML=`<div class="dlb">${lbl}</div>`+items.map((it,i)=>{
     const s=it.symbol,q=Q[s],u=q?(q.changePct||0)>=0:true;
+    const exch=it.exchange?`<span style="font-size:8px;color:var(--dim);margin-left:4px">${it.exchange}</span>`:'';
     return `<button class="dit" onclick="selectSym('${s}')" data-i="${i}">
-      <div class="dil"><span class="dsy">${s}</span><span class="dna">${it.description||''}</span></div>
+      <div class="dil"><span class="dsy">${s}</span><span class="dna">${it.description||''}</span>${exch}</div>
       ${q?`<span class="${u?'up':'dn'}" style="font-size:10px">${u?'+':''}${(q.changePct||0).toFixed(2)}%</span>`:''}
     </button>`;
   }).join('');
@@ -1196,14 +1229,11 @@ inp.addEventListener('keydown',e=>{
   else if(e.key==='Escape'){closeDrop();inp.blur();}
 });
 
-// ANY KEY press opens search box — but only when not typing in another input
 document.addEventListener('keydown',e=>{
   if(e.target===inp)return;
-  // Don't hijack if user is typing in any input, textarea, select, or contenteditable
   const tag=e.target.tagName;
   if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
   if(e.target.isContentEditable)return;
-  // Don't hijack modifier keys
   if(e.metaKey||e.ctrlKey||e.altKey)return;
   if(e.key==='Escape'){closeDrop();return;}
   if(e.key.length===1&&/[a-zA-Z0-9]/.test(e.key)){
@@ -1217,7 +1247,6 @@ document.addEventListener('click',e=>{
   if(!e.target.closest('.sw'))closeDrop();
   if(!e.target.closest('.wm-wrap'))document.getElementById('widgetMenu').classList.remove('open');
   if(!e.target.closest('.ws-wrap'))document.querySelectorAll('.ws-panel.open').forEach(x=>x.classList.remove('open'));
-  if(!e.target.closest('.modal')){}
 });
 document.getElementById('addWidgetBtn').addEventListener('click',e=>{document.getElementById('widgetMenu').classList.toggle('open');e.stopPropagation();});
 
@@ -1269,7 +1298,6 @@ if(Notification.permission==='default')Notification.requestPermission();
 async function init(){
   renderHistBar();
   widgets.forEach(w=>renderWidget(w));
-  // Load prices for history symbols
   for(const sym of histSyms.slice(0,10)){
     await fetchQ(sym);renderHistBar();refreshHistWidgets();
     await new Promise(r=>setTimeout(r,150));
@@ -1277,11 +1305,9 @@ async function init(){
   connectFinnhubWS();
   startDeepScan();
 }
-// Auto-init if already authenticated this session
 if(checkAuth()){
   init();
 }
-// Otherwise wait for login — init() is called inside tryLogin()
 </script>
 </body>
 </html>
