@@ -720,12 +720,12 @@ async function fetchQDirect(sym){
   }catch(e){}
 }
 
-// Fetch a list of symbols in batches of 8, with 2.5s between batches
+// Sequential fetch with 1.1s gap — strict rate limiting, no 429s
+// 1.1s × 43 symbols = ~47s first load. Unavoidable with free Finnhub tier.
 async function fetchBatch(syms){
-  const BATCH=8, GAP=2500;
-  for(let i=0;i<syms.length;i+=BATCH){
-    await Promise.all(syms.slice(i,i+BATCH).map(s=>fetchQDirect(s)));
-    if(i+BATCH<syms.length)await new Promise(r=>setTimeout(r,GAP));
+  for(const sym of syms){
+    await fetchQDirect(sym);
+    await new Promise(r=>setTimeout(r,1100));
   }
 }
 
@@ -1501,10 +1501,15 @@ async function init(){
   widgets.forEach(w=>renderWidget(w,true));
   connectFinnhubWS();
 
-  // Single batch fetch of ALL symbols — no screener widget fetches until this is done
+  // Single sequential fetch — one call every 1.1s, no 429s
   const toFetch=[...new Set([...histSyms.slice(0,5),...ALL_SCREENER_SYMS])];
-  showToast('Loading market data…');
-  await fetchBatch(toFetch);
+  let done=0;
+  for(const sym of toFetch){
+    await fetchQDirect(sym);
+    done++;
+    showToast(`Loading… ${done}/${toFetch.length} symbols`);
+    await new Promise(r=>setTimeout(r,1100));
+  }
 
   // NOW populate all widgets — data is in cache, no API calls needed
   widgets.forEach(w=>populateWidget(null,w));
