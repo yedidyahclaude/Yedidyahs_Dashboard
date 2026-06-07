@@ -683,12 +683,11 @@ async function manualRefreshAll(){
 
 // ═══════════════════════════════════════════════
 // PRICES & WEBSOCKET
-// Rate-limited Finnhub queue — max 40 calls/min shared across everything
+// Single global queue — every Finnhub call goes through here, 1s apart = 60/min max
 // ═══════════════════════════════════════════════
 function fmtP(p){return p?parseFloat(p).toFixed(2):'—';}
 function fmtV(n){if(!n||n<1)return'—';if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n+'';}
 
-// Global API queue — all Finnhub calls go through here, 1 call per 1.5s = 40/min
 const apiQueue=[];
 let apiRunning=false;
 function queueCall(fn){
@@ -701,28 +700,34 @@ async function drainQueue(){
   if(apiRunning)return;
   apiRunning=true;
   while(apiQueue.length){
-    const {fn,resolve,reject}=apiQueue.shift();
+    const{fn,resolve,reject}=apiQueue.shift();
     try{resolve(await fn());}catch(e){reject(e);}
-    if(apiQueue.length)await new Promise(r=>setTimeout(r,1000)); // 1s = 60/min, safe
+    if(apiQueue.length)await new Promise(r=>setTimeout(r,1050));
   }
   apiRunning=false;
 }
 
+// ALL Finnhub fetches go through queueCall — no exceptions
 async function fetchQ(sym){
-  if(Q[sym]?._ts&&Date.now()-Q[sym]._ts<30000)return;
+  if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<30000)return;
   await queueCall(async()=>{
     try{
-      // Single combined call using batch quote endpoint
       const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FHK}`);
       const q=await r.json();if(!q.c)return;
-      // Use existing name if we have it, otherwise use symbol as placeholder
-      // Profile fetch is deferred — we fetch it lazily only when user clicks the stock
       const name=Q[sym]?.name&&Q[sym].name!==sym?Q[sym].name:sym;
       Q[sym]={symbol:sym,price:q.c,open:q.o,high:q.h,low:q.l,prevClose:q.pc,
         change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,
         volume:q.v||0,name,_ts:Date.now()};
     }catch(e){}
   });
+}
+async function fetchProfile(sym){
+  if(Q[sym]?.name&&Q[sym].name!==sym)return;
+  try{
+    const r=await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${FHK}`);
+    const p=await r.json();
+    if(p.name&&Q[sym])Q[sym].name=p.name;
+  }catch(e){}
 }
 
 // Fetch company name lazily — only called when user actually clicks a stock
@@ -806,10 +811,8 @@ const SCR_LABELS={
 };
 
 
-// Global lock — only one screener fetches at a time, others wait
 let scrFetchLock=false;
 async function fetchScreenerData(type){
-  // Wait if another screener is already fetching
   while(scrFetchLock)await new Promise(r=>setTimeout(r,200));
   scrFetchLock=true;
   try{
@@ -823,11 +826,8 @@ async function fetchScreenerData(type){
       penny:   ['PLUG','FCEL','NKLA','BTBT','HUT','CLSK','BNAI','CMND','SPHL','ACMR','AEHR','BLNK','CLOV','SNDL','NOK','BB','NAKD','IDEX','WKHS','GOEV']
     };
     const syms=symbolSets[type]||symbolSets.gainers;
-    const toFetch=syms.filter(s=>!Q[s]?.price);
-    for(const sym of toFetch){
-      await fetchQDirect(sym);
-      await new Promise(r=>setTimeout(r,1100));
-    }
+    // Queue fetches — only for symbols not already cached
+    for(const sym of syms.filter(s=>!Q[s]?.price)) await fetchQ(sym);
     const rows=syms.filter(s=>Q[s]?.price).map(s=>({
       symbol:s,
       regularMarketPrice:Q[s].price,
@@ -836,24 +836,10 @@ async function fetchScreenerData(type){
       shortName:Q[s].name||s
     }));
     if(rows.length)scrCache[type]={rows,ts:Date.now()};
-  }finally{
-    scrFetchLock=false;
-  }
+  }finally{scrFetchLock=false;}
 }
 
 // Direct fetch — bypasses the queue for screener initial load
-async function fetchQDirect(sym){
-  if(Q[sym]?.price)return;
-  try{
-    const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FHK}`);
-    const q=await r.json();
-    if(q.c){
-      Q[sym]={symbol:sym,price:q.c,open:q.o,high:q.h,low:q.l,prevClose:q.pc,
-        change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,
-        volume:q.v||0,name:sym,_ts:Date.now()};
-    }
-  }catch(e){}
-}
 
 function buildRowsFromQ(){
   return Object.keys(Q).filter(s=>Q[s]?.price).map(s=>({
@@ -1488,7 +1474,8 @@ async function init(){
     await new Promise(r=>setTimeout(r,150));
   }
   connectFinnhubWS();
-  startDeepScan();
+  // Delay deep scan by 60s so screeners get priority on the queue at startup
+  setTimeout(startDeepScan, 60000);
 }
 if(checkAuth())init();
 </script>
