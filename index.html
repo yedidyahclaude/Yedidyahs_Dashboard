@@ -226,6 +226,31 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 /* POPUP BLOCKED TOAST */
 #popup-blocked-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#f59e0b;color:#000;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;padding:8px 16px;border-radius:6px;z-index:9999;box-shadow:0 4px 20px #00000066;pointer-events:none;opacity:0;transition:opacity .3s}
 
+/* BOTTOM CHART PANEL */
+#chartPanel{flex-shrink:0;background:var(--s1);border-top:2px solid var(--b1);display:flex;flex-direction:column;transition:height .25s cubic-bezier(.4,0,.2,1);height:32px;position:relative;z-index:50}
+#chartPanel.open{height:42vh}
+#chartPanelBar{display:flex;align-items:center;gap:8px;padding:0 12px;height:32px;cursor:pointer;flex-shrink:0;user-select:none;background:var(--s2);border-bottom:1px solid var(--b1)}
+#chartPanelBar:hover{background:#1a1b2c}
+#chartPanelSym{font-size:11px;font-weight:600;color:#fff;min-width:50px}
+#chartPanelPx{font-size:10px;min-width:60px}
+#chartPanelChg{font-size:10px;min-width:55px}
+#chartPanelLabel{font-size:8px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;flex:1}
+#chartPanelToggle{font-size:10px;color:var(--mu);transition:transform .25s}
+#chartPanel.open #chartPanelToggle{transform:rotate(180deg)}
+#chartPanelIframe{flex:1;width:100%;border:none;display:block;min-height:0}
+
+/* SCREENER WIDGET — iframe with intercept overlay */
+.scr-outer{position:relative;width:100%;height:100%;display:flex;flex-direction:column}
+.scr-iframe{flex:1;width:100%;border:none;display:block;min-height:0}
+.scr-overlay{position:absolute;inset:0;z-index:5;background:transparent;cursor:pointer}
+.scr-overlay-hint{position:absolute;bottom:6px;right:8px;font-size:8px;color:var(--dim);background:var(--s1);border:1px solid var(--b1);border-radius:4px;padding:2px 6px;pointer-events:none;opacity:0;transition:opacity .2s}
+.scr-outer:hover .scr-overlay-hint{opacity:1}
+/* Symbol input that appears when overlay is clicked */
+.scr-sym-input-wrap{position:absolute;top:0;left:0;right:0;z-index:10;background:var(--s1);border-bottom:2px solid var(--ac);padding:6px 10px;display:none;align-items:center;gap:8px}
+.scr-sym-input-wrap.open{display:flex}
+.scr-sym-input{flex:1;background:var(--s2);border:1px solid var(--ac);border-radius:5px;color:#fff;font-family:'DM Mono',monospace;font-size:13px;font-weight:600;padding:5px 9px;outline:none;letter-spacing:.05em;text-transform:uppercase}
+.scr-sym-hint{font-size:9px;color:var(--mu)}
+
 .up{color:var(--gr)}.dn{color:var(--rd)}
 </style>
 </head>
@@ -307,6 +332,19 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 
   <div class="canvas" id="canvas">
     <div id="grid"></div>
+  </div>
+
+  <!-- BOTTOM CHART PANEL -->
+  <div id="chartPanel">
+    <div id="chartPanelBar" onclick="toggleChartPanel()">
+      <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--ac);flex-shrink:0"><polyline points="1,12 5,7 8,10 12,4 15,6"/></svg>
+      <span id="chartPanelSym" style="color:var(--mu)">No chart</span>
+      <span id="chartPanelPx"></span>
+      <span id="chartPanelChg"></span>
+      <span id="chartPanelLabel">Click any stock to open chart here ↑</span>
+      <span id="chartPanelToggle">▲</span>
+    </div>
+    <iframe id="chartPanelIframe" src="about:blank" allowtransparency="true"></iframe>
   </div>
 
   <div class="modal-bg" id="profileModal">
@@ -414,7 +452,7 @@ let histSyms=JSON.parse(localStorage.getItem('sv_hist')||'[]');
 let fhWS=null;
 let srt=null,hlt=-1,flt=[];
 let wIdC=100;
-let tvWin=null,newsWin=null;
+let newsWin=null;
 
 
 let profiles=JSON.parse(localStorage.getItem('sv_profiles')||'[]');
@@ -532,20 +570,49 @@ function renderHistBar(){
   });
 }
 
-// ── TRADINGVIEW POPUP — always popup, never a new tab
-function openTVPopup(sym){
+// ── BOTTOM CHART PANEL — loads TradingView chart inline, no popup/tab
+function openChartPanel(sym){
   let tvSym=sym;
   if(sym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
   else if(sym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
-  const url='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSym)+'&interval=1&theme=dark';
-  const pw=Math.floor(screen.width*.72),ph=Math.floor(screen.height*.85);
-  const pl=Math.floor((screen.width-pw)/2),pt=Math.floor((screen.height-ph)/10);
-  const feat='width='+pw+',height='+ph+',left='+pl+',top='+pt+',resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=no';
-  try{
-    if(tvWin&&!tvWin.closed){tvWin.location.href=url;tvWin.focus();return;}
-  }catch(e){}
-  tvWin=window.open(url,'StockViewTV',feat);
-  if(!tvWin||tvWin.closed)showToast('⚠ Popup blocked — allow popups for this site in your browser');
+  const url='https://www.tradingview.com/widgetembed/?frameElementId=chartPanel&symbol='+encodeURIComponent(tvSym)+'&interval=1&theme=dark&style=1&locale=en&toolbar_bg=%230c0d1a&enable_publishing=false&hide_top_toolbar=false&hide_legend=false&save_image=false&calendar=false&hide_volume=false';
+  const panel=document.getElementById('chartPanel');
+  const iframe=document.getElementById('chartPanelIframe');
+  const symEl=document.getElementById('chartPanelSym');
+  const pxEl=document.getElementById('chartPanelPx');
+  const chgEl=document.getElementById('chartPanelChg');
+  const lblEl=document.getElementById('chartPanelLabel');
+  iframe.src=url;
+  symEl.style.color='#fff';
+  symEl.textContent=sym;
+  lblEl.textContent='TradingView · 1-min chart';
+  // Update price display
+  const q=Q[sym];
+  if(q){
+    const u=(q.changePct||0)>=0;
+    pxEl.textContent='$'+fmtP(q.price);
+    pxEl.className=u?'up':'dn';
+    chgEl.textContent=(u?'+':'')+q.changePct.toFixed(2)+'%';
+    chgEl.className=u?'up':'dn';
+  } else {
+    pxEl.textContent='';chgEl.textContent='';
+  }
+  // Open panel if not already open
+  if(!panel.classList.contains('open'))panel.classList.add('open');
+}
+function toggleChartPanel(){
+  document.getElementById('chartPanel').classList.toggle('open');
+}
+// Update chart panel price display when prices refresh
+function updateChartPanelPrice(){
+  const sym=document.getElementById('chartPanelSym')?.textContent;
+  if(!sym||sym==='No chart')return;
+  const q=Q[sym];if(!q)return;
+  const u=(q.changePct||0)>=0;
+  const pxEl=document.getElementById('chartPanelPx');
+  const chgEl=document.getElementById('chartPanelChg');
+  if(pxEl){pxEl.textContent='$'+fmtP(q.price);pxEl.className=u?'up':'dn';}
+  if(chgEl){chgEl.textContent=(u?'+':'')+q.changePct.toFixed(2)+'%';chgEl.className=u?'up':'dn';}
 }
 function openNewsPopup(url){
   const w=Math.floor(screen.width*.65),h=Math.floor(screen.height*.85);
@@ -590,6 +657,7 @@ function connectFinnhubWS(){
           refreshHistWidgets();liveScanUpdate();checkAlerts();
         });
         renderHistBar();
+        updateChartPanelPrice();
       }
     };
     fhWS.onclose=()=>setTimeout(connectFinnhubWS,5000);
@@ -617,11 +685,12 @@ async function selectSym(sym){
   if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
   refreshHistWidgets();renderHistBar();
   widgets.filter(w=>w.type==='news').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderNews(b,sym);});
-  openTVPopup(sym);
+  openChartPanel(sym);
 }
 
 function refreshHistWidgets(){
   widgets.forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b&&w.type==='history')renderHistory(b);});
+  updateChartPanelPrice();
 }
 
 
@@ -734,17 +803,48 @@ function removeFromHistory(sym){
   renderHistBar();refreshHistWidgets();
 }
 
-// ── SCREENERS — TradingView iframes (real market-wide data)
-// Note: clicks inside iframes open TradingView's own page — browser security prevents interception
+// ── SCREENERS — TradingView iframes with intercept overlay
+// The overlay catches clicks and shows a quick symbol input so you can
+// type the ticker you saw and open it in the bottom chart panel
 const SCREENER_SCREENS={gainers:'top_gainers',losers:'top_losers',active:'most_capitalized',premarket:'pre_market_gainers'};
 function renderScreener(body,type){
   body.style.padding='0';body.style.overflow='hidden';body.style.display='flex';body.style.flexDirection='column';
   const screen=SCREENER_SCREENS[type];
   if(!screen){body.innerHTML='<div style="padding:20px;text-align:center;font-size:10px;color:var(--mu)">Unknown screener</div>';return;}
   const params=encodeURIComponent(JSON.stringify({width:'100%',height:'100%',defaultColumn:'overview',defaultScreen:screen,market:'america',showToolbar:true,colorTheme:'dark',locale:'en'}));
-  body.innerHTML=`<iframe scrolling="no" allowtransparency="true" frameborder="0"
-    src="https://www.tradingview.com/embed-widget/screener/?locale=en#${params}"
-    style="width:100%;height:100%;border:none;display:block;flex:1"></iframe>`;
+  const uid='scr-'+type+'-'+body.id;
+  body.innerHTML=`<div class="scr-outer" id="${uid}">
+    <iframe class="scr-iframe" scrolling="no" allowtransparency="true" frameborder="0"
+      src="https://www.tradingview.com/embed-widget/screener/?locale=en#${params}"></iframe>
+    <div class="scr-overlay" onclick="openScrInput('${uid}')" title="Click to open a stock from this screener in your chart"></div>
+    <div class="scr-overlay-hint">click ticker → open in chart</div>
+    <div class="scr-sym-input-wrap" id="${uid}-inp">
+      <input class="scr-sym-input" id="${uid}-sym" placeholder="TYPE TICKER…" maxlength="10"
+        onkeydown="handleScrInput(event,'${uid}')" oninput="this.value=this.value.toUpperCase()" autocomplete="off" spellcheck="false"/>
+      <span class="scr-sym-hint">Enter to open chart · Esc to cancel</span>
+    </div>
+  </div>`;
+}
+function openScrInput(uid){
+  const wrap=document.getElementById(uid+'-inp');
+  const inp=document.getElementById(uid+'-sym');
+  if(!wrap||!inp)return;
+  wrap.classList.add('open');
+  inp.value='';
+  inp.focus();
+}
+function handleScrInput(e,uid){
+  if(e.key==='Enter'){
+    const sym=document.getElementById(uid+'-sym')?.value.trim().toUpperCase();
+    closeScrInput(uid);
+    if(sym)selectSym(sym);
+  } else if(e.key==='Escape'){
+    closeScrInput(uid);
+  }
+}
+function closeScrInput(uid){
+  const wrap=document.getElementById(uid+'-inp');
+  if(wrap)wrap.classList.remove('open');
 }
 
 // ── 5 PILLARS SCANNER
