@@ -703,31 +703,36 @@ async function drainQueue(){
   while(apiQueue.length){
     const {fn,resolve,reject}=apiQueue.shift();
     try{resolve(await fn());}catch(e){reject(e);}
-    if(apiQueue.length)await new Promise(r=>setTimeout(r,1500)); // 1.5s between calls
+    if(apiQueue.length)await new Promise(r=>setTimeout(r,1000)); // 1s = 60/min, safe
   }
   apiRunning=false;
 }
 
 async function fetchQ(sym){
-  if(Q[sym]?._ts&&Date.now()-Q[sym]._ts<30000)return; // skip if cached < 30s
+  if(Q[sym]?._ts&&Date.now()-Q[sym]._ts<30000)return;
   await queueCall(async()=>{
     try{
+      // Single combined call using batch quote endpoint
       const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FHK}`);
       const q=await r.json();if(!q.c)return;
-      // Only fetch profile if we don't have the name yet
-      let name=Q[sym]?.name||sym;
-      if(!Q[sym]?.name||Q[sym]?.name===sym){
-        try{
-          const pr=await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${FHK}`);
-          const p=await pr.json();
-          name=p.name||sym;
-        }catch(e){}
-      }
+      // Use existing name if we have it, otherwise use symbol as placeholder
+      // Profile fetch is deferred — we fetch it lazily only when user clicks the stock
+      const name=Q[sym]?.name&&Q[sym].name!==sym?Q[sym].name:sym;
       Q[sym]={symbol:sym,price:q.c,open:q.o,high:q.h,low:q.l,prevClose:q.pc,
         change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,
         volume:q.v||0,name,_ts:Date.now()};
     }catch(e){}
   });
+}
+
+// Fetch company name lazily — only called when user actually clicks a stock
+async function fetchProfile(sym){
+  if(Q[sym]?.name&&Q[sym].name!==sym)return; // already have real name
+  try{
+    const r=await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${FHK}`);
+    const p=await r.json();
+    if(p.name&&Q[sym])Q[sym].name=p.name;
+  }catch(e){}
 }
 function connectFinnhubWS(){
   const syms=[...new Set([...histSyms,...scanSyms,...alts.map(a=>a.sym)])];
@@ -773,6 +778,7 @@ async function selectSym(sym){
   const si=document.getElementById('si');if(si)si.value='';
   closeDrop();
   if(!Q[sym])await fetchQ(sym);
+  fetchProfile(sym); // lazy-load company name in background
   addToHistory(sym);
   if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
   refreshHistWidgets();renderHistBar();
@@ -805,35 +811,26 @@ async function fetchScreenerData(type){
   // Strategy: fetch a known list of relevant symbols and rank them by type
   // This is the most reliable approach without needing a proxy
   const symbolSets={
-    gainers: ['AAPL','MSFT','NVDA','AMD','META','GOOGL','AMZN','TSLA','PLTR','COIN',
-               'SOFI','HOOD','MARA','RIOT','SOXL','GME','AMC','SPHL','BNAI','CMND',
-               'ACMR','AEHR','BLNK','BTBT','HUT','CLSK','NIO','RIVN','LCID','UPST',
-               'AFRM','OPEN','SNAP','UBER','RBLX','PLUG','FCEL','NKLA','WKHS','GOEV'],
-    losers:  ['AAPL','MSFT','NVDA','AMD','META','GOOGL','AMZN','TSLA','PLTR','COIN',
-               'SOFI','HOOD','MARA','RIOT','SOXL','GME','AMC','SPHL','BNAI','CMND',
-               'ACMR','AEHR','BLNK','BTBT','HUT','CLSK','NIO','RIVN','LCID','UPST',
-               'AFRM','OPEN','SNAP','UBER','RBLX','PLUG','FCEL','NKLA','WKHS','GOEV'],
+    gainers: ['NVDA','AMD','AAPL','MSFT','META','TSLA','PLTR','COIN','SOFI','HOOD',
+               'MARA','RIOT','GME','AMC','SPHL','BNAI','CMND','ACMR','AEHR','BLNK'],
+    losers:  ['NVDA','AMD','AAPL','MSFT','META','TSLA','PLTR','COIN','SOFI','HOOD',
+               'MARA','RIOT','GME','AMC','NIO','RIVN','LCID','SNAP','PLUG','FCEL'],
     active:  ['NVDA','AMD','AAPL','MSFT','META','TSLA','SPY','QQQ','SOXL','TQQQ',
-               'SQQQ','UVXY','SPXL','SPXS','GME','AMC','PLTR','COIN','MSTR','SOFI',
-               'NIO','RIVN','HOOD','MARA','RIOT','SNAP','UBER','RBLX','PLUG','NKLA'],
+               'GME','AMC','PLTR','COIN','MSTR','SOFI','HOOD','MARA','RIOT','SNAP'],
     premarket:['SPHL','BNAI','CMND','ACMR','AEHR','GME','AMC','MARA','RIOT','BTBT',
-               'HUT','CLSK','PLUG','FCEL','NKLA','WKHS','GOEV','NIO','RIVN','LCID',
-               'SOFI','HOOD','PLTR','COIN','MSTR','UPST','AFRM','OPEN','SNAP','RBLX'],
+               'HUT','CLSK','PLUG','FCEL','NKLA','NIO','RIVN','SOFI','HOOD','PLTR'],
     gappers: ['SPHL','BNAI','CMND','ACMR','AEHR','GME','AMC','MARA','RIOT','BTBT',
-               'HUT','CLSK','PLUG','FCEL','NKLA','WKHS','GOEV','NIO','RIVN','LCID',
-               'SOFI','HOOD','PLTR','COIN','MSTR','UPST','AFRM','OPEN','SNAP','RBLX'],
-    hod:     ['SPHL','BNAI','CMND','ACMR','AEHR','GME','AMC','MARA','RIOT','BTBT',
-               'PLTR','COIN','SOFI','HOOD','NIO','RIVN','LCID','UPST','AFRM','OPEN',
-               'SNAP','UBER','RBLX','PLUG','FCEL','NKLA','HUT','CLSK','WKHS','GOEV'],
-    penny:   ['PLUG','FCEL','NKLA','WKHS','GOEV','BLNK','BTBT','HUT','CLSK','MARA',
-               'RIOT','BNAI','CMND','SPHL','ACMR','AEHR','SNDL','CLOV','WISH','EXPR']
+               'PLUG','FCEL','NKLA','NIO','RIVN','SOFI','HOOD','PLTR','COIN','BLNK'],
+    hod:     ['SPHL','BNAI','CMND','ACMR','AEHR','GME','AMC','MARA','RIOT','PLTR',
+               'COIN','SOFI','HOOD','NIO','RIVN','PLUG','FCEL','BLNK','BTBT','HUT'],
+    penny:   ['PLUG','FCEL','NKLA','BTBT','HUT','CLSK','BNAI','CMND','SPHL','ACMR',
+               'AEHR','BLNK','CLOV','SNDL','WISH','EXPR','NOK','BB','NAKD','IDEX']
   };
   const syms=symbolSets[type]||symbolSets.gainers;
-  // Fetch all uncached symbols through the rate-limited queue
-  for(const sym of syms){
-    if(!Q[sym]||Date.now()-(Q[sym]._ts||0)>30000)await fetchQ(sym);
-  }
-  // Build rows from Q cache
+  // Only fetch symbols not already recently cached — avoids duplicate calls across screeners
+  const toFetch=syms.filter(s=>!Q[s]||Date.now()-(Q[s]._ts||0)>30000);
+  for(const sym of toFetch) await fetchQ(sym);
+  // Build rows from Q cache immediately — no waiting
   const rows=syms.filter(s=>Q[s]?.price).map(s=>({
     symbol:s,
     regularMarketPrice:Q[s].price,
@@ -880,10 +877,19 @@ function renderScreener(body,type){
 async function loadAndRenderScr(type,uid){
   const tmr=document.getElementById(uid+'t');
   if(tmr)tmr.textContent='updating…';
+  // Paint whatever we have immediately (may be partial)
+  if(scrCache[type]?.rows?.length) paintScrRows(type,uid);
+  // Then fetch fresh data
   if(!scrCache[type]||Date.now()-scrCache[type].ts>SCR_TTL*1000){
+    // Start fetch but paint partial results every 5 symbols
+    const body=document.getElementById(uid+'r');
+    if(body&&!scrCache[type]?.rows?.length){
+      body.innerHTML='<div class="scr-empty"><span class="scr-spin"></span>Loading… <span style="color:var(--ac2)" id="'+uid+'cnt"></span></div>';
+    }
     await fetchScreenerData(type);
   }
   paintScrRows(type,uid);
+  startScrTimer(type,uid);
 }
 
 function paintScrRows(type,uid){
