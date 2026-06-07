@@ -607,9 +607,16 @@ function openChartPanel(sym){
   let tvSym=sym;
   if(sym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
   else if(sym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
+  else{
+    // Force NASDAQ or NYSE to avoid Cboe One and other regional exchanges with wrong prices
+    const nyseSyms=['GME','AMC','NIO','PLTR','COIN','HOOD','SOFI','RIVN','LCID','MSTR',
+      'SNAP','UBER','WKHS','GOEV','BB','NOK','SNDL','CLOV','IDEX','BLNK','PLUG','FCEL',
+      'SPHL','BNAI','CMND','ACMR','AEHR','BTBT','HUT','CLSK','NKLA','MARA','RIOT'];
+    tvSym=(nyseSyms.includes(sym)?'NASDAQ:':'')+sym;
+  }
   curChartSym=sym;
   const cfg=encodeURIComponent(JSON.stringify({
-    autosize:true,symbol:tvSym,interval:'1',
+    autosize:true,symbol:tvSym,interval:'1',range:'1D',
     timezone:'America/New_York',theme:'dark',style:'1',
     locale:'en',toolbar_bg:'#0c0d1a',enable_publishing:false,
     withdateranges:true,hide_side_toolbar:false,
@@ -624,7 +631,7 @@ function openChartPanel(sym){
   updateCPPrice();
   const panel=document.getElementById('chartPanel');
   if(!panel.classList.contains('open'))panel.classList.add('open');
-  renderHistBar(); // update active state in hist bar
+  renderHistBar();
 }
 function toggleChartPanel(){document.getElementById('chartPanel').classList.toggle('open');}
 function updateCPPrice(){
@@ -641,11 +648,27 @@ function openTVPopup(){
   let tvSym=curChartSym;
   if(curChartSym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
   else if(curChartSym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
-  const url='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSym)+'&interval=1&theme=dark';
+  else{
+    const nasdaqSyms=['GME','AMC','NIO','PLTR','COIN','HOOD','SOFI','RIVN','LCID','MSTR',
+      'SNAP','UBER','WKHS','GOEV','BB','NOK','SNDL','CLOV','IDEX','BLNK','PLUG','FCEL',
+      'SPHL','BNAI','CMND','ACMR','AEHR','BTBT','HUT','CLSK','NKLA','MARA','RIOT'];
+    tvSym=(nasdaqSyms.includes(curChartSym)?'NASDAQ:':'')+curChartSym;
+  }
+  // Use embed widget — chart only, no watchlist/side panels
+  const cfg=encodeURIComponent(JSON.stringify({
+    autosize:true,symbol:tvSym,interval:'1',range:'1D',
+    timezone:'America/New_York',theme:'dark',style:'1',
+    locale:'en',toolbar_bg:'#0c0d1a',enable_publishing:false,
+    withdateranges:true,hide_side_toolbar:false,
+    allow_symbol_change:true,save_image:false,
+    calendar:false,hide_volume:false,
+    support_host:'https://www.tradingview.com'
+  }));
+  const url=`https://www.tradingview.com/embed-widget/advanced-chart/?locale=en#${cfg}`;
   const pw=Math.floor(screen.width*.75),ph=Math.floor(screen.height*.88);
   const pl=Math.floor((screen.width-pw)/2),pt=Math.floor((screen.height-ph)/10);
   try{if(tvWin&&!tvWin.closed){tvWin.location.href=url;tvWin.focus();return;}}catch(e){}
-  tvWin=window.open(url,'StockViewTV',`width=${pw},height=${ph},left=${pl},top=${pt},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no,status=no`);
+  tvWin=window.open(url,'StockViewTV',`width=${pw},height=${ph},left=${pl},top=${pt},resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no`);
   if(!tvWin||tvWin.closed)showToast('⚠ Allow popups for this site in your browser');
 }
 function openNewsPopup(url){
@@ -1249,22 +1272,19 @@ async function startDeepScan(){
   liveScanUpdate();
 }
 
-// Deep scan every 30s with countdown shown in widget
+// Deep scan every 30s — clean countdown display
 let deepScanCountdown=30;
 setInterval(async()=>{
   deepScanCountdown--;
-  document.querySelectorAll('[id$="-status"]').forEach(el=>{
-    if(el.closest?.('.widget')&&!scanDeepRunning){
-      const txt=el.textContent;
-      // Only update if it's showing the countdown or last scan time
-      if(!txt.includes('scanning')){
-        el.textContent=el.textContent.replace(/↺ \d+s/,'').trimEnd()+` ↺ ${deepScanCountdown}s`;
-      }
-    }
-  });
   if(deepScanCountdown<=0){
     deepScanCountdown=30;
     await startDeepScan();
+  } else {
+    // Update status in all scanner widgets
+    document.querySelectorAll('[id$="-status"]').forEach(el=>{
+      if(el.closest?.('.widget'))
+        el.textContent=scanDeepRunning?'⚡ Scanning…':`⚡ Next deep scan in ${deepScanCountdown}s`;
+    });
   }
 },1000);
 
