@@ -843,9 +843,13 @@ const SCR_LABELS={
 // to detect the symbol and load it in the bottom panel + history
 // ═══════════════════════════════════════════════
 const SCR_SCREENS={
-  gainers:'top_gainers',losers:'top_losers',
-  active:'most_capitalized',premarket:'pre_market_gainers',
-  gappers:'top_gainers',hod:'top_gainers',penny:'top_gainers'
+  gainers:'top_gainers',        // biggest % gainers today
+  losers:'top_losers',          // biggest % losers today
+  active:'most_capitalized',    // highest volume today
+  premarket:'pre_market_gainers', // pre-market gainers (requires TV Essential)
+  gappers:'pre_market_gainers', // pre-market gappers = same feed
+  hod:'top_gainers',            // HOD = filter of gainers
+  penny:'top_gainers'           // penny = filtered by price in TV filters
 };
 
 // ── TV CLICK INTERCEPTION
