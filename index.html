@@ -809,8 +809,16 @@ async function selectSym(sym){
   const si=document.getElementById('si');if(si)si.value='';
   closeDrop();
   if(!Q[sym])await fetchQ(sym);
-  fetchProfile(sym); // lazy-load company name in background
+  fetchProfile(sym);
   addToHistory(sym);
+  // Auto-add to 5 Pillars scanner so it immediately starts watching all pillars
+  if(!scanSyms.includes(sym)&&!histSyms.slice(1).includes(sym)){
+    scanSyms.push(sym);saveScanSyms();
+    // Re-render scanner widgets to show new symbol
+    widgets.filter(w=>w.type==='scanner').forEach(w=>{
+      const b=document.getElementById('wb-'+w.id);if(b)renderScanner(b);
+    });
+  }
   if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
   refreshHistWidgets();renderHistBar();
   widgets.filter(w=>w.type==='news').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderNews(b,sym);});
@@ -1104,7 +1112,12 @@ function renderScanner(body){
     </div>
   </div>
   <div id="${bid}-res" style="flex:1;overflow-y:auto;min-height:0">
-    <div class="scan-empty">⚡ Scanning…<br><span style="font-size:8px;color:var(--dim)">Stocks passing 4/5 pillars appear here</span></div>
+    <div class="scan-empty">
+      <div style="font-size:20px;margin-bottom:8px">👆</div>
+      <div style="font-weight:600;color:var(--tx);margin-bottom:4px">See a stock moving?</div>
+      <div>Type it in any screener input bar below → it appears here automatically</div>
+      <div style="margin-top:8px;font-size:9px;color:var(--dim)">Watching ${getScanSyms().length} symbols · Scans every 30s</div>
+    </div>
   </div>`;
   setTimeout(startDeepScan,400);
 }
@@ -1112,6 +1125,8 @@ function toggleScanFilters(bid){
   const f=document.getElementById(bid+'-filters');
   if(f)f.style.display=f.style.display==='none'?'block':'none';
 }
+// Scanner watches ALL history symbols automatically + any manually added ones
+// This means every stock you click gets scanned for all 5 pillars immediately
 function getScanSyms(){return[...new Set([...histSyms,...scanSyms])];}
 function saveScanSyms(){localStorage.setItem('sv_scan',JSON.stringify(scanSyms));}
 function addScanSym(bid){
