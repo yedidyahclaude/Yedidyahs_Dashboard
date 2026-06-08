@@ -70,6 +70,12 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .htab{display:flex;align-items:center;gap:5px;padding:3px 9px;border-radius:4px;background:var(--s2);border:1px solid var(--b2);cursor:pointer;font-size:10px;color:var(--mu);white-space:nowrap;transition:all .1s;flex-shrink:0}
 .htab:hover{color:var(--tx);border-color:var(--ac)}
 .htab.active{background:#7c6aff14;border-color:var(--ac);color:var(--ac2)}
+/* NEW symbol highlights across all widgets */
+.htab-new{border-color:var(--gr)!important;color:var(--gr)!important;background:#19c48a12!important;animation:newGlow 2s ease-in-out 5;}
+.wi-new{border-left:3px solid var(--gr)!important;background:#19c48a06!important;}
+.scan-row-new{border-left-color:var(--gr)!important;background:#19c48a08!important;animation:newGlow 2s ease-in-out 5;}
+.nisym-new{background:#19c48a20!important;border-color:var(--gr)!important;color:var(--gr)!important;}
+@keyframes newGlow{0%,100%{box-shadow:none}50%{box-shadow:0 0 8px var(--gr);}}
 .htab-sym{font-weight:500}
 .htab-px{font-size:9px}
 
@@ -569,9 +575,15 @@ setInterval(tick,1000);tick();
 // HISTORY BAR
 // ═══════════════════════════════════════════════
 function addToHistory(sym){
+  const isNew=!histSyms.includes(sym);
   histSyms=histSyms.filter(s=>s!==sym);histSyms.unshift(sym);
   if(histSyms.length>15)histSyms=histSyms.slice(0,15);
   localStorage.setItem('sv_hist',JSON.stringify(histSyms));
+  if(isNew){
+    newSyms.add(sym);
+    playPing();
+    showToast(`📈 ${sym} added to History & 5 Pillars Scanner`);
+  }
   renderHistBar();
 }
 function renderHistBar(){
@@ -582,9 +594,10 @@ function renderHistBar(){
   bar.querySelectorAll('.htab').forEach(x=>x.remove());
   histSyms.forEach(s=>{
     const q=Q[s],u=(q?.changePct||0)>=0;
+    const isNew=newSyms.has(s);
     const div=document.createElement('div');
-    div.className='htab'+(s===curChartSym?' active':'');
-    div.innerHTML=`<span class="htab-sym">${s}</span>${q?`<span class="htab-px ${u?'up':'dn'}">${u?'+':''}${(q.changePct||0).toFixed(1)}%</span>`:''}`;
+    div.className='htab'+(s===curChartSym?' active':'')+(isNew?' htab-new':'');
+    div.innerHTML=`<span class="htab-sym">${isNew?'🆕 ':''}${s}</span>${q?`<span class="htab-px ${u?'up':'dn'}">${u?'+':''}${(q.changePct||0).toFixed(1)}%</span>`:''}`;
     div.onclick=()=>selectSym(s);
     bar.appendChild(div);
   });
@@ -650,7 +663,7 @@ function openTVPopup(){
   // Full tradingview.com/chart/ = real-time data
   // hideSideToolbar hides the watchlist/right panel
   const url='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSym)
-    +'&interval=1&range=1D&theme=dark&hideSideToolbar=1&hide_side_toolbar=1';
+    +'&interval=1&range=2H&theme=dark&hideSideToolbar=1&hide_side_toolbar=1';
   const pw=Math.floor(screen.width*.75),ph=Math.floor(screen.height*.88);
   const pl=Math.floor((screen.width-pw)/2),pt=Math.floor((screen.height-ph)/10);
   try{if(tvWin&&!tvWin.closed){tvWin.location.href=url;tvWin.focus();return;}}catch(e){}
@@ -668,6 +681,24 @@ function showToast(msg){
   t.textContent=msg;t.style.opacity='1';
   clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',3500);
 }
+
+// ── AUDIO PING — plays when new stock added
+function playPing(){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const o=ctx.createOscillator();
+    const g=ctx.createGain();
+    o.connect(g);g.connect(ctx.destination);
+    o.frequency.setValueAtTime(880,ctx.currentTime);
+    o.frequency.setValueAtTime(1100,ctx.currentTime+0.08);
+    g.gain.setValueAtTime(0.3,ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.3);
+    o.start(ctx.currentTime);o.stop(ctx.currentTime+0.3);
+  }catch(e){}
+}
+
+// Track which symbols are "new" (added in this session) for visual highlighting
+const newSyms=new Set();
 
 // Global manual refresh — clears all screener caches and reloads everything
 async function manualRefreshAll(){
@@ -1063,8 +1094,12 @@ function renderHistory(body){
   }
   body.innerHTML=histSyms.map(sym=>{
     const q=Q[sym],u=(q?.changePct||0)>=0;
-    return `<div class="wi${sym===curChartSym?' ac':''}" onclick="selectSym('${sym}')">
-      <div class="wil"><span class="wis">${sym}</span><span class="win">${q?.name||'—'}</span></div>
+    const isNew=newSyms.has(sym);
+    return `<div class="wi${sym===curChartSym?' ac':''}${isNew?' wi-new':''}" onclick="selectSym('${sym}')">
+      <div class="wil">
+        <span class="wis">${isNew?'<span style="font-size:9px;color:var(--gr);margin-right:3px">NEW</span>':''}${sym}</span>
+        <span class="win">${q?.name||'—'}</span>
+      </div>
       <div class="wir">
         <div class="wip">${q?'$'+fmtP(q.price):'—'}</div>
         <div class="wic ${u?'up':'dn'}">${q?(u?'+':'')+q.changePct.toFixed(2)+'%':'—'}</div>
@@ -1164,8 +1199,9 @@ function liveScanUpdate(){
     const pd=v=>v===true?'pass':v===false?'fail':'na';
     res.innerHTML=results.map(r=>{
       const u=(r.q.changePct||0)>=0,sc=r.score>=4?'s5':r.score===3?'s4':'s0';
-      return `<div class="scan-row${r.score>=5?' score5':r.score>=4?' score4':''}" onclick="selectSym('${r.sym}')">
-        <span class="scan-sym ${u?'up':'dn'}">${r.sym}${r.hasNews?' 🔥':''}</span>
+      const isNew=newSyms.has(r.sym);
+      return `<div class="scan-row${r.score>=5?' score5':r.score>=4?' score4':''}${isNew?' scan-row-new':''}" onclick="selectSym('${r.sym}')">
+        <span class="scan-sym ${u?'up':'dn'}">${isNew?'<span style="font-size:8px;background:#19c48a;color:#000;border-radius:3px;padding:0 3px;margin-right:3px;font-weight:700">NEW</span>':''}${r.sym}${r.hasNews?' 🔥':''}</span>
         <span class="scan-px">$${fmtP(r.q.price)}</span>
         <span class="scan-chg ${u?'up':'dn'}">${u?'+':''}${(r.q.changePct||0).toFixed(2)}%</span>
         <div class="scan-pills">
@@ -1309,7 +1345,7 @@ async function renderNews(body,sym){
       const relSym=(n.related||sym).split(',')[0].trim().replace(/[^A-Z0-9./-]/g,'');
       const safeUrl=(n.url||'').replace(/'/g,"\\'");
       return `<div class="ni" style="border-left-color:${s==='p'?'var(--gr)':s==='n'?'var(--rd)':'var(--b2)'}" onclick="openNewsPopup('${safeUrl}')">
-        <div class="nisym" onclick="event.stopPropagation();selectSym('${relSym}')" title="Open ${relSym} chart">${relSym}<span class="nisen ${s}">${sl}</span></div>
+        <div class="nisym${newSyms.has(relSym)?' nisym-new':''}" onclick="event.stopPropagation();selectSym('${relSym}')" title="Open ${relSym} chart">${newSyms.has(relSym)?'🆕 ':''}${relSym}<span class="nisen ${s}">${sl}</span></div>
         <div class="nitl">${(n.headline||'').slice(0,88)}${(n.headline||'').length>88?'…':''}</div>
         <div class="nitm">${age} · ${n.source||''}</div>
       </div>`;
