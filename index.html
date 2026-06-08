@@ -261,6 +261,28 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 /* TOAST */
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--gold);color:#000;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;padding:8px 18px;border-radius:6px;z-index:9999;box-shadow:0 4px 20px #00000066;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap}
 
+/* MOBILE VIEW */
+.mtab{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:var(--mu);font-family:'DM Mono',monospace;font-size:10px;padding:10px 4px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.mtab.active{color:#fff;border-bottom-color:var(--ac);background:#7c6aff0a}
+.mtab:hover{color:var(--tx)}
+.mpanel{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.mscr-btn{background:var(--s2);border:1px solid var(--b2);border-radius:20px;color:var(--mu);font-family:'DM Mono',monospace;font-size:11px;padding:6px 14px;cursor:pointer;white-space:nowrap;transition:all .12s;flex-shrink:0}
+.mscr-btn.active{background:#7c6aff20;border-color:var(--ac);color:#fff;font-weight:600}
+/* Mobile history/scanner rows */
+.mwi{display:flex;align-items:center;justify-content:space-between;padding:12px 10px;border-radius:8px;cursor:pointer;margin-bottom:6px;border:1px solid var(--b1);background:var(--s2);transition:all .08s}
+.mwi:hover,.mwi:active{background:#7c6aff0e;border-color:var(--ac)}
+.mwi-new{border-left:3px solid var(--gr)!important;background:#19c48a08!important}
+.mwi-sym{font-size:16px;font-weight:700;color:#fff;letter-spacing:.02em}
+.mwi-name{font-size:10px;color:var(--mu);margin-top:2px}
+.mwi-px{font-size:15px;font-weight:600;text-align:right}
+.mwi-chg{font-size:12px;font-weight:700;text-align:right;margin-top:2px}
+/* Mobile news */
+.mni{padding:12px;background:var(--s2);border:1px solid var(--b2);border-left:3px solid var(--b2);border-radius:8px;margin-bottom:8px;cursor:pointer}
+.mni:active{opacity:.8}
+.mni-sym{font-size:11px;font-weight:700;color:var(--ac2);margin-bottom:4px}
+.mni-title{font-size:13px;color:var(--tx);line-height:1.5;margin-bottom:4px}
+.mni-meta{font-size:10px;color:var(--mu)}
+
 .up{color:var(--gr)}.dn{color:var(--rd)}
 </style>
 </head>
@@ -316,6 +338,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
     </div>
     <div class="hright">
       <button class="hbtn" onclick="manualRefreshAll()" id="refreshBtn" title="Refresh all screeners and prices now">↺ Refresh</button>
+      <button class="hbtn" onclick="switchView('mobile')" id="mobileBtn" title="Mobile view">📱 Mobile</button>
       <button class="hbtn" onclick="openProfileModal()">👤 Profiles</button>
       <button class="hbtn" onclick="logout()">⏻ Sign Out</button>
       <div class="wm-wrap">
@@ -359,6 +382,83 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
       <span id="cpToggle">▲</span>
     </div>
     <iframe id="cpIframe" src="about:blank" allowtransparency="true" allow="fullscreen"></iframe>
+  </div>
+
+  <!-- MOBILE VIEW -->
+  <div id="mobileView" style="display:none;flex-direction:column;flex:1;overflow:hidden;background:var(--bg);min-height:0">
+    <!-- Mobile header bar -->
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0">
+      <button onclick="switchView('desktop')" style="background:none;border:1px solid var(--b2);border-radius:6px;color:var(--mu);font-family:'DM Mono',monospace;font-size:10px;padding:5px 10px;cursor:pointer">← Desktop</button>
+      <div style="flex:1;position:relative">
+        <input id="msi" type="text" placeholder="🔍 Search ticker…" autocomplete="off" spellcheck="false"
+          style="width:100%;background:var(--s2);border:1px solid var(--b2);border-radius:8px;color:#fff;font-family:'DM Mono',monospace;font-size:14px;padding:8px 14px;outline:none;text-transform:uppercase"
+          oninput="this.value=this.value.toUpperCase()"
+          onkeydown="if(event.key==='Enter'&&this.value.trim()){selectSym(this.value.trim());this.value='';this.blur();}"/>
+      </div>
+      <span class="sess cls" id="msess" style="font-size:10px"></span>
+    </div>
+
+    <!-- Mobile tab bar -->
+    <div style="display:flex;background:var(--s2);border-bottom:1px solid var(--b1);flex-shrink:0">
+      <button class="mtab active" id="mt0" onclick="showMobileTab(0)">🚀 Movers</button>
+      <button class="mtab" id="mt1" onclick="showMobileTab(1)">🎯 Scanner</button>
+      <button class="mtab" id="mt2" onclick="showMobileTab(2)">📋 History</button>
+      <button class="mtab" id="mt3" onclick="showMobileTab(3)">📰 News</button>
+      <button class="mtab" id="mt4" onclick="showMobileTab(4)">📈 Chart</button>
+    </div>
+
+    <!-- Tab 0: Movers — swipeable screener cards -->
+    <div class="mpanel" id="mp0">
+      <!-- Screener type selector -->
+      <div style="display:flex;gap:6px;padding:10px 12px;overflow-x:auto;flex-shrink:0;scrollbar-width:none">
+        <button class="mscr-btn active" id="msb0" onclick="showMobileScreener('gainers',0)">🚀 Gainers</button>
+        <button class="mscr-btn" id="msb1" onclick="showMobileScreener('gappers',1)">⚡ Gappers</button>
+        <button class="mscr-btn" id="msb2" onclick="showMobileScreener('active',2)">🔥 Active</button>
+        <button class="mscr-btn" id="msb3" onclick="showMobileScreener('losers',3)">📉 Losers</button>
+        <button class="mscr-btn" id="msb4" onclick="showMobileScreener('premarket',4)">🌅 Pre-Mkt</button>
+      </div>
+      <!-- TV iframe screener — full width -->
+      <div style="flex:1;position:relative;overflow:hidden;display:flex;flex-direction:column">
+        <iframe id="mscr-frame" scrolling="no" allowtransparency="true" frameborder="0"
+          style="flex:1;width:100%;border:none;display:block"></iframe>
+        <!-- Input bar to open chart -->
+        <div style="display:flex;gap:6px;padding:8px 10px;background:var(--s1);border-top:2px solid var(--ac);flex-shrink:0">
+          <span style="font-size:9px;color:var(--ac2);font-weight:700;text-transform:uppercase;align-self:center;white-space:nowrap">↳ OPEN:</span>
+          <input id="mscr-inp" type="text" placeholder="type ticker → Enter"
+            style="flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:14px;font-weight:700;padding:7px 10px;outline:none;text-transform:uppercase;letter-spacing:.06em"
+            oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'')"
+            onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);showMobileTab(4);}}"/>
+          <button onclick="const s=document.getElementById('mscr-inp').value.trim();if(s){document.getElementById('mscr-inp').value='';selectSym(s);showMobileTab(4);}"
+            style="background:var(--ac);border:none;border-radius:6px;color:#fff;font-family:'DM Mono',monospace;font-size:13px;font-weight:700;padding:7px 14px;cursor:pointer">↵</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab 1: 5 Pillars Scanner -->
+    <div class="mpanel" id="mp1" style="display:none;overflow-y:auto;padding:10px">
+      <div id="m-scanner-content"></div>
+    </div>
+
+    <!-- Tab 2: History -->
+    <div class="mpanel" id="mp2" style="display:none;overflow-y:auto;padding:10px">
+      <div id="m-history-content"></div>
+    </div>
+
+    <!-- Tab 3: News -->
+    <div class="mpanel" id="mp3" style="display:none;overflow-y:auto;padding:10px">
+      <div id="m-news-content"></div>
+    </div>
+
+    <!-- Tab 4: Chart -->
+    <div class="mpanel" id="mp4" style="display:none;flex-direction:column">
+      <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--s2);border-bottom:1px solid var(--b1);flex-shrink:0">
+        <span id="m-chart-sym" style="font-size:14px;font-weight:700;color:#fff;flex:1">— Select a stock —</span>
+        <span id="m-chart-px" style="font-size:13px;font-weight:600"></span>
+        <span id="m-chart-chg" style="font-size:13px;font-weight:700"></span>
+      </div>
+      <iframe id="m-chart-frame" src="about:blank" style="flex:1;width:100%;border:none;display:block"
+        allowtransparency="true" allow="fullscreen"></iframe>
+    </div>
   </div>
 
   <!-- PROFILE MODAL -->
@@ -854,6 +954,8 @@ async function selectSym(sym){
   refreshHistWidgets();renderHistBar();
   widgets.filter(w=>w.type==='news').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderNews(b,sym);});
   openChartPanel(sym);
+  // Also update mobile chart if in mobile view
+  if(currentView==='mobile')updateMobileChart(sym,Q[sym]);
 }
 function refreshHistWidgets(){
   widgets.forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b&&w.type==='history')renderHistory(b);});
@@ -1468,8 +1570,178 @@ function makeResizable(el,wData){
 }
 
 // ═══════════════════════════════════════════════
-// BOOT
+// MOBILE VIEW
 // ═══════════════════════════════════════════════
+let currentView='desktop';
+let currentMobileTab=0;
+let currentMobileScreener='gainers';
+let currentMobileScreenerIdx=0;
+
+function switchView(view){
+  currentView=view;
+  const desktop=document.querySelector('.canvas');
+  const histBar=document.getElementById('histBar');
+  const chartPanel=document.getElementById('chartPanel');
+  const mobileView=document.getElementById('mobileView');
+  const mobileBtn=document.getElementById('mobileBtn');
+  if(view==='mobile'){
+    desktop.style.display='none';
+    histBar.style.display='none';
+    chartPanel.style.display='none';
+    mobileView.style.display='flex';
+    mobileBtn.textContent='🖥 Desktop';
+    mobileBtn.onclick=()=>switchView('desktop');
+    // Sync session badge
+    document.getElementById('msess').textContent=document.getElementById('sessbdg').textContent;
+    document.getElementById('msess').className=document.getElementById('sessbdg').className;
+    // Load first screener
+    showMobileScreener('gainers',0);
+    showMobileTab(0);
+  } else {
+    desktop.style.display='';
+    histBar.style.display='';
+    chartPanel.style.display='';
+    mobileView.style.display='none';
+    mobileBtn.textContent='📱 Mobile';
+    mobileBtn.onclick=()=>switchView('mobile');
+  }
+}
+
+function showMobileTab(idx){
+  currentMobileTab=idx;
+  for(let i=0;i<5;i++){
+    document.getElementById('mt'+i)?.classList.toggle('active',i===idx);
+    const p=document.getElementById('mp'+i);
+    if(p)p.style.display=i===idx?'flex':'none';
+  }
+  // Render content for selected tab
+  if(idx===1)renderMobileScanner();
+  if(idx===2)renderMobileHistory();
+  if(idx===3)renderMobileNews();
+}
+
+function showMobileScreener(type,idx){
+  currentMobileScreener=type;currentMobileScreenerIdx=idx;
+  for(let i=0;i<5;i++)document.getElementById('msb'+i)?.classList.toggle('active',i===idx);
+  const screen=SCR_SCREENS[type]||'top_gainers';
+  const params=encodeURIComponent(JSON.stringify({
+    width:'100%',height:'100%',defaultColumn:'overview',
+    defaultScreen:screen,market:'america',showToolbar:true,
+    colorTheme:'dark',locale:'en'
+  }));
+  document.getElementById('mscr-frame').src=
+    `https://www.tradingview.com/embed-widget/screener/?locale=en#${params}`;
+}
+
+function renderMobileHistory(){
+  const el=document.getElementById('m-history-content');if(!el)return;
+  if(!histSyms.length){el.innerHTML='<div style="text-align:center;padding:40px;color:var(--mu);font-size:13px">No history yet.<br>Search or tap a stock to start.</div>';return;}
+  el.innerHTML=histSyms.map(sym=>{
+    const q=Q[sym],u=(q?.changePct||0)>=0,isNew=newSyms.has(sym);
+    return `<div class="mwi${isNew?' mwi-new':''}" onclick="selectSym('${sym}');showMobileTab(4)">
+      <div>
+        <div class="mwi-sym">${isNew?'🆕 ':''}${sym}</div>
+        <div class="mwi-name">${q?.name||'—'}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="mwi-px ${u?'up':'dn'}">${q?'$'+fmtP(q.price):'—'}</div>
+        <div class="mwi-chg ${u?'up':'dn'}">${q?(u?'+':'')+q.changePct.toFixed(2)+'%':'—'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderMobileScanner(){
+  const el=document.getElementById('m-scanner-content');if(!el)return;
+  const syms=getScanSyms();
+  const results=[];
+  syms.forEach(sym=>{
+    const q=Q[sym];if(!q?.price)return;
+    const sess=getSession();
+    const minC=sess==='pre'||sess==='aft'?5:10;
+    const p1=q.price>=1&&q.price<=20;
+    const p2=(q.changePct||0)>=minC;
+    const c=scanCache[sym]||{};
+    const score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
+    if(score>=3)results.push({sym,q,score,isNew:newSyms.has(sym)});
+  });
+  if(!results.length){
+    el.innerHTML=`<div style="text-align:center;padding:40px;color:var(--mu);font-size:13px;line-height:1.8">
+      <div style="font-size:32px;margin-bottom:12px">🎯</div>
+      <div style="font-weight:600;color:var(--tx);margin-bottom:6px">5 Pillars Scanner</div>
+      <div>Watching ${syms.length} symbols</div>
+      <div style="font-size:11px;margin-top:8px;color:var(--dim)">Open any stock to add it here</div>
+    </div>`;return;
+  }
+  results.sort((a,b)=>b.score-a.score||(b.q.changePct||0)-(a.q.changePct||0));
+  el.innerHTML=results.map(r=>{
+    const u=(r.q.changePct||0)>=0;
+    const scoreColor=r.score>=4?'var(--gr)':r.score===3?'var(--gold)':'var(--mu)';
+    return `<div class="mwi${r.isNew?' mwi-new':''}" onclick="selectSym('${r.sym}');showMobileTab(4)">
+      <div>
+        <div class="mwi-sym">${r.isNew?'🆕 ':''}${r.sym}${scanCache[r.sym]?.hasNews?' 🔥':''}</div>
+        <div class="mwi-name">${r.q.name||'—'} · $${fmtP(r.q.price)}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="mwi-chg ${u?'up':'dn'}">${u?'+':''}${(r.q.changePct||0).toFixed(2)}%</div>
+        <div style="font-size:12px;font-weight:700;color:${scoreColor};margin-top:4px">${r.score}/5 pillars</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function renderMobileNews(){
+  const el=document.getElementById('m-news-content');if(!el)return;
+  el.innerHTML='<div style="text-align:center;padding:20px;color:var(--mu)">Loading news…</div>';
+  const sym=curChartSym||histSyms[0]||'AAPL';
+  try{
+    const today=new Date().toISOString().split('T')[0];
+    const from=new Date(Date.now()-3*86400000).toISOString().split('T')[0];
+    const r=await fetch(`https://finnhub.io/api/v1/company-news?symbol=${sym}&from=${from}&to=${today}&token=${FHK}`);
+    const items=await r.json();
+    if(!items?.length){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--mu)">No news</div>';return;}
+    el.innerHTML=items.slice(0,15).map(n=>{
+      const age=timeAgo(new Date(n.datetime*1000));
+      const s=n.sentiment>0.1?'p':n.sentiment<-0.1?'n':'u';
+      const bc=s==='p'?'var(--gr)':s==='n'?'var(--rd)':'var(--b2)';
+      const relSym=(n.related||sym).split(',')[0].trim().replace(/[^A-Z0-9./\-]/g,'');
+      return `<div class="mni" style="border-left-color:${bc}" onclick="openNewsPopup('${(n.url||'').replace(/'/g,"\\'")}')">
+        <div class="mni-sym" onclick="event.stopPropagation();selectSym('${relSym}');showMobileTab(4)">${relSym} ${s==='p'?'▲':s==='n'?'▼':'●'}</div>
+        <div class="mni-title">${(n.headline||'').slice(0,100)}${(n.headline||'').length>100?'…':''}</div>
+        <div class="mni-meta">${age} · ${n.source||''}</div>
+      </div>`;
+    }).join('');
+  }catch(e){el.innerHTML='<div style="text-align:center;padding:20px;color:var(--mu)">News unavailable</div>';}
+}
+
+// Update mobile chart when stock is selected
+const _origOpenChartPanel=openChartPanel;
+// Override selectSym to also update mobile chart
+function updateMobileChart(sym,q){
+  const symEl=document.getElementById('m-chart-sym');
+  const pxEl=document.getElementById('m-chart-px');
+  const chgEl=document.getElementById('m-chart-chg');
+  if(symEl)symEl.textContent=sym;
+  if(q){
+    const u=(q.changePct||0)>=0;
+    if(pxEl){pxEl.textContent='$'+fmtP(q.price);pxEl.className=u?'up':'dn';}
+    if(chgEl){chgEl.textContent=(u?'+':'')+q.changePct.toFixed(2)+'%';chgEl.className=u?'up':'dn';}
+  }
+  // Load chart in mobile frame
+  let tvSym=sym;
+  if(sym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
+  else if(sym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
+  const cfg=encodeURIComponent(JSON.stringify({
+    autosize:true,symbol:tvSym,interval:'1',
+    timezone:'America/New_York',theme:'dark',style:'1',
+    locale:'en',toolbar_bg:'#0c0d1a',enable_publishing:false,
+    withdateranges:true,hide_side_toolbar:true,
+    allow_symbol_change:false,save_image:false,hide_volume:false,
+    support_host:'https://www.tradingview.com'
+  }));
+  const mf=document.getElementById('m-chart-frame');
+  if(mf){mf.src='about:blank';setTimeout(()=>{mf.src=`https://www.tradingview.com/embed-widget/advanced-chart/?locale=en#${cfg}`;},80);}
+}
 if(Notification.permission==='default')Notification.requestPermission();
 
 let appReady=false;
@@ -1487,6 +1759,8 @@ async function init(){
   appReady=true;
   renderHistBar();refreshHistWidgets();
   setTimeout(startDeepScan,3000);
+  // Auto-switch to mobile view on small screens
+  if(window.innerWidth<=768)switchView('mobile');
 }
 if(checkAuth())init();
 </script>
