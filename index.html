@@ -1585,7 +1585,16 @@ document.addEventListener('keydown',e=>{
   if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;
   if(e.target.isContentEditable)return;
   if(e.metaKey||e.ctrlKey||e.altKey)return;
-  if(e.key==='Escape'){closeDrop();return;}
+  if(e.key==='Escape'){
+    // Close bottom chart panel
+    const cp=document.getElementById('chartPanel');
+    if(cp?.classList.contains('open')){cp.classList.remove('open');return;}
+    // Close Claude panel
+    if(claudeOpen){toggleClaude();return;}
+    // Close search dropdown
+    closeDrop();
+    return;
+  }
   if(e.key.length===1&&/[a-zA-Z0-9]/.test(e.key)){inp.focus();inp.value=e.key;doSearch(e.key);}
 });
 document.addEventListener('click',e=>{
