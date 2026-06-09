@@ -382,7 +382,8 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
       <span id="cpChg"></span>
       <!-- Interval selector for TradingView Premium -->
       <div onclick="event.stopPropagation()" style="display:flex;gap:2px;margin-left:4px">
-        <button class="iv-btn active" id="iv1" onclick="setChartInterval('1','iv1')">1m</button>
+        <button class="iv-btn active" id="iv10S" onclick="setChartInterval('10S','iv10S')">10s</button>
+        <button class="iv-btn" id="iv1" onclick="setChartInterval('1','iv1')">1m</button>
         <button class="iv-btn" id="iv5" onclick="setChartInterval('5','iv5')">5m</button>
         <button class="iv-btn" id="iv15" onclick="setChartInterval('15','iv15')">15m</button>
         <button class="iv-btn" id="ivD" onclick="setChartInterval('D','ivD')">1D</button>
@@ -783,7 +784,7 @@ function renderHistBar(){
 // ═══════════════════════════════════════════════
 // BOTTOM CHART PANEL
 // ═══════════════════════════════════════════════
-let curInterval='1'; // default 1-minute
+let curInterval='10S'; // default 10-second candles (TradingView Premium)
 
 function setChartInterval(interval,btnId){
   curInterval=interval;
@@ -796,11 +797,9 @@ function openChartPanel(sym){
   if(sym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
   else if(sym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
   else{
-    // Force NASDAQ or NYSE to avoid Cboe One and other regional exchanges with wrong prices
-    const nyseSyms=['GME','AMC','NIO','PLTR','COIN','HOOD','SOFI','RIVN','LCID','MSTR',
-      'SNAP','UBER','WKHS','GOEV','BB','NOK','SNDL','CLOV','IDEX','BLNK','PLUG','FCEL',
-      'SPHL','BNAI','CMND','ACMR','AEHR','BTBT','HUT','CLSK','NKLA','MARA','RIOT'];
-    tvSym=(nyseSyms.includes(sym)?'NASDAQ:':'')+sym;
+    // With TradingView Premium + US Bundle, force NASDAQ: prefix on all US stocks
+    // This ensures real-time NYSE/NASDAQ feed, not delayed Cboe One
+    if(!sym.includes(':'))tvSym='NASDAQ:'+sym;
   }
   curChartSym=sym;
   const cfg=encodeURIComponent(JSON.stringify({
@@ -810,6 +809,7 @@ function openChartPanel(sym){
     withdateranges:true,hide_side_toolbar:false,
     allow_symbol_change:false,save_image:false,
     calendar:false,hide_volume:false,
+    extended_hours:true,
     support_host:'https://www.tradingview.com'
   }));
   const iframe=document.getElementById('cpIframe');
@@ -840,15 +840,13 @@ function openTVPopup(){
   if(curChartSym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
   else if(curChartSym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
   else{
-    const nasdaqSyms=['GME','AMC','NIO','PLTR','COIN','HOOD','SOFI','RIVN','LCID','MSTR',
-      'SNAP','UBER','WKHS','GOEV','BB','NOK','SNDL','CLOV','IDEX','BLNK','PLUG','FCEL',
-      'SPHL','BNAI','CMND','ACMR','AEHR','BTBT','HUT','CLSK','NKLA','MARA','RIOT'];
-    tvSym=(nasdaqSyms.includes(curChartSym)?'NASDAQ:':'')+curChartSym;
+    // Force NASDAQ: prefix for real-time data with Premium + US Bundle
+    if(!curChartSym.includes(':'))tvSym='NASDAQ:'+curChartSym;
   }
   // Full tradingview.com/chart/ = real-time data
   // hideSideToolbar hides the watchlist/right panel
   const url='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSym)
-    +'&interval=1&range=2H&theme=dark&hideSideToolbar=1&hide_side_toolbar=1';
+    +'&interval=10S&range=2H&theme=dark&hideSideToolbar=1&hide_side_toolbar=1';
   const pw=Math.floor(screen.width*.75),ph=Math.floor(screen.height*.88);
   const pl=Math.floor((screen.width-pw)/2),pt=Math.floor((screen.height-ph)/10);
   try{if(tvWin&&!tvWin.closed){tvWin.location.href=url;tvWin.focus();return;}}catch(e){}
@@ -1391,7 +1389,14 @@ function liveScanUpdate(){
       </div>`;
       return;
     }
-    results.sort((a,b)=>b.score-a.score||(b.q.changePct||0)-(a.q.changePct||0));
+    results.sort((a,b)=>{
+      // NEW stocks always on top
+      const aNew=newSyms.has(a.sym)?1:0;
+      const bNew=newSyms.has(b.sym)?1:0;
+      if(bNew!==aNew)return bNew-aNew;
+      // Then by score, then by % change
+      return b.score-a.score||(b.q.changePct||0)-(a.q.changePct||0);
+    });
     const pd=v=>v===true?'pass':v===false?'fail':'na';
     res.innerHTML=results.map(r=>{
       const u=(r.q.changePct||0)>=0;
@@ -2083,12 +2088,14 @@ AUTH: Supabase (email/password, admin approval required) — approved account: y
 DOMAIN: $13/yr at Massive.com (formerly Polygon.io), renews May 2027
 
 MONTHLY COSTS:
-- Domain: ~$1.08/mo
-- TradingView Essential: $15/mo (needed for pre/after market screeners)
+- Domain: ~$1.08/mo ($13/yr at Massive.com, renews May 2027)
+- TradingView Premium: $69.95/mo (upgraded from Essential $15/mo — includes pre/after market screeners, 8 charts, 25 indicators, second-based intervals, Volume Footprint, 400 alerts)
+- TradingView US Stock Markets Bundle: $9.95/mo (real-time NYSE, NASDAQ, NYSE Arca, OTC — fixes delayed chart data)
 - GitHub Pages: Free
 - Finnhub API: Free (60 calls/min limit)
 - Supabase Auth: Free
-- Claude API: ~$0.10-0.30/day when used
+- Claude API: ~$0.10-0.30/day when used (~$3-9/mo typical)
+- TOTAL: ~$82/mo fixed + Claude API usage
 
 ARCHITECTURE:
 Single HTML file (index.html), entirely frontend, no backend needed.
