@@ -291,7 +291,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 
 <!-- LOGIN WALL -->
 <div id="loginWall" style="position:fixed;inset:0;background:#07080f;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px">
-  <div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:#fff;letter-spacing:-.5px">Yedidyah's <span style="color:#a78bfa">Dashboard</span></div>
+  <div style="font-family:'Syne',sans-serif;font-size:26px;font-weight:800;color:#fff;letter-spacing:-.5px;text-align:center;width:100%;padding:0 20px">Yedidyah's <span style="color:#a78bfa">Dashboard</span></div>
   <div id="loginForm" style="background:#0c0d1a;border:1px solid #242538;border-radius:10px;padding:28px;min-width:320px;display:flex;flex-direction:column;gap:12px">
     <div style="font-size:11px;color:#606172;text-align:center;margin-bottom:4px">Sign in to access your dashboard</div>
     <input id="loginEmail" type="email" placeholder="Email address" autocomplete="email"
@@ -1887,6 +1887,7 @@ async function testClaudeKey(){
     addClaudeMsg('system',`❌ Network error: ${e.message}\nMake sure you have internet access.`);
   }
 }
+function saveClaudeKey(){
   const key=document.getElementById('claude-api-key')?.value.trim();
   if(!key){addClaudeMsg('system','⚠ Please paste your API key first.');return;}
   if(!key.startsWith('sk-ant')){addClaudeMsg('system','⚠ Key should start with sk-ant- — check console.anthropic.com → API Keys');return;}
