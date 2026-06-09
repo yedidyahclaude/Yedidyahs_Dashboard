@@ -1861,7 +1861,8 @@ function updateClaudeModeLabel(){
 
 function saveClaudeKey(){
   const key=document.getElementById('claude-api-key')?.value.trim();
-  if(!key||!key.startsWith('sk-ant')){addClaudeMsg('system','⚠ Invalid key — should start with sk-ant-');return;}
+  if(!key){addClaudeMsg('system','⚠ Please paste your API key first.');return;}
+  if(!key.startsWith('sk-ant')){addClaudeMsg('system','⚠ Key should start with sk-ant- — check console.anthropic.com → API Keys');return;}
   claudeAPIKey=key;
   localStorage.setItem('claude_api_key',key);
   activateClaudeAPI(true);
@@ -2086,7 +2087,7 @@ function updateLastClaudeMsg(text){
   msgs.scrollTop=msgs.scrollHeight;
 }
 
-// Auto-restore API key and enable API mode on page load
+// Auto-restore API key — called from init() after DOM is ready
 function restoreClaudeKey(){
   if(!claudeAPIKey)return;
   const keyInp=document.getElementById('claude-api-key');
@@ -2098,9 +2099,6 @@ function restoreClaudeKey(){
   if(section)section.style.display='block';
   updateClaudeModeLabel();
 }
-// Call after DOM is ready — use both load and a timeout fallback
-window.addEventListener('load',restoreClaudeKey);
-setTimeout(restoreClaudeKey,500);
 
 // ═══════════════════════════════════════════════
 let appReady=false;
@@ -2117,8 +2115,8 @@ async function init(){
   }
   appReady=true;
   renderHistBar();refreshHistWidgets();
+  restoreClaudeKey();
   setTimeout(startDeepScan,3000);
-  // Auto-switch to mobile view on phones (up to 480px covers all modern flagships)
   if(window.innerWidth<=480)switchView('mobile');
 }
 if(checkAuth())init();
