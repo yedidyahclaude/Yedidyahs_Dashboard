@@ -244,8 +244,8 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 
 /* BOTTOM CHART PANEL */
 #chartPanel{flex-shrink:0;background:var(--s1);border-top:2px solid var(--b1);display:flex;flex-direction:column;transition:height .22s cubic-bezier(.4,0,.2,1);height:34px;position:relative;z-index:50}
-#chartPanel.open{height:58vh}
-#cpBar{display:flex;align-items:center;gap:8px;padding:0 12px;height:34px;cursor:pointer;flex-shrink:0;user-select:none;background:var(--s2);border-bottom:1px solid var(--b1);transition:background .1s}
+#chartPanel.open{height:auto}
+#cpBar{display:flex;align-items:center;gap:8px;padding:0 12px;height:44px;cursor:pointer;flex-shrink:0;user-select:none;background:var(--s2);border-bottom:1px solid var(--b1);transition:background .1s}
 #cpBar:hover{background:#14152a}
 #cpIcon{color:var(--ac);flex-shrink:0}
 #cpSym{font-size:12px;font-weight:700;color:var(--mu);min-width:54px;transition:color .15s;letter-spacing:.04em}
@@ -392,7 +392,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
       <button id="cpPopupBtn" onclick="event.stopPropagation();openTVPopup()" title="Open in TradingView popup window">⤢ POP OUT</button>
       <span id="cpToggle">▲</span>
     </div>
-    <iframe id="cpIframe" src="about:blank" allowtransparency="true" allow="fullscreen"></iframe>
+    <iframe id="cpIframe" src="about:blank" style="display:none"></iframe>
   </div>
 
   <!-- MOBILE VIEW -->
@@ -822,13 +822,14 @@ function openChartPanel(sym){
   symEl.textContent=sym;symEl.style.color='#fff';
   document.getElementById('cpLabel').textContent='TradingView · real-time · pre/after hours included';
   updateCPPrice();
+  // Bottom panel embed is blocked by TradingView CSP — popup is the reliable chart
+  // Just update the bar with stock info, open popup automatically
   const panel=document.getElementById('chartPanel');
   if(!panel.classList.contains('open'))panel.classList.add('open');
   renderHistBar();
-  // Auto-open popup since embed is often blocked by TradingView CSP
   openTVPopup();
 }
-function toggleChartPanel(){document.getElementById('chartPanel').classList.toggle('open');}
+function toggleChartPanel(){if(curChartSym)openTVPopup();}
 function updateCPPrice(){
   if(!curChartSym)return;
   const q=Q[curChartSym];if(!q)return;
@@ -850,7 +851,7 @@ function openTVPopup(){
   // Full tradingview.com/chart/ = real-time data
   // hideSideToolbar hides the watchlist/right panel
   const url='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSym)
-    +'&interval=10S&range=2H&theme=dark&hideSideToolbar=1&hide_side_toolbar=1';
+    +'&interval='+curInterval+'&theme=dark&hideSideToolbar=1&hide_side_toolbar=1';
   const pw=Math.floor(screen.width*.75),ph=Math.floor(screen.height*.88);
   const pl=Math.floor((screen.width-pw)/2),pt=Math.floor((screen.height-ph)/10);
   try{if(tvWin&&!tvWin.closed){tvWin.location.href=url;tvWin.focus();return;}}catch(e){}
@@ -1625,12 +1626,7 @@ document.addEventListener('keydown',e=>{
   if(e.target.isContentEditable)return;
   if(e.metaKey||e.ctrlKey||e.altKey)return;
   if(e.key==='Escape'){
-    // Close bottom chart panel
-    const cp=document.getElementById('chartPanel');
-    if(cp?.classList.contains('open')){cp.classList.remove('open');return;}
-    // Close Claude panel
     if(claudeOpen){toggleClaude();return;}
-    // Close search dropdown
     closeDrop();
     return;
   }
