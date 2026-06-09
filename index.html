@@ -1869,15 +1869,52 @@ function saveClaudeKey(){
 
 function buildDashboardContext(){
   const sess=document.getElementById('sessbdg')?.textContent||'CLOSED';
-  const histList=histSyms.slice(0,8).map(s=>{
-    const q=Q[s];return q?`${s} $${fmtP(q.price)} ${(q.changePct||0)>=0?'+':''}${(q.changePct||0).toFixed(2)}%`:s;
-  }).join(', ')||'none';
-  return `You are Claude, an AI assistant embedded in Yedidyah's day trading dashboard.
-Market session: ${sess}.
-Watched symbols: ${histList}.
-5 Pillars Scanner watching ${getScanSyms().length} symbols (Ross Cameron criteria: price $1-$20, % change, news catalyst, relative volume ≥5x, float <10M).
-Dashboard has: TradingView screeners (Gainers/Gappers/Active/Pre-Market), 5 Pillars Scanner, History, News, Alerts, TradingView chart panel.
-Be concise and trading-focused. Max 3-4 sentences unless user asks for more detail.`;
+  const histList=histSyms.slice(0,10).map(s=>{
+    const q=Q[s];return q?`${s}: $${fmtP(q.price)} (${(q.changePct||0)>=0?'+':''}${(q.changePct||0).toFixed(2)}%)`:s;
+  }).join('\n')||'none';
+  const scanList=getScanSyms();
+  const scanResults=scanList.map(s=>{
+    const q=Q[s],c=scanCache[s]||{};
+    if(!q?.price)return null;
+    const score=[q.price>=1&&q.price<=20,(q.changePct||0)>=5,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
+    if(score<2)return null;
+    return `${s}: $${fmtP(q.price)} ${(q.changePct||0)>=0?'+':''}${(q.changePct||0).toFixed(2)}% — ${score}/5 pillars${c.hasNews?' (news catalyst)':''}`;
+  }).filter(Boolean).join('\n')||'No stocks currently passing pillar criteria';
+  const activeAlerts=alts.filter(a=>a.active&&!a.triggered).map(a=>`${a.sym} ${a.type} ${a.val}`).join(', ')||'none';
+  const currentChart=curChartSym?`Currently charting: ${curChartSym} $${fmtP(Q[curChartSym]?.price)}`:'No chart open';
+
+  return `You are Claude, an AI assistant deeply integrated into Yedidyah's professional day trading dashboard. You have full knowledge of the dashboard code and live data.
+
+DASHBOARD SYSTEM:
+- Built as a single HTML file hosted at yedidyahsdashboard.click
+- TradingView iframe screeners (Top Gainers <$20, Top Gappers, Most Active, Gap Scanner, Pre-Market, HOD, Penny Stocks)
+- 5 Pillars Scanner (Ross Cameron criteria): Price $1-$20, % Change ≥10% (halved pre/after hours), News catalyst last 48hrs, Relative Volume ≥5x, Float <10M shares
+- Finnhub free API for quotes/news/metrics (60 calls/min limit)
+- Supabase auth (email + password, admin approval)
+- Bottom TradingView chart panel + popup option
+- History bar tracks all clicked stocks → auto-added to 5 Pillars scanner
+- Alerts with browser notifications
+- Mobile view with 5 tabs
+
+LIVE DATA RIGHT NOW:
+Market session: ${sess}
+${currentChart}
+
+Watched symbols (History):
+${histList}
+
+5 Pillars Scanner results:
+${scanResults}
+
+Active alerts: ${activeAlerts}
+
+INSTRUCTIONS:
+- Be a knowledgeable trading assistant AND dashboard expert
+- For dashboard issues, give exact actionable fixes
+- For trading questions, be concise and practical
+- You know the full codebase — reference specific functions/widgets when relevant
+- Max 4-5 sentences unless user asks for detail or requests code
+- Format code blocks with backticks when giving fixes`;
 }
 
 async function sendClaudeMsg(){
