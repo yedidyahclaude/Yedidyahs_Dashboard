@@ -446,22 +446,22 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
     </div>
 
     <!-- Tab 1: 5 Pillars Scanner -->
-    <div class="mpanel" id="mp1" style="display:none;overflow-y:auto;padding:10px">
+    <div class="mpanel" id="mp1" style="padding:10px">
       <div id="m-scanner-content"></div>
     </div>
 
     <!-- Tab 2: History -->
-    <div class="mpanel" id="mp2" style="display:none;overflow-y:auto;padding:10px">
+    <div class="mpanel" id="mp2" style="padding:10px">
       <div id="m-history-content"></div>
     </div>
 
     <!-- Tab 3: News -->
-    <div class="mpanel" id="mp3" style="display:none;overflow-y:auto;padding:10px">
+    <div class="mpanel" id="mp3" style="padding:10px">
       <div id="m-news-content"></div>
     </div>
 
     <!-- Tab 4: Chart -->
-    <div class="mpanel" id="mp4" style="display:none;flex-direction:column">
+    <div class="mpanel" id="mp4">
       <div style="display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--s2);border-bottom:1px solid var(--b1);flex-shrink:0">
         <span id="m-chart-sym" style="font-size:14px;font-weight:700;color:#fff;flex:1">— Select a stock —</span>
         <span id="m-chart-px" style="font-size:13px;font-weight:600"></span>
@@ -1818,7 +1818,11 @@ function switchView(view){
     // Sync session badge
     document.getElementById('msess').textContent=document.getElementById('sessbdg').textContent;
     document.getElementById('msess').className=document.getElementById('sessbdg').className;
-    // Load first screener
+    // Load first screener and set tab states
+    for(let i=0;i<5;i++){
+      const p=document.getElementById('mp'+i);
+      if(p)p.style.display=i===0?'flex':'none';
+    }
     showMobileScreener('gainers',0);
     showMobileTab(0);
   } else {
@@ -1836,12 +1840,24 @@ function showMobileTab(idx){
   for(let i=0;i<5;i++){
     document.getElementById('mt'+i)?.classList.toggle('active',i===idx);
     const p=document.getElementById('mp'+i);
-    if(p)p.style.display=i===idx?'flex':'none';
+    if(!p)continue;
+    // mp4 (chart) needs flex, others need flex too for proper layout
+    const isChart=i===4;
+    const isContent=i===1||i===2||i===3;
+    if(i===idx){
+      p.style.display=isChart?'flex':isContent?'block':'flex';
+      p.style.flex='1';
+      p.style.minHeight='0';
+      p.style.overflow=isContent?'auto':'hidden';
+    } else {
+      p.style.display='none';
+    }
   }
   // Render content for selected tab
   if(idx===1)renderMobileScanner();
   if(idx===2)renderMobileHistory();
   if(idx===3)renderMobileNews();
+  if(idx===4&&curChartSym)updateMobileChart(curChartSym,Q[curChartSym]);
 }
 
 function showMobileScreener(type,idx){
