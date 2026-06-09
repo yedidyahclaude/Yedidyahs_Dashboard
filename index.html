@@ -507,6 +507,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
         <span style="font-size:8px;color:var(--mu)">API</span>
         <button id="claude-api-toggle" onclick="toggleClaudeAPI()" class="ws-tb" style="flex-shrink:0"></button>
       </div>
+      <button onclick="clearClaudeChat()" title="Clear chat history" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:10px;padding:2px 5px;border-radius:3px" onmouseover="this.style.color='var(--rd)'" onmouseout="this.style.color='var(--dim)'">🗑</button>
       <button onclick="toggleClaude()" style="background:none;border:none;color:var(--mu);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px">✕</button>
     </div>
 
@@ -1357,29 +1358,40 @@ function liveScanUpdate(){
       const q=Q[sym];if(!q?.price)return;
       const p1=q.price>=minP&&q.price<=maxP;
       const p2=(q.changePct||0)>=minC;
+      // Show stock if it passes P1 AND P2 — don't wait for P3/P4/P5 deep scan
+      if(!p1||!p2)return;
       const c=scanCache[sym]||{};
       const score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
-      if(score<4)return;
       results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false});
     });
-    if(!results.length){res.innerHTML='<div class="scan-empty">No stocks passing 4/5 pillars yet<br><span style="font-size:8px;color:var(--dim)">Watching '+getScanSyms().length+' symbols</span></div>';return;}
+    if(!results.length){
+      res.innerHTML=`<div class="scan-empty">
+        <div style="font-size:20px;margin-bottom:8px">🎯</div>
+        <div style="font-weight:600;color:var(--tx);margin-bottom:4px">Watching ${getScanSyms().length} symbols</div>
+        <div style="font-size:10px">Stocks passing P1 (price $${minP}-$${maxP}) + P2 (≥${minC}% change) appear here</div>
+        <div style="font-size:9px;color:var(--dim);margin-top:6px">Type a ticker in any screener bar to add it</div>
+      </div>`;
+      return;
+    }
     results.sort((a,b)=>b.score-a.score||(b.q.changePct||0)-(a.q.changePct||0));
     const pd=v=>v===true?'pass':v===false?'fail':'na';
     res.innerHTML=results.map(r=>{
-      const u=(r.q.changePct||0)>=0,sc=r.score>=4?'s5':r.score===3?'s4':'s0';
+      const u=(r.q.changePct||0)>=0;
+      const sc=r.score>=5?'s5':r.score>=4?'s4':r.score>=3?'s3':'s0';
       const isNew=newSyms.has(r.sym);
+      const pending=r.p3===null&&r.p4===null&&r.p5===null;
       return `<div class="scan-row${r.score>=5?' score5':r.score>=4?' score4':''}${isNew?' scan-row-new':''}" onclick="selectSym('${r.sym}')">
         <span class="scan-sym ${u?'up':'dn'}">${isNew?'<span style="font-size:8px;background:#19c48a;color:#000;border-radius:3px;padding:0 3px;margin-right:3px;font-weight:700">NEW</span>':''}${r.sym}${r.hasNews?' 🔥':''}</span>
         <span class="scan-px">$${fmtP(r.q.price)}</span>
         <span class="scan-chg ${u?'up':'dn'}">${u?'+':''}${(r.q.changePct||0).toFixed(2)}%</span>
         <div class="scan-pills">
-          <span class="pill ${pd(r.p1)}" title="P1:Price $1-$20">P1</span>
-          <span class="pill ${pd(r.p2)}" title="P2:Change%">P2</span>
-          <span class="pill ${pd(r.p3)}" title="P3:News">P3</span>
-          <span class="pill ${pd(r.p4)}" title="P4:RVol≥5x">P4</span>
-          <span class="pill ${pd(r.p5)}" title="P5:Float<10M">P5</span>
+          <span class="pill ${pd(r.p1)}" title="P1: Price $1-$20">P1</span>
+          <span class="pill ${pd(r.p2)}" title="P2: % Change">P2</span>
+          <span class="pill ${pending?'na':pd(r.p3)}" title="${pending?'P3: Scanning…':'P3: News catalyst'}">P3</span>
+          <span class="pill ${pending?'na':pd(r.p4)}" title="${pending?'P4: Scanning…':'P4: Rel Volume'}">P4</span>
+          <span class="pill ${pending?'na':pd(r.p5)}" title="${pending?'P5: Scanning…':'P5: Float <10M'}">P5</span>
         </div>
-        <span class="scan-score ${sc}">${r.score}/5</span>
+        <span class="scan-score ${sc}">${r.score}/5${pending?' ⏳':''}</span>
       </div>`;
     }).join('');
   });
@@ -1825,7 +1837,13 @@ if(Notification.permission==='default')Notification.requestPermission();
 let claudeOpen=false;
 let claudeAPIMode=false;
 let claudeAPIKey=localStorage.getItem('claude_api_key')||'';
-let claudeHistory=[];
+let claudeHistory=JSON.parse(localStorage.getItem('claude_chat_history')||'[]');
+let claudeMsgEls=[]; // track rendered messages to restore on open
+
+function saveChatHistory(){
+  // Save last 30 exchanges to localStorage (keeps size small)
+  try{localStorage.setItem('claude_chat_history',JSON.stringify(claudeHistory.slice(-30)));}catch(e){}
+}
 
 function toggleClaude(){
   claudeOpen=!claudeOpen;
@@ -1834,7 +1852,19 @@ function toggleClaude(){
   panel.style.display=claudeOpen?'flex':'none';
   btn.style.transform=claudeOpen?'scale(1.1)':'scale(1)';
   btn.style.boxShadow=claudeOpen?'0 4px 25px #7c6aff99':'0 4px 20px #7c6aff66';
-  if(claudeOpen&&claudeAPIKey){activateClaudeAPI(false);}
+  if(claudeOpen){
+    if(claudeAPIKey)activateClaudeAPI(false);
+    restoreChatMessages();
+  }
+}
+
+function restoreChatMessages(){
+  const msgs=document.getElementById('claude-messages');if(!msgs)return;
+  // Clear welcome message if we have history
+  if(claudeHistory.length>0){
+    msgs.innerHTML='';
+    claudeHistory.slice(-20).forEach(m=>addClaudeMsg(m.role,m.content));
+  }
 }
 
 function toggleClaudeAPI(){
@@ -1953,29 +1983,40 @@ WHAT WAS BUILT (conversation 1 summary):
 - Session badge (PRE-MARKET/MARKET OPEN/AFTER HOURS/CLOSED) with ET clock
 
 WHAT WAS BUILT (conversation 2 — this conversation):
-1. Moved all stock clicks to go through single selectSym() function
-2. Replaced Finnhub search with improved search (exact match priority)
-3. Added bottom TradingView chart panel (collapses to 34px bar, expands to 58vh)
-4. Added ⤢ POP OUT button → opens tradingview.com in reusable popup window
-5. Added per-widget ↺ reload button in every widget header
-6. Global ↺ Refresh button in header
-7. TradingView screener iframes for real market-wide data (7 types)
-8. Added Top Gappers, HOD Momentum, Penny Stocks screeners
-9. Input bar at bottom of each screener → type ticker → Enter → opens chart + history
-10. Transparent overlay on screeners to block new-tab navigation
-11. Dashboard locked to window size (no page scroll, grid scrolls internally)
-12. Complete visual redesign: larger fonts, color-coded rows, alternating backgrounds, sentiment borders
-13. NEW stock highlighting: green glow, 🆕 badge, ping sound across all widgets
-14. newSyms Set tracks stocks added this session
-15. Auto-add to 5 Pillars scanner when any stock clicked anywhere
-16. Mobile view (📱 button): 5 tabs (Movers/Scanner/History/News/Chart), auto-detects phone
-17. Claude AI assistant widget (🤖 floating button):
-    - Default: opens Claude.ai popup with dashboard context
-    - API mode: embedded chat with full live data context
+1. selectSym() central function — every stock click goes through this: History + 5 Pillars + chart + news + ping
+2. Bottom TradingView chart panel (34px collapsed bar, 58vh open) + ⤢ POP OUT popup
+3. TradingView screener iframes — 7 types with real market-wide live data (no preset symbols)
+4. Screener types: Top Gainers <$20, Top Losers, Most Active, Gap Scanner, Top Gappers, HOD Momentum, Penny Stocks
+5. Transparent overlay on screeners blocks new-tab navigation — input bar to type ticker instead
+6. Per-widget ↺ reload button + global ↺ Refresh button in header
+7. Complete visual redesign: 13px bold tickers, color-coded rows, alternating backgrounds, sentiment borders on news
+8. NEW stock highlighting: green glow, 🆕 badge, ping sound across ALL widgets (history bar, history widget, scanner rows, news badges)
+9. newSyms Set tracks stocks added this session
+10. Auto-add to 5 Pillars scanner when any stock clicked anywhere
+11. 5 Pillars now shows stocks passing P1+P2 immediately — P3/P4/P5 show ⏳ while deep scan runs
+12. Mobile view (📱 button, auto-detects ≤480px): 5 tabs (Movers/Scanner/History/News/Chart)
+13. Login screen title centered on mobile
+14. Claude AI assistant widget (🤖 floating button, bottom-right corner):
+    - Default: opens Claude.ai in 45% popup window with dashboard context
+    - API mode: embedded chat using claude-sonnet-4-5
     - On/Off toggle for API mode
-    - Saves API key to localStorage
-18. Favicon (inline SVG chart logo, purple background)
-19. Esc key closes bottom panel → Claude panel → search dropdown in order
+    - API key saved to localStorage, auto-restores on reload
+    - Test connection button shows exact error message
+    - Chat history saved to localStorage (last 30 exchanges), persists across sessions
+    - 🗑 Clear chat button
+    - Full project summary baked into every message
+15. Favicon (inline SVG purple chart logo)
+16. Esc key: closes bottom panel → Claude panel → search dropdown in order
+17. appReady flag blocks all Finnhub calls until auth complete
+18. Finnhub rate limiting: sequential fetch 1.1s apart, queueCall for deep scan calls
+
+CURRENT KNOWN LIMITATIONS:
+- Screener iframe clicks still open TradingView tab (browser security — unfixable without paid API)
+- Bottom chart panel delayed unless logged into TradingView Essential in browser
+- 5 Pillars only watches clicked symbols (not market-wide) — requires Tradier/Polygon for full market scan
+- Finnhub 60 calls/min → initial load sequential, deep scan cached 2 minutes
+- Claude in dashboard sees live data but cannot access browser console or DOM directly
+- Claude chat history resets if localStorage cleared or different browser used
 
 KEY TECHNICAL DECISIONS & WHY:
 - TradingView iframes for screeners: Only way to get real market-wide live data free
@@ -2036,11 +2077,13 @@ Active alerts: ${activeAlerts}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 INSTRUCTIONS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- You know this entire project inside out
-- For dashboard fixes, give exact code changes
+- You know this project inside out from the history above
+- You CAN see: live prices, session, history symbols, scanner results, alerts — whatever is passed above
+- You CANNOT: run code, access the browser console, inspect the DOM directly, or see data not in the context above
+- Be honest about what you can and cannot see — never claim to see data you don't have
+- For dashboard fixes, give exact code changes the user can paste into GitHub
 - For trading questions, be concise and practical
-- Reference specific widgets/functions when relevant
-- Keep answers to 3-5 sentences unless detail is requested
+- Keep answers to 3-5 sentences unless detail or code is requested
 - Format code with backticks`;
 }
 
@@ -2082,6 +2125,7 @@ Be concise (3-5 sentences), trading-focused, reference exact widget names when r
       } else {
         const reply=d.content?.[0]?.text||'No response received.';
         claudeHistory.push({role:'assistant',content:reply});
+        saveChatHistory();
         updateLastClaudeMsg(reply);
       }
     }catch(e){
@@ -2116,7 +2160,15 @@ function updateLastClaudeMsg(text){
 }
 
 // Auto-restore API key — called from init() after DOM is ready
-function restoreClaudeKey(){
+function clearClaudeChat(){
+  claudeHistory=[];
+  localStorage.removeItem('claude_chat_history');
+  const msgs=document.getElementById('claude-messages');
+  if(msgs)msgs.innerHTML=`<div style="background:var(--s2);border-radius:8px;padding:10px 12px;border-left:3px solid var(--ac)">
+    <div style="font-size:10px;color:var(--ac2);font-weight:700;margin-bottom:4px">Claude</div>
+    <div style="font-size:11px;color:var(--tx);line-height:1.6">Chat cleared. Ask me anything about your dashboard or trades.</div>
+  </div>`;
+}
   if(!claudeAPIKey)return;
   const keyInp=document.getElementById('claude-api-key');
   if(keyInp)keyInp.value=claudeAPIKey;
