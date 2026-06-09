@@ -1010,14 +1010,20 @@ function connectFinnhubWS(){
 async function refreshPrices(){
   if(!appReady)return;
   const syms=[...new Set([...histSyms.slice(0,8),...scanSyms])];
-  if(syms.length){
-    syms.forEach(s=>{if(Q[s])Q[s]._ts=0;});
-    for(const sym of syms){await fetchQDirect(sym);await new Promise(r=>setTimeout(r,1100));}
-    refreshHistWidgets();liveScanUpdate();
+  if(!syms.length){renderHistBar();updateCPPrice();return;}
+  // If WebSocket is live, it's already streaming ticks — only REST-fetch symbols missing from Q
+  const needFetch=fhWS?.readyState===1
+    ? syms.filter(s=>!Q[s]?.price) // WS live: only fetch uncached
+    : syms; // WS down: fetch all
+  for(const sym of needFetch){
+    if(Q[sym])Q[sym]._ts=0;
+    await fetchQDirect(sym);
+    await new Promise(r=>setTimeout(r,300));
   }
+  refreshHistWidgets();liveScanUpdate();
   renderHistBar();updateCPPrice();
 }
-setInterval(refreshPrices,30000); // every 30s instead of 15s to reduce 429s
+setInterval(refreshPrices,15000); // back to 15s — WS handles live ticks
 
 // ═══════════════════════════════════════════════
 // SELECT SYM — central handler for ALL stock clicks
@@ -1799,7 +1805,7 @@ async function runFinnhubBatch(){
 setTimeout(()=>{
   extractTickersFromScreeners();
   setInterval(extractTickersFromScreeners,10000);
-  setInterval(runFinnhubBatch,60000); // every 60s
+  setInterval(runFinnhubBatch,30000); // every 30s, 6 calls = fine
 },30000);
 // ═══════════════════════════════════════════════
 let currentView='desktop';
