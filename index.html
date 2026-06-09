@@ -257,6 +257,9 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 #cpToggle{font-size:9px;color:var(--dim);transition:transform .22s;flex-shrink:0;font-weight:700}
 #chartPanel.open #cpToggle{transform:rotate(180deg)}
 #cpIframe{flex:1;width:100%;border:none;display:block;min-height:0}
+.iv-btn{background:var(--s3);border:1px solid var(--b2);border-radius:3px;color:var(--mu);font-family:'DM Mono',monospace;font-size:8px;padding:2px 5px;cursor:pointer;transition:all .1s;flex-shrink:0}
+.iv-btn:hover{color:var(--tx);border-color:var(--ac)}
+.iv-btn.active{background:#7c6aff20;border-color:var(--ac);color:var(--ac2);font-weight:700}
 
 /* TOAST */
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--gold);color:#000;font-family:'DM Mono',monospace;font-size:11px;font-weight:700;padding:8px 18px;border-radius:6px;z-index:9999;box-shadow:0 4px 20px #00000066;pointer-events:none;opacity:0;transition:opacity .3s;white-space:nowrap}
@@ -377,7 +380,14 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
       <span id="cpSym">— SELECT A STOCK —</span>
       <span id="cpPx"></span>
       <span id="cpChg"></span>
-      <span id="cpLabel">Click any stock in any widget to open chart here</span>
+      <!-- Interval selector for TradingView Premium -->
+      <div onclick="event.stopPropagation()" style="display:flex;gap:2px;margin-left:4px">
+        <button class="iv-btn active" id="iv1" onclick="setChartInterval('1','iv1')">1m</button>
+        <button class="iv-btn" id="iv5" onclick="setChartInterval('5','iv5')">5m</button>
+        <button class="iv-btn" id="iv15" onclick="setChartInterval('15','iv15')">15m</button>
+        <button class="iv-btn" id="ivD" onclick="setChartInterval('D','ivD')">1D</button>
+      </div>
+      <span id="cpLabel">Click any stock to open chart</span>
       <button id="cpPopupBtn" onclick="event.stopPropagation();openTVPopup()" title="Open in TradingView popup window">⤢ POP OUT</button>
       <span id="cpToggle">▲</span>
     </div>
@@ -773,6 +783,14 @@ function renderHistBar(){
 // ═══════════════════════════════════════════════
 // BOTTOM CHART PANEL
 // ═══════════════════════════════════════════════
+let curInterval='1'; // default 1-minute
+
+function setChartInterval(interval,btnId){
+  curInterval=interval;
+  document.querySelectorAll('.iv-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(btnId)?.classList.add('active');
+  if(curChartSym)openChartPanel(curChartSym);
+}
 function openChartPanel(sym){
   let tvSym=sym;
   if(sym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
@@ -786,7 +804,7 @@ function openChartPanel(sym){
   }
   curChartSym=sym;
   const cfg=encodeURIComponent(JSON.stringify({
-    autosize:true,symbol:tvSym,interval:'1',
+    autosize:true,symbol:tvSym,interval:curInterval,
     timezone:'America/New_York',theme:'dark',style:'1',
     locale:'en',toolbar_bg:'#0c0d1a',enable_publishing:false,
     withdateranges:true,hide_side_toolbar:false,
@@ -1051,13 +1069,13 @@ const SCR_LABELS={
 // to detect the symbol and load it in the bottom panel + history
 // ═══════════════════════════════════════════════
 const SCR_SCREENS={
-  gainers:'top_gainers',        // biggest % gainers today
-  losers:'top_losers',          // biggest % losers today
-  active:'most_capitalized',    // highest volume today
-  premarket:'pre_market_gainers', // pre-market gainers (requires TV Essential)
-  gappers:'pre_market_gainers', // pre-market gappers = same feed
-  hod:'top_gainers',            // HOD = filter of gainers
-  penny:'top_gainers'           // penny = filtered by price in TV filters
+  gainers:'top_gainers',        // biggest % gainers — available all plans
+  losers:'top_losers',          // biggest % losers
+  active:'most_capitalized',    // highest volume
+  premarket:'pre_market_gainers', // pre-market gainers — requires Essential+
+  gappers:'pre_market_gainers', // pre-market gappers
+  hod:'top_gainers',            // HOD momentum — filtered top gainers
+  penny:'top_gainers'           // penny stocks — filtered by price
 };
 
 // ── TV CLICK INTERCEPTION
@@ -1291,7 +1309,7 @@ function renderScanner(body){
   const bid=body.id;
   body.innerHTML=`
   <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-bottom:1px solid var(--b1);flex-shrink:0">
-    <span style="font-size:8px;color:var(--dim)" id="${bid}-status">⚡ Live · Deep scan every 30s</span>
+    <span style="font-size:8px;color:var(--dim)" id="${bid}-status">⚡ Live · Deep scan every 30s · Auto-scan every 2min</span>
     <div style="display:flex;gap:4px;align-items:center">
       <button onclick="toggleScanFilters('${bid}')" style="background:none;border:1px solid var(--b2);border-radius:3px;color:var(--mu);font-family:'DM Mono',monospace;font-size:8px;padding:2px 7px;cursor:pointer" title="Adjust filters">⚙ Filters</button>
       <button onclick="startDeepScan()" style="background:var(--ac);border:none;border-radius:3px;color:#fff;font-family:'DM Mono',monospace;font-size:8px;padding:2px 7px;cursor:pointer">↺</button>
@@ -1657,7 +1675,117 @@ function makeResizable(el,wData){
 }
 
 // ═══════════════════════════════════════════════
-// MOBILE VIEW
+// BACKGROUND AUTO-SCANNER
+// Reads visible rows from TradingView screener iframes every 30s
+// Extracts tickers + % change directly from the DOM text
+// Zero API calls — uses data TV already loaded
+// ═══════════════════════════════════════════════
+function extractTickersFromScreeners(){
+  if(!appReady)return;
+  const sess=getSession();
+  const minC=sess==='pre'||sess==='aft'?5:10;
+  let found=0;
+
+  // Find all screener iframes
+  document.querySelectorAll('.scr-iframe').forEach(iframe=>{
+    try{
+      // Try to read text content from iframe DOM
+      const doc=iframe.contentDocument||iframe.contentWindow?.document;
+      if(!doc)return;
+      const text=doc.body?.innerText||'';
+      if(!text)return;
+
+      // Parse ticker symbols and % changes from TV screener text
+      // TV screener rows contain: SYMBOL\nName\nPrice\n%change
+      const lines=text.split(/[\n\r]+/).map(l=>l.trim()).filter(Boolean);
+      for(let i=0;i<lines.length-1;i++){
+        const sym=lines[i];
+        // Valid ticker: 1-6 uppercase letters
+        if(!/^[A-Z]{1,6}$/.test(sym))continue;
+        // Look for % change in nearby lines
+        let pct=null;
+        for(let j=i+1;j<=i+5&&j<lines.length;j++){
+          const m=lines[j].match(/([+-]?\d+\.?\d*)\s*%/);
+          if(m){pct=parseFloat(m[1]);break;}
+        }
+        if(pct===null)continue;
+        // Check P1+P2 from TV data directly
+        let price=null;
+        for(let j=i+1;j<=i+3&&j<lines.length;j++){
+          const m=lines[j].match(/^\$?(\d+\.?\d*)$/);
+          if(m){price=parseFloat(m[1]);break;}
+        }
+        // If we have the data, check criteria
+        if(pct>=minC){
+          // Add to Q cache if we have price
+          if(price&&!Q[sym]){
+            Q[sym]={symbol:sym,price,changePct:pct,change:0,volume:0,name:sym,_ts:Date.now()-25000};
+          }
+          // Auto-add to scanner if not already watched
+          if(!getScanSyms().includes(sym)){
+            scanSyms.push(sym);saveScanSyms();
+            newSyms.add(sym);
+            found++;
+            if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
+            showToast(`🎯 Auto-found: ${sym} +${pct.toFixed(1)}% → 5 Pillars`);
+            playPing();
+          }
+        }
+      }
+    }catch(e){
+      // Cross-origin blocked — fall through to Finnhub batch below
+    }
+  });
+
+  if(found>0)liveScanUpdate();
+}
+
+// Finnhub batch fallback — scans curated universe when TV iframe DOM is blocked
+const SCAN_UNIVERSE=[
+  'SPHL','BNAI','CMND','ACMR','AEHR','BLNK','BTBT','HUT','CLSK','MARA',
+  'RIOT','PLUG','FCEL','NKLA','WKHS','GOEV','NIO','SOFI','HOOD','GME',
+  'AMC','SNDL','CLOV','NOK','BB','CIFR','IREN','WULF','CORZ',
+  'SAVA','AGEN','ARDX','AVXL','AXSM','SENS','PHVS','CXAI','MLGO',
+  'NKGN','GFAI','BTAI','BURU','AEYE','LQDA','BBAI','AIXI','AULT',
+  'CRON','ACB','CGC','TLRY','HEXO','AUVI','DRUG','FAZE',
+  'SOXL','TQQQ','UVXY','SQQQ','TNA','LABU','JDST',
+];
+let autoScanIdx=0;
+
+async function runFinnhubBatch(){
+  if(!appReady)return;
+  const sess=getSession();
+  const minC=sess==='pre'||sess==='aft'?5:10;
+  // Scan 6 unwatched symbols per run
+  const unwatched=SCAN_UNIVERSE.filter(s=>!getScanSyms().includes(s));
+  if(!unwatched.length)return;
+  const batch=[];
+  for(let i=0;i<6&&i<unwatched.length;i++){
+    batch.push(unwatched[autoScanIdx%unwatched.length]);
+    autoScanIdx++;
+  }
+  for(const sym of batch){
+    await fetchQDirect(sym);
+    const q=Q[sym];if(!q?.price)continue;
+    if(q.price>=1&&q.price<=20&&(q.changePct||0)>=minC){
+      if(!scanSyms.includes(sym)){
+        scanSyms.push(sym);saveScanSyms();
+        newSyms.add(sym);
+        if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
+        showToast(`🎯 Auto-found: ${sym} +${(q.changePct||0).toFixed(1)}% → 5 Pillars`);
+        playPing();liveScanUpdate();
+      }
+    }
+    await new Promise(r=>setTimeout(r,300));
+  }
+}
+
+// Run TV extraction every 10s (zero API cost), Finnhub batch every 30s
+setTimeout(()=>{
+  extractTickersFromScreeners();
+  setInterval(extractTickersFromScreeners,10000);
+  setInterval(runFinnhubBatch,30000);
+},30000);
 // ═══════════════════════════════════════════════
 let currentView='desktop';
 let currentMobileTab=0;
