@@ -812,8 +812,12 @@ function openChartPanel(sym){
     support_host:'https://www.tradingview.com'
   }));
   const iframe=document.getElementById('cpIframe');
+  // Try embed widget — works on some browsers/setups, blocked on others
+  // If blocked, user sees broken icon — pop out is the reliable option
   iframe.src='about:blank';
-  setTimeout(()=>{iframe.src=`https://www.tradingview.com/embed-widget/advanced-chart/?locale=en#${cfg}`;},80);
+  setTimeout(()=>{
+    iframe.src=`https://www.tradingview.com/embed-widget/advanced-chart/?locale=en#${cfg}`;
+  },80);
   const symEl=document.getElementById('cpSym');
   symEl.textContent=sym;symEl.style.color='#fff';
   document.getElementById('cpLabel').textContent='TradingView · real-time · pre/after hours included';
@@ -821,6 +825,8 @@ function openChartPanel(sym){
   const panel=document.getElementById('chartPanel');
   if(!panel.classList.contains('open'))panel.classList.add('open');
   renderHistBar();
+  // Auto-open popup since embed is often blocked by TradingView CSP
+  openTVPopup();
 }
 function toggleChartPanel(){document.getElementById('chartPanel').classList.toggle('open');}
 function updateCPPrice(){
