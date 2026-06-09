@@ -491,7 +491,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
   </div>
 
   <div id="claudePanel" style="display:none;position:fixed;bottom:140px;right:20px;
-    width:340px;height:480px;background:var(--s1);border:1px solid var(--ac);
+    width:420px;height:560px;background:var(--s1);border:1px solid var(--ac);
     border-radius:12px;z-index:401;box-shadow:0 8px 40px #00000088;
     flex-direction:column;overflow:hidden">
     <!-- Panel header -->
@@ -2083,8 +2083,12 @@ INSTRUCTIONS
 - Be honest about what you can and cannot see — never claim to see data you don't have
 - For dashboard fixes, give exact code changes the user can paste into GitHub
 - For trading questions, be concise and practical
-- Keep answers to 3-5 sentences unless detail or code is requested
-- Format code with backticks`;
+- Give direct, plain answers — no bold markdown, no bullet lists unless asked
+- When asked if something is working, say YES or NO first, then explain briefly
+- Don't say "want me to walk you through" — just answer directly
+- Avoid technical jargon unless the user asks for it
+- Keep answers to 2-3 sentences max unless more detail is requested
+- Format code with backticks only when giving actual code fixes`;
 }
 
 async function sendClaudeMsg(){
