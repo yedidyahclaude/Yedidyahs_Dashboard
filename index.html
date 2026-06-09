@@ -1421,7 +1421,7 @@ async function startDeepScan(){
         try{
           const r=await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${sym}&metric=all&token=${FHK}`);
           const d=await r.json();
-          const avgV=(d.metric?.['10DayAverageTradingVolume']||0)*1e6;
+          const avgV=d.metric?.['10DayAverageTradingVolume']||0; // already in shares
           const rVol=avgV>0?(Q[sym]?.volume||0)/avgV:null;
           const rvBase=parseFloat(document.querySelector('[id$="-rv"]')?.value)||5;
           const rvT=getSession()==='pre'||getSession()==='aft'?rvBase*.4:rvBase;
@@ -2104,10 +2104,26 @@ async function sendClaudeMsg(){
       const sess=document.getElementById('sessbdg')?.textContent||'CLOSED';
       const histList=histSyms.slice(0,8).map(s=>{const q=Q[s];return q?`${s} $${fmtP(q.price)} ${(q.changePct||0)>=0?'+':''}${(q.changePct||0).toFixed(2)}%`:s;}).join(', ')||'none';
       const scanRes=getScanSyms().map(s=>{const q=Q[s],c=scanCache[s]||{};if(!q?.price)return null;const sc=[q.price>=1&&q.price<=20,(q.changePct||0)>=5,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;return sc>=3?`${s} $${fmtP(q.price)} ${(q.changePct||0).toFixed(2)}% ${sc}/5`:null;}).filter(Boolean).join(', ')||'none';
-      const apiSystem=`You are Claude, embedded in Yedidyah's day trading dashboard at yedidyahsdashboard.click.
-DASHBOARD: Single HTML file, TradingView screeners (Gainers/Gappers/Active/Pre-Market/HOD/Penny), 5 Pillars Scanner (Ross Cameron: price $1-20, %change, news, rvol≥5x, float<10M), Finnhub quotes/news, Supabase auth, bottom chart panel, mobile view, Claude AI widget.
-SESSION: ${sess} | Chart: ${curChartSym||'none'} | History: ${histList} | Scanner hits: ${scanRes}
-Be concise (3-5 sentences), trading-focused, reference exact widget names when relevant.`;
+      const apiSystem=`You are a trading assistant embedded in Yedidyah's day trading dashboard.
+
+RULES — FOLLOW STRICTLY:
+1. Never use markdown. No **bold**, no *italic*, no bullet points with -, no headers with #
+2. Write in plain sentences only
+3. Start every answer with YES or NO if it is a yes/no question
+4. Maximum 3 sentences unless user asks for more
+5. Be direct — do not hedge, do not say "this suggests" or "you may want to"
+
+DASHBOARD DATA:
+Session: ${sess} | Chart open: ${curChartSym||'none'}
+History: ${histList}
+5 Pillars hits (passing P1+P2): ${scanRes}
+
+DASHBOARD FACTS:
+- 5 Pillars Scanner shows stocks from History that pass P1 (price $1-$20) and P2 (% change >= 10%, halved pre/after hours)
+- P3 (news), P4 (rvol), P5 (float) are checked via Finnhub API in background every 30s
+- Stocks show with score out of 5 — P3/P4/P5 show pending until Finnhub returns data
+- TradingView screeners are real market-wide live data
+- Finnhub free tier: 60 calls/min limit`;
       const r=await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
         headers:{
