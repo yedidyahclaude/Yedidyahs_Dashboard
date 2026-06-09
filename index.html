@@ -851,7 +851,9 @@ function openTVPopup(){
   // Full tradingview.com/chart/ = real-time data
   // hideSideToolbar hides the watchlist/right panel
   const url='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSym)
-    +'&interval='+curInterval+'&theme=dark&hideSideToolbar=1&hide_side_toolbar=1&extended_hours=1';
+    +'&interval='+curInterval
+    +'&theme=dark&hideSideToolbar=1&hide_side_toolbar=1'
+    +'&extended_hours=1&session=extended';
   const pw=Math.floor(screen.width*.75),ph=Math.floor(screen.height*.88);
   const pl=Math.floor((screen.width-pw)/2),pt=Math.floor((screen.height-ph)/10);
   try{if(tvWin&&!tvWin.closed){tvWin.location.href=url;tvWin.focus();return;}}catch(e){}
