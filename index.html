@@ -411,8 +411,8 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 
     <!-- Mobile tab bar -->
     <div style="display:flex;background:var(--s2);border-bottom:1px solid var(--b1);flex-shrink:0">
-      <button class="mtab active" id="mt0" onclick="showMobileTab(0)">🚀 Movers</button>
-      <button class="mtab" id="mt1" onclick="showMobileTab(1)">🎯 Scanner</button>
+      <button class="mtab" id="mt0" onclick="showMobileTab(0)">🚀 Movers</button>
+      <button class="mtab active" id="mt1" onclick="showMobileTab(1)">🎯 Scanner</button>
       <button class="mtab" id="mt2" onclick="showMobileTab(2)">📋 History</button>
       <button class="mtab" id="mt3" onclick="showMobileTab(3)">📰 News</button>
       <button class="mtab" id="mt4" onclick="showMobileTab(4)">📈 Chart</button>
@@ -851,7 +851,7 @@ function openTVPopup(){
   // Full tradingview.com/chart/ = real-time data
   // hideSideToolbar hides the watchlist/right panel
   const url='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSym)
-    +'&interval='+curInterval+'&theme=dark&hideSideToolbar=1&hide_side_toolbar=1';
+    +'&interval='+curInterval+'&theme=dark&hideSideToolbar=1&hide_side_toolbar=1&extended_hours=1';
   const pw=Math.floor(screen.width*.75),ph=Math.floor(screen.height*.88);
   const pl=Math.floor((screen.width-pw)/2),pt=Math.floor((screen.height-ph)/10);
   try{if(tvWin&&!tvWin.closed){tvWin.location.href=url;tvWin.focus();return;}}catch(e){}
@@ -1367,6 +1367,7 @@ function rmScanSym(sym){
   widgets.filter(w=>w.type==='scanner').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderScanner(b);});
 }
 function liveScanUpdate(){
+  // Refresh desktop scanner widgets
   widgets.filter(w=>w.type==='scanner').forEach(w=>{
     const bid='wb-'+w.id,res=document.getElementById(bid+'-res');if(!res)return;
     const minP=parseFloat(document.getElementById(bid+'-minp')?.value)||1;
@@ -1423,6 +1424,8 @@ function liveScanUpdate(){
       </div>`;
     }).join('');
   });
+  // Also refresh mobile scanner if on that tab
+  if(currentView==='mobile'&&currentMobileTab===1)renderMobileScanner();
 }
 async function startDeepScan(){
   if(!appReady)return;
@@ -1814,13 +1817,13 @@ function switchView(view){
     // Sync session badge
     document.getElementById('msess').textContent=document.getElementById('sessbdg').textContent;
     document.getElementById('msess').className=document.getElementById('sessbdg').className;
-    // Load first screener and set tab states
+    // Load screeners and default to Scanner tab
     for(let i=0;i<5;i++){
       const p=document.getElementById('mp'+i);
-      if(p)p.style.display=i===0?'flex':'none';
+      if(p)p.style.display='none';
     }
     showMobileScreener('gainers',0);
-    showMobileTab(0);
+    showMobileTab(1); // Default to 5 Pillars Scanner
   } else {
     desktop.style.display='';
     histBar.style.display='';
