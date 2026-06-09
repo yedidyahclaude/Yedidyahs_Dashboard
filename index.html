@@ -2024,6 +2024,14 @@ async function sendClaudeMsg(){
     addClaudeMsg('assistant','…',true);
     try{
       claudeHistory.push({role:'user',content:msg});
+      // Build a concise system prompt for API (full history too large for API system prompt)
+      const sess=document.getElementById('sessbdg')?.textContent||'CLOSED';
+      const histList=histSyms.slice(0,8).map(s=>{const q=Q[s];return q?`${s} $${fmtP(q.price)} ${(q.changePct||0)>=0?'+':''}${(q.changePct||0).toFixed(2)}%`:s;}).join(', ')||'none';
+      const scanRes=getScanSyms().map(s=>{const q=Q[s],c=scanCache[s]||{};if(!q?.price)return null;const sc=[q.price>=1&&q.price<=20,(q.changePct||0)>=5,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;return sc>=3?`${s} $${fmtP(q.price)} ${(q.changePct||0).toFixed(2)}% ${sc}/5`:null;}).filter(Boolean).join(', ')||'none';
+      const apiSystem=`You are Claude, embedded in Yedidyah's day trading dashboard at yedidyahsdashboard.click.
+DASHBOARD: Single HTML file, TradingView screeners (Gainers/Gappers/Active/Pre-Market/HOD/Penny), 5 Pillars Scanner (Ross Cameron: price $1-20, %change, news, rvol≥5x, float<10M), Finnhub quotes/news, Supabase auth, bottom chart panel, mobile view, Claude AI widget.
+SESSION: ${sess} | Chart: ${curChartSym||'none'} | History: ${histList} | Scanner hits: ${scanRes}
+Be concise (3-5 sentences), trading-focused, reference exact widget names when relevant.`;
       const r=await fetch('https://api.anthropic.com/v1/messages',{
         method:'POST',
         headers:{
@@ -2035,24 +2043,28 @@ async function sendClaudeMsg(){
         body:JSON.stringify({
           model:'claude-sonnet-4-20250514',
           max_tokens:1024,
-          system:buildDashboardContext(),
+          system:apiSystem,
           messages:claudeHistory.slice(-10)
         })
       });
       const d=await r.json();
-      const reply=d.content?.[0]?.text||'Sorry, no response.';
-      claudeHistory.push({role:'assistant',content:reply});
-      updateLastClaudeMsg(reply);
-    }catch(e){updateLastClaudeMsg('⚠ API error — check your key or switch to Claude.ai mode.');}
+      if(d.error){
+        updateLastClaudeMsg(`⚠ API error: ${d.error.message||d.error.type}\n\nCheck your key at console.anthropic.com`);
+      } else {
+        const reply=d.content?.[0]?.text||'No response received.';
+        claudeHistory.push({role:'assistant',content:reply});
+        updateLastClaudeMsg(reply);
+      }
+    }catch(e){
+      updateLastClaudeMsg('⚠ Connection error. Check your API key and try again.');
+    }
   } else {
-    const ctx=`I'm using a custom day trading dashboard. Market session: ${document.getElementById('sessbdg')?.textContent}. My watched symbols: ${histSyms.slice(0,6).join(', ')||'none'}. Question: ${msg}`;
+    const ctx=`I'm using a custom day trading dashboard (yedidyahsdashboard.click). Session: ${document.getElementById('sessbdg')?.textContent}. Watching: ${histSyms.slice(0,6).join(', ')||'none'}. Question: ${msg}`;
     const url='https://claude.ai/new?q='+encodeURIComponent(ctx);
     const pw=Math.floor(screen.width*.45),ph=Math.floor(screen.height*.85);
     const pl=Math.floor((screen.width-pw)/2),pt=Math.floor((screen.height-ph)/10);
     const win=window.open(url,'ClaudeAssistant',`width=${pw},height=${ph},left=${pl},top=${pt},resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=no`);
-    if(!win||win.closed){
-      showToast('⚠ Allow popups for this site to open Claude');
-    }
+    if(!win||win.closed)showToast('⚠ Allow popups for this site to open Claude');
     addClaudeMsg('assistant','Opening Claude.ai in a popup ↗\n\nAdd an API key (toggle above) to chat directly here instead.');
   }
 }
@@ -2074,16 +2086,21 @@ function updateLastClaudeMsg(text){
   msgs.scrollTop=msgs.scrollHeight;
 }
 
-// Restore saved API key state on load
-if(claudeAPIKey){
-  window.addEventListener('load',()=>{
-    const keyInp=document.getElementById('claude-api-key');
-    if(keyInp)keyInp.value=claudeAPIKey;
-    claudeAPIMode=true;
-    document.getElementById('claude-api-toggle')?.classList.add('on');
-    updateClaudeModeLabel();
-  });
+// Auto-restore API key and enable API mode on page load
+function restoreClaudeKey(){
+  if(!claudeAPIKey)return;
+  const keyInp=document.getElementById('claude-api-key');
+  if(keyInp)keyInp.value=claudeAPIKey;
+  claudeAPIMode=true;
+  const toggle=document.getElementById('claude-api-toggle');
+  if(toggle)toggle.classList.add('on');
+  const section=document.getElementById('claude-api-section');
+  if(section)section.style.display='block';
+  updateClaudeModeLabel();
 }
+// Call after DOM is ready — use both load and a timeout fallback
+window.addEventListener('load',restoreClaudeKey);
+setTimeout(restoreClaudeKey,500);
 
 // ═══════════════════════════════════════════════
 let appReady=false;
