@@ -1872,49 +1872,147 @@ function buildDashboardContext(){
   const histList=histSyms.slice(0,10).map(s=>{
     const q=Q[s];return q?`${s}: $${fmtP(q.price)} (${(q.changePct||0)>=0?'+':''}${(q.changePct||0).toFixed(2)}%)`:s;
   }).join('\n')||'none';
-  const scanList=getScanSyms();
-  const scanResults=scanList.map(s=>{
+  const scanResults=getScanSyms().map(s=>{
     const q=Q[s],c=scanCache[s]||{};
     if(!q?.price)return null;
     const score=[q.price>=1&&q.price<=20,(q.changePct||0)>=5,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
     if(score<2)return null;
-    return `${s}: $${fmtP(q.price)} ${(q.changePct||0)>=0?'+':''}${(q.changePct||0).toFixed(2)}% — ${score}/5 pillars${c.hasNews?' (news catalyst)':''}`;
+    return `${s}: $${fmtP(q.price)} ${(q.changePct||0)>=0?'+':''}${(q.changePct||0).toFixed(2)}% — ${score}/5 pillars${c.hasNews?' (news)':''}`;
   }).filter(Boolean).join('\n')||'No stocks currently passing pillar criteria';
   const activeAlerts=alts.filter(a=>a.active&&!a.triggered).map(a=>`${a.sym} ${a.type} ${a.val}`).join(', ')||'none';
   const currentChart=curChartSym?`Currently charting: ${curChartSym} $${fmtP(Q[curChartSym]?.price)}`:'No chart open';
 
-  return `You are Claude, an AI assistant deeply integrated into Yedidyah's professional day trading dashboard. You have full knowledge of the dashboard code and live data.
+  return `You are Claude, a trading assistant fully integrated into Yedidyah's custom day trading dashboard. You have complete knowledge of the project history, codebase, and live data.
 
-DASHBOARD SYSTEM:
-- Built as a single HTML file hosted at yedidyahsdashboard.click
-- TradingView iframe screeners (Top Gainers <$20, Top Gappers, Most Active, Gap Scanner, Pre-Market, HOD, Penny Stocks)
-- 5 Pillars Scanner (Ross Cameron criteria): Price $1-$20, % Change ≥10% (halved pre/after hours), News catalyst last 48hrs, Relative Volume ≥5x, Float <10M shares
-- Finnhub free API for quotes/news/metrics (60 calls/min limit)
-- Supabase auth (email + password, admin approval)
-- Bottom TradingView chart panel + popup option
-- History bar tracks all clicked stocks → auto-added to 5 Pillars scanner
-- Alerts with browser notifications
-- Mobile view with 5 tabs
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PROJECT HISTORY & FULL SUMMARY
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-LIVE DATA RIGHT NOW:
+OWNER: Yedidyah (Jewish day trader, Ross Cameron style momentum trading)
+LIVE URL: yedidyahsdashboard.click
+HOSTING: GitHub Pages (free) — repo: github.com/yedidyahclaude/Yedidyahs_Dashboard
+DEPLOY: Edit index.html on GitHub → commit → Ctrl+Shift+R to refresh
+AUTH: Supabase (email/password, admin approval required) — approved account: yedidyah.claude@gmail.com
+DOMAIN: $13/yr at Massive.com (formerly Polygon.io), renews May 2027
+
+MONTHLY COSTS:
+- Domain: ~$1.08/mo
+- TradingView Essential: $15/mo (needed for pre/after market screeners)
+- GitHub Pages: Free
+- Finnhub API: Free (60 calls/min limit)
+- Supabase Auth: Free
+- Claude API: ~$0.10-0.30/day when used
+
+ARCHITECTURE:
+Single HTML file (index.html), entirely frontend, no backend needed.
+- Quotes: Finnhub REST API (polled) + Finnhub WebSocket (live ticks)
+- Charts: TradingView embed-widget/advanced-chart (bottom panel) + tradingview.com/chart popup
+- Screeners: TradingView iframe widgets (real market-wide live data)
+- Auth: Supabase
+- News: Finnhub company news API
+- AI Assistant: Claude API (embedded) or Claude.ai popup
+
+WHAT WAS BUILT (conversation 1 summary):
+- Login wall with Supabase auth, admin approval system
+- Draggable/resizable widget system with snap-to-grid
+- Widget types: History, Alerts, News, 5 Pillars Scanner, Top Gainers, Top Losers, Most Active, Pre-Market
+- History bar showing last 15 clicked stocks with live % change
+- Finnhub WebSocket for live price ticks
+- TradingView popup chart (reuses same window)
+- Profile system (save/load/delete layouts)
+- 5 Pillars Scanner (Ross Cameron criteria)
+- Session badge (PRE-MARKET/MARKET OPEN/AFTER HOURS/CLOSED) with ET clock
+
+WHAT WAS BUILT (conversation 2 — this conversation):
+1. Moved all stock clicks to go through single selectSym() function
+2. Replaced Finnhub search with improved search (exact match priority)
+3. Added bottom TradingView chart panel (collapses to 34px bar, expands to 58vh)
+4. Added ⤢ POP OUT button → opens tradingview.com in reusable popup window
+5. Added per-widget ↺ reload button in every widget header
+6. Global ↺ Refresh button in header
+7. TradingView screener iframes for real market-wide data (7 types)
+8. Added Top Gappers, HOD Momentum, Penny Stocks screeners
+9. Input bar at bottom of each screener → type ticker → Enter → opens chart + history
+10. Transparent overlay on screeners to block new-tab navigation
+11. Dashboard locked to window size (no page scroll, grid scrolls internally)
+12. Complete visual redesign: larger fonts, color-coded rows, alternating backgrounds, sentiment borders
+13. NEW stock highlighting: green glow, 🆕 badge, ping sound across all widgets
+14. newSyms Set tracks stocks added this session
+15. Auto-add to 5 Pillars scanner when any stock clicked anywhere
+16. Mobile view (📱 button): 5 tabs (Movers/Scanner/History/News/Chart), auto-detects phone
+17. Claude AI assistant widget (🤖 floating button):
+    - Default: opens Claude.ai popup with dashboard context
+    - API mode: embedded chat with full live data context
+    - On/Off toggle for API mode
+    - Saves API key to localStorage
+18. Favicon (inline SVG chart logo, purple background)
+19. Esc key closes bottom panel → Claude panel → search dropdown in order
+
+KEY TECHNICAL DECISIONS & WHY:
+- TradingView iframes for screeners: Only way to get real market-wide live data free
+- Finnhub for quotes: Free, WebSocket streaming, good for watched symbols
+- Cannot intercept iframe clicks (browser security) → input bar workaround
+- Finnhub free tier: 60 calls/min → sequential fetch with 1.1s gaps to avoid 429s
+- appReady flag blocks all background fetches until initial load completes
+- No CORS proxies (all failed) → direct Finnhub calls only
+- Yahoo Finance screener API blocked by CORS from yedidyahsdashboard.click
+- Massive.com (formerly Polygon.io) real-time = $199/mo → not used
+- Tradier brokerage = free real-time but no market-wide movers endpoint
+
+5 PILLARS SCANNER DETAILS (Ross Cameron):
+- P1: Price $1–$20
+- P2: Daily % change ≥10% (auto-halved to 5% pre/after hours)
+- P3: News catalyst in last 48hrs (Finnhub news API)
+- P4: Relative volume ≥5x (auto-reduced to 2x pre/after hours)
+- P5: Float <10M shares (Finnhub metric API)
+- Shows stocks passing 4/5+ pillars minimum
+- Scans every 30s, P3/P4/P5 cached 2 minutes to save API calls
+- Automatically watches ALL history symbols + manually added ones
+- Every stock clicked anywhere → auto-added to scanner
+
+WORKFLOW FOR DAY TRADING:
+1. Morning: Gap Scanner + Top Gappers show pre-market movers (TradingView Essential required)
+2. Spot a stock moving → type ticker in screener input bar → Enter
+3. Chart opens in bottom panel, stock added to History AND 5 Pillars Scanner
+4. 5 Pillars confirms: P1 price, P2 momentum, P3 news, P4 volume, P5 float
+5. Green NEW badge + ping sound when new stock added
+6. Alerts for price/% triggers with browser notifications
+7. ⤢ POP OUT for full TradingView chart in separate window
+
+KNOWN LIMITATIONS:
+- Screener iframe clicks open TradingView page (browser security, unfixable without paid API)
+- Bottom chart panel may show delayed data if not logged into TradingView Essential
+- 5 Pillars only watches symbols you've clicked (not market-wide auto-scanner)
+- Finnhub 60 calls/min limit → initial load takes ~40s with many symbols
+- Pre-market screeners require TradingView Essential ($15/mo, already subscribed)
+
+FUTURE UPGRADES PLANNED:
+- Tradier brokerage account (free) → replace Finnhub for true real-time streaming
+- Claude API key → fully embedded AI assistant with live data awareness
+- Polygon/Massive $199/mo → market-wide 5 Pillars scanner (all 8000+ stocks)
+- Sound alerts (audio beep on alert trigger) — partially built (ping on new stock)
+- More users → Request Access on login screen, admin approves
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LIVE DATA RIGHT NOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Market session: ${sess}
 ${currentChart}
-
-Watched symbols (History):
+Watched symbols:
 ${histList}
-
-5 Pillars Scanner results:
+5 Pillars results:
 ${scanResults}
-
 Active alerts: ${activeAlerts}
 
-INSTRUCTIONS:
-- Be a knowledgeable trading assistant AND dashboard expert
-- For dashboard issues, give exact actionable fixes
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+INSTRUCTIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- You know this entire project inside out
+- For dashboard fixes, give exact code changes
 - For trading questions, be concise and practical
-- You know the full codebase — reference specific functions/widgets when relevant
-- Max 4-5 sentences unless user asks for detail or requests code
-- Format code blocks with backticks when giving fixes`;
+- Reference specific widgets/functions when relevant
+- Keep answers to 3-5 sentences unless detail is requested
+- Format code with backticks`;
 }
 
 async function sendClaudeMsg(){
