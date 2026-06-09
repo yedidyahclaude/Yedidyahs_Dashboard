@@ -223,7 +223,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .flt-i{background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:5px 7px;outline:none;width:100%}
 .flt-i:focus{border-color:var(--ac)}
 /* Scanner rows — color-coded by score */
-.scan-row{display:flex;align-items:center;gap:5px;padding:7px 6px;border-bottom:1px solid #14152a;cursor:pointer;transition:all .08s;border-left:2px solid transparent}
+.scan-row{display:flex;align-items:center;gap:4px;padding:6px 8px;border-bottom:1px solid #14152a;cursor:pointer;transition:all .08s;border-left:2px solid transparent}
 .scan-row:hover{background:#7c6aff0a;border-left-color:var(--ac)}
 .scan-row.score5{border-left-color:var(--gr)}
 .scan-row.score4{border-left-color:var(--gold)}
@@ -1418,22 +1418,22 @@ function liveScanUpdate(){
       const sc=r.score>=5?'s5':r.score>=4?'s4':r.score>=3?'s3':'s0';
       const isNew=newSyms.has(r.sym);
       const pending=r.p3===null&&r.p4===null&&r.p5===null;
-      const safeSym=r.sym.replace(/'/g,"\\'");
-      return `<div class="scan-row${r.score>=5?' score5':r.score>=4?' score4':''}${isNew?' scan-row-new':''}" onclick="selectSym('${safeSym}')" style="grid-template-columns:80px 52px 54px 1fr 28px;gap:3px">
-        <div style="min-width:0">
-          ${isNew?'<span style="font-size:7px;background:#19c48a;color:#000;border-radius:2px;padding:0 3px;font-weight:700;margin-right:2px">NEW</span>':''}
-          <span class="scan-sym ${u?'up':'dn'}" style="font-size:11px">${r.sym}${r.hasNews?' 🔥':''}</span>
+      // Use data attribute instead of inline onclick string to avoid encoding issues
+      return `<div class="scan-row${r.score>=5?' score5':r.score>=4?' score4':''}${isNew?' scan-row-new':''}" data-sym="${r.sym}" onclick="selectSym(this.dataset.sym)">
+        <div style="flex:1;min-width:0;overflow:hidden">
+          ${isNew?'<span style="font-size:7px;background:#19c48a;color:#000;border-radius:2px;padding:0 2px;font-weight:700;margin-right:2px">NEW</span>':''}
+          <span class="scan-sym ${u?'up':'dn'}" style="font-size:11px;font-weight:700">${r.sym}${r.hasNews?' 🔥':''}</span>
         </div>
-        <span class="scan-px" style="font-size:10px;text-align:right">$${fmtP(r.q.price)}</span>
-        <span class="scan-chg ${u?'up':'dn'}" style="font-size:10px;text-align:right">${u?'+':''}${(r.q.changePct||0).toFixed(1)}%</span>
-        <div class="scan-pills" style="display:flex;gap:1px;justify-content:center">
-          <span class="pill ${pd(r.p1)}" title="P1:Price" style="width:13px;height:13px;font-size:6px">P1</span>
-          <span class="pill ${pd(r.p2)}" title="P2:Change" style="width:13px;height:13px;font-size:6px">P2</span>
-          <span class="pill ${pending?'na':pd(r.p3)}" title="${pending?'Scanning…':'P3:News'}" style="width:13px;height:13px;font-size:6px">P3</span>
-          <span class="pill ${pending?'na':pd(r.p4)}" title="${pending?'Scanning…':'P4:RVol'}" style="width:13px;height:13px;font-size:6px">P4</span>
-          <span class="pill ${pending?'na':pd(r.p5)}" title="${pending?'Scanning…':'P5:Float'}" style="width:13px;height:13px;font-size:6px">P5</span>
+        <span class="scan-px" style="font-size:10px;font-weight:600;flex-shrink:0;min-width:42px;text-align:right">$${fmtP(r.q.price)}</span>
+        <span class="scan-chg ${u?'up':'dn'}" style="font-size:10px;font-weight:700;flex-shrink:0;min-width:46px;text-align:right">${u?'+':''}${(r.q.changePct||0).toFixed(1)}%</span>
+        <div style="display:flex;gap:1px;flex-shrink:0">
+          <span class="pill ${pd(r.p1)}" title="P1:Price" style="width:14px;height:14px;font-size:6px">P1</span>
+          <span class="pill ${pd(r.p2)}" title="P2:Change" style="width:14px;height:14px;font-size:6px">P2</span>
+          <span class="pill ${pending?'na':pd(r.p3)}" title="${pending?'Scanning':'P3:News'}" style="width:14px;height:14px;font-size:6px">P3</span>
+          <span class="pill ${pending?'na':pd(r.p4)}" title="${pending?'Scanning':'P4:RVol'}" style="width:14px;height:14px;font-size:6px">P4</span>
+          <span class="pill ${pending?'na':pd(r.p5)}" title="${pending?'Scanning':'P5:Float'}" style="width:14px;height:14px;font-size:6px">P5</span>
         </div>
-        <span class="scan-score ${sc}" style="font-size:8px;padding:1px 3px">${r.score}/5</span>
+        <span class="scan-score ${sc}" style="font-size:8px;padding:1px 3px;flex-shrink:0;min-width:22px;text-align:center">${r.score}/5</span>
       </div>`;
     }).join('');
   });
