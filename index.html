@@ -1,4 +1,4 @@
-d8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -612,7 +612,7 @@ function logout(){sessionStorage.clear();location.reload();}
 // ═══════════════════════════════════════════════
 // CONSTANTS & STATE
 // ═══════════════════════════════════════════════
-const FHK='YOUR_FINNHUB_KEY_HERE';
+const FHK='d8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
 const SNAP=20;
 const LAYOUT_VER='v8';
 const SCREENER_TYPES=['gainers','losers','active','premarket','gappers','hod','penny'];
@@ -847,18 +847,14 @@ function openTVPopup(){
   const base='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSym)
     +'&theme=dark&hideSideToolbar=1&hide_side_toolbar=1&extended_hours=1&session=extended&_='+Date.now();
 
-  // 4-chart grid — 90% of screen, centered, 2x2
+  // Single popup — 90% screen, centered
   const sw=screen.availWidth,sh=screen.availHeight;
-  const total_w=Math.floor(sw*0.9),total_h=Math.floor(sh*0.9);
-  const gap=4;
-  const cw=Math.floor((total_w-gap)/2),ch=Math.floor((total_h-gap)/2);
-  const ox=Math.floor((sw-total_w)/2),oy=Math.floor((sh-total_h)/2);
-  const f=(l,t,w,h)=>`width=${w},height=${h},left=${l},top=${t},resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no`;
-
-  window.open(base+'&interval=5',  'TV_5m', f(ox,          oy,          cw,ch));
-  window.open(base+'&interval=1',  'TV_1m', f(ox+cw+gap,   oy,          cw,ch));
-  window.open(base+'&interval=D',  'TV_1D', f(ox,          oy+ch+gap,   cw,ch));
-  window.open(base+'&interval=10S','TV_10s',f(ox+cw+gap,   oy+ch+gap,   cw,ch));
+  const cw=Math.floor(sw*0.9),ch=Math.floor(sh*0.9);
+  const ol=Math.floor((sw-cw)/2),ot=Math.floor((sh-ch)/2);
+  const feat=`width=${cw},height=${ch},left=${ol},top=${ot},resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no`;
+  try{if(tvWin&&!tvWin.closed){tvWin.location.href=base+'&interval='+curInterval;tvWin.focus();return;}}catch(e){}
+  tvWin=window.open(base+'&interval='+curInterval,'StockViewTV',feat);
+  if(!tvWin||tvWin.closed)showToast('⚠ Allow popups for this site in your browser');
 }
 function openNewsPopup(url){
   const w=Math.floor(screen.width*.65),h=Math.floor(screen.height*.85);
