@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+d8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -612,7 +612,7 @@ function logout(){sessionStorage.clear();location.reload();}
 // ═══════════════════════════════════════════════
 // CONSTANTS & STATE
 // ═══════════════════════════════════════════════
-const FHK='d8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
+const FHK='YOUR_FINNHUB_KEY_HERE';
 const SNAP=20;
 const LAYOUT_VER='v8';
 const SCREENER_TYPES=['gainers','losers','active','premarket','gappers','hod','penny'];
@@ -1437,8 +1437,8 @@ function liveScanUpdate(){
       </div>`;
     }).join('');
   });
-  // Also refresh mobile scanner if on that tab
-  if(currentView==='mobile'&&currentMobileTab===1)renderMobileScanner();
+  // Refresh mobile scanner whenever it's visible OR in background (keeps it ready)
+  if(currentView==='mobile')renderMobileScanner();
 }
 async function startDeepScan(){
   if(!appReady)return;
@@ -1484,11 +1484,11 @@ async function startDeepScan(){
 }
 
 // Deep scan every 30s — clean countdown display
-let deepScanCountdown=30;
+let deepScanCountdown=20;
 setInterval(async()=>{
   deepScanCountdown--;
   if(deepScanCountdown<=0){
-    deepScanCountdown=30;
+    deepScanCountdown=20;
     await startDeepScan();
   } else {
     // Update status in all scanner widgets
@@ -1804,8 +1804,8 @@ async function runFinnhubBatch(){
 // Run TV extraction every 10s (zero API cost), Finnhub batch every 30s
 setTimeout(()=>{
   extractTickersFromScreeners();
-  setInterval(extractTickersFromScreeners,10000);
-  setInterval(runFinnhubBatch,30000); // every 30s, 6 calls = fine
+  setInterval(extractTickersFromScreeners,5000);  // every 5s — zero API cost
+  setInterval(runFinnhubBatch,15000); // every 15s — 6 calls per run = 24/min, safe
 },30000);
 // ═══════════════════════════════════════════════
 let currentView='desktop';
