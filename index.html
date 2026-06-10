@@ -845,22 +845,20 @@ function openTVPopup(){
   else if(curChartSym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
 
   const base='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSym)
-    +'&theme=dark&hideSideToolbar=1&hide_side_toolbar=1&extended_hours=1&session=extended';
+    +'&theme=dark&hideSideToolbar=1&hide_side_toolbar=1&extended_hours=1&session=extended&_='+Date.now();
 
-  // 4-chart split: full screen divided into quadrants
+  // 4-chart grid — 90% of screen, centered, 2x2
   const sw=screen.availWidth,sh=screen.availHeight;
-  const hw=Math.floor(sw/2),hh=Math.floor(sh/2);
+  const total_w=Math.floor(sw*0.9),total_h=Math.floor(sh*0.9);
+  const gap=4;
+  const cw=Math.floor((total_w-gap)/2),ch=Math.floor((total_h-gap)/2);
+  const ox=Math.floor((sw-total_w)/2),oy=Math.floor((sh-total_h)/2);
   const f=(l,t,w,h)=>`width=${w},height=${h},left=${l},top=${t},resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no`;
 
-  // Top-left: 5 minute
-  window.open(base+'&interval=5','TV_5m',f(0,0,hw,hh));
-  // Top-right: 1 minute
-  window.open(base+'&interval=1','TV_1m',f(hw,0,hw,hh));
-  // Bottom-left: 1 day
-  window.open(base+'&interval=D','TV_1D',f(0,hh,hw,hh));
-  // Bottom-right: 10 second — with HOD line study
-  const studies=encodeURIComponent(JSON.stringify([{id:'PriceRange@tv-basicstudies'}]));
-  window.open(base+'&interval=10S','TV_10s',f(hw,hh,hw,hh));
+  window.open(base+'&interval=5',  'TV_5m', f(ox,          oy,          cw,ch));
+  window.open(base+'&interval=1',  'TV_1m', f(ox+cw+gap,   oy,          cw,ch));
+  window.open(base+'&interval=D',  'TV_1D', f(ox,          oy+ch+gap,   cw,ch));
+  window.open(base+'&interval=10S','TV_10s',f(ox+cw+gap,   oy+ch+gap,   cw,ch));
 }
 function openNewsPopup(url){
   const w=Math.floor(screen.width*.65),h=Math.floor(screen.height*.85);
