@@ -797,9 +797,8 @@ function openChartPanel(sym){
   if(sym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
   else if(sym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
   else{
-    // With TradingView Premium + US Bundle, force NASDAQ: prefix on all US stocks
-    // This ensures real-time NYSE/NASDAQ feed, not delayed Cboe One
-    if(!sym.includes(':'))tvSym='NASDAQ:'+sym;
+    // Let TradingView auto-resolve exchange — forcing NASDAQ: breaks non-NASDAQ stocks
+    if(!sym.includes(':'))tvSym=sym;
   }
   curChartSym=sym;
   const cfg=encodeURIComponent(JSON.stringify({
@@ -845,8 +844,9 @@ function openTVPopup(){
   if(curChartSym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
   else if(curChartSym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
   else{
-    // Force NASDAQ: prefix for real-time data with Premium + US Bundle
-    if(!curChartSym.includes(':'))tvSym='NASDAQ:'+curChartSym;
+    // Let TradingView auto-resolve the correct exchange
+    // Forcing NASDAQ: breaks stocks on NYSE, OTC, AMEX etc.
+    tvSym=curChartSym;
   }
   // Full tradingview.com/chart/ = real-time data
   // hideSideToolbar hides the watchlist/right panel
