@@ -1020,7 +1020,7 @@ async function refreshPrices(){
   refreshHistWidgets();liveScanUpdate();
   renderHistBar();updateCPPrice();
 }
-setInterval(refreshPrices,15000); // back to 15s — WS handles live ticks
+setInterval(refreshPrices,20000); // 20s — WS streams live ticks, REST only for gaps
 
 // ═══════════════════════════════════════════════
 // SELECT SYM — central handler for ALL stock clicks
@@ -1077,13 +1077,13 @@ const SCR_LABELS={
 // to detect the symbol and load it in the bottom panel + history
 // ═══════════════════════════════════════════════
 const SCR_SCREENS={
-  gainers:'top_gainers',        // biggest % gainers — available all plans
-  losers:'top_losers',          // biggest % losers
-  active:'most_capitalized',    // highest volume
-  premarket:'pre_market_gainers', // pre-market gainers — requires Essential+
-  gappers:'pre_market_gainers', // pre-market gappers
-  hod:'top_gainers',            // HOD momentum — filtered top gainers
-  penny:'top_gainers'           // penny stocks — filtered by price
+  gainers:'top_gainers',            // biggest % gainers today — all stocks
+  losers:'top_losers',              // biggest % losers today
+  active:'most_capitalized',        // highest volume today
+  premarket:'pre_market_gainers',   // pre-market gainers (requires Essential+)
+  gappers:'gap_up_stocks',          // stocks that gapped UP vs prev close
+  hod:'high_of_day',                // stocks making new intraday highs
+  penny:'top_gainers'               // penny stocks — filtered by price in TV filters
 };
 
 // ── TV CLICK INTERCEPTION
@@ -1802,8 +1802,9 @@ async function runFinnhubBatch(){
 // Run TV extraction every 10s (zero API cost), Finnhub batch every 30s
 setTimeout(()=>{
   extractTickersFromScreeners();
-  setInterval(extractTickersFromScreeners,5000);  // every 5s — zero API cost
-  setInterval(runFinnhubBatch,15000); // every 15s — 6 calls per run = 24/min, safe
+  setInterval(extractTickersFromScreeners,5000); // every 5s — zero API cost, TV DOM read
+  // Stagger Finnhub batch 7.5s offset from refreshPrices to prevent simultaneous calls
+  setTimeout(()=>setInterval(runFinnhubBatch,30000),7500); // offset by 7.5s, every 30s
 },30000);
 // ═══════════════════════════════════════════════
 let currentView='desktop';
@@ -2382,7 +2383,7 @@ async function init(){
   appReady=true;
   renderHistBar();refreshHistWidgets();
   restoreClaudeKey();
-  setTimeout(startDeepScan,3000);
+  setTimeout(startDeepScan,10000); // 10s delay — staggered from refreshPrices(15s) and batch(37.5s)
   if(window.innerWidth<=480)switchView('mobile');
 }
 if(checkAuth())init();
