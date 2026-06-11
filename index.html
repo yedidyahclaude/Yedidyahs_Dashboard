@@ -913,6 +913,12 @@ async function manualRefreshAll(){
 // = ~24 calls per 10s = ~144/min theoretical but
 // in practice ~40/min due to response time overlap
 // ═══════════════════════════════════════════════
+
+// ── DEBOUNCE — prevents redundant re-renders on rapid WS ticks
+function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
+const debouncedHistBar=debounce(()=>renderHistBar(),200);
+const debouncedScanUpdate=debounce(()=>liveScanUpdate(),300);
+const debouncedHistWidgets=debounce(()=>refreshHistWidgets(),200);
 function fmtP(p){return p?parseFloat(p).toFixed(2):'—';}
 function fmtV(n){if(!n||n<1)return'—';if(n>=1e9)return(n/1e9).toFixed(1)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(1)+'K';return n+'';}
 
@@ -972,15 +978,6 @@ async function fetchProfile(sym){
   }catch(e){}
 }
 
-// Fetch company name lazily — only called when user actually clicks a stock
-async function fetchProfile(sym){
-  if(Q[sym]?.name&&Q[sym].name!==sym)return; // already have real name
-  try{
-    const r=await fetch(`https://finnhub.io/api/v1/stock/profile2?symbol=${sym}&token=${FHK}`);
-    const p=await r.json();
-    if(p.name&&Q[sym])Q[sym].name=p.name;
-  }catch(e){}
-}
 function connectFinnhubWS(){
   const syms=[...new Set([...histSyms,...scanSyms,...alts.map(a=>a.sym)])];
   try{
@@ -994,9 +991,13 @@ function connectFinnhubWS(){
           const prev=Q[sym].prevClose||px;
           Q[sym]={...Q[sym],price:px,change:px-prev,changePct:prev?(px-prev)/prev*100:0,
             high:Math.max(Q[sym].high||px,px),low:Math.min(Q[sym].low||px,px)};
-          refreshHistWidgets();liveScanUpdate();checkAlerts();
         });
-        renderHistBar();updateCPPrice();
+        // Debounced — batches rapid ticks into single render
+        debouncedHistWidgets();
+        debouncedScanUpdate();
+        debouncedHistBar();
+        updateCPPrice();
+        checkAlerts();
       }
     };
     fhWS.onclose=()=>setTimeout(connectFinnhubWS,5000);
@@ -1357,7 +1358,8 @@ function toggleScanFilters(bid){
 // Scanner watches ALL history symbols automatically + any manually added ones
 // This means every stock you click gets scanned for all 5 pillars immediately
 function getScanSyms(){return[...new Set([...histSyms,...scanSyms])];}
-function saveScanSyms(){localStorage.setItem('sv_scan',JSON.stringify(scanSyms));}
+let _saveSymsTimer;
+function saveScanSyms(){clearTimeout(_saveSymsTimer);_saveSymsTimer=setTimeout(()=>localStorage.setItem('sv_scan',JSON.stringify(scanSyms)),500);}
 function addScanSym(bid){
   const inp=document.getElementById(bid+'-inp');if(!inp)return;
   const sym=inp.value.toUpperCase().trim();
