@@ -222,20 +222,20 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .flt-l{font-size:8px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;font-weight:600}
 .flt-i{background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:5px 7px;outline:none;width:100%}
 .flt-i:focus{border-color:var(--ac)}
-/* Scanner rows — color-coded by score */
-.scan-row{display:flex;align-items:center;gap:4px;padding:6px 8px;border-bottom:1px solid #14152a;cursor:pointer;transition:all .08s;border-left:2px solid transparent}
+/* Scanner rows */
+.scan-row{display:grid;grid-template-columns:1fr 54px 58px 90px 30px;align-items:center;gap:0;padding:7px 8px;border-bottom:1px solid #14152a;cursor:pointer;transition:all .08s;border-left:2px solid transparent}
 .scan-row:hover{background:#7c6aff0a;border-left-color:var(--ac)}
 .scan-row.score5{border-left-color:var(--gr)}
 .scan-row.score4{border-left-color:var(--gold)}
-.scan-sym{font-size:13px;font-weight:700;flex:1;letter-spacing:.02em}
-.scan-px{font-size:11px;font-weight:600;width:50px;text-align:right;color:#e0e1f0}
-.scan-chg{font-size:11px;font-weight:700;width:44px;text-align:right}
-.scan-pills{display:flex;gap:2px;justify-content:center}
-.pill{width:16px;height:16px;border-radius:50%;font-size:7px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.scan-sym{font-size:12px;font-weight:700;letter-spacing:.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scan-px{font-size:11px;font-weight:600;text-align:right;color:#e0e1f0;white-space:nowrap}
+.scan-chg{font-size:11px;font-weight:700;text-align:right;white-space:nowrap}
+.scan-pills{display:flex;gap:2px;justify-content:center;align-items:center}
+.pill{width:15px;height:15px;border-radius:50%;font-size:6px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .pill.pass{background:#19c48a25;color:var(--gr);border:1px solid #19c48a50}
 .pill.fail{background:#f0506e18;color:var(--rd);border:1px solid #f0506e35}
 .pill.na{background:var(--b2);color:var(--dim)}
-.scan-score{font-size:9px;padding:2px 5px;border-radius:6px;font-weight:700;min-width:24px;text-align:center}
+.scan-score{font-size:9px;padding:2px 4px;border-radius:5px;font-weight:700;text-align:center;white-space:nowrap}
 .s5{background:#19c48a25;color:var(--gr);border:1px solid #19c48a40}
 .s4{background:#f59e0b20;color:var(--gold);border:1px solid #f59e0b40}
 .s3{background:#7c6aff18;color:var(--ac2)}
@@ -1416,20 +1416,20 @@ function liveScanUpdate(){
       const pending=r.p3===null&&r.p4===null&&r.p5===null;
       // Use data attribute instead of inline onclick string to avoid encoding issues
       return `<div class="scan-row${r.score>=5?' score5':r.score>=4?' score4':''}${isNew?' scan-row-new':''}" data-sym="${r.sym}" onclick="selectSym(this.dataset.sym)">
-        <div style="flex:1;min-width:0;overflow:hidden">
-          ${isNew?'<span style="font-size:7px;background:#19c48a;color:#000;border-radius:2px;padding:0 2px;font-weight:700;margin-right:2px">NEW</span>':''}
-          <span class="scan-sym ${u?'up':'dn'}" style="font-size:11px;font-weight:700">${r.sym}${r.hasNews?' 🔥':''}</span>
+        <div style="min-width:0;overflow:hidden">
+          ${isNew?'<span style="font-size:7px;background:#19c48a;color:#000;border-radius:2px;padding:0 3px;font-weight:700;margin-right:3px">NEW</span>':''}
+          <span class="scan-sym ${u?'up':'dn'}">${r.sym}${r.hasNews?' 🔥':''}</span>
         </div>
-        <span class="scan-px" style="font-size:10px;font-weight:600;flex-shrink:0;min-width:42px;text-align:right">$${fmtP(r.q.price)}</span>
-        <span class="scan-chg ${u?'up':'dn'}" style="font-size:10px;font-weight:700;flex-shrink:0;min-width:46px;text-align:right">${u?'+':''}${(r.q.changePct||0).toFixed(1)}%</span>
-        <div style="display:flex;gap:1px;flex-shrink:0">
-          <span class="pill ${pd(r.p1)}" title="P1:Price" style="width:14px;height:14px;font-size:6px">P1</span>
-          <span class="pill ${pd(r.p2)}" title="P2:Change" style="width:14px;height:14px;font-size:6px">P2</span>
-          <span class="pill ${pending?'na':pd(r.p3)}" title="${pending?'Scanning':'P3:News'}" style="width:14px;height:14px;font-size:6px">P3</span>
-          <span class="pill ${pending?'na':pd(r.p4)}" title="${pending?'Scanning':'P4:RVol'}" style="width:14px;height:14px;font-size:6px">P4</span>
-          <span class="pill ${pending?'na':pd(r.p5)}" title="${pending?'Scanning':'P5:Float'}" style="width:14px;height:14px;font-size:6px">P5</span>
+        <span class="scan-px">$${fmtP(r.q.price)}</span>
+        <span class="scan-chg ${u?'up':'dn'}">${u?'+':''}${(r.q.changePct||0).toFixed(1)}%</span>
+        <div class="scan-pills">
+          <span class="pill ${pd(r.p1)}" title="P1:Price">P1</span>
+          <span class="pill ${pd(r.p2)}" title="P2:Change">P2</span>
+          <span class="pill ${pending?'na':pd(r.p3)}" title="${pending?'Scanning':'P3:News'}">P3</span>
+          <span class="pill ${pending?'na':pd(r.p4)}" title="${pending?'Scanning':'P4:RVol'}">P4</span>
+          <span class="pill ${pending?'na':pd(r.p5)}" title="${pending?'Scanning':'P5:Float'}">P5</span>
         </div>
-        <span class="scan-score ${sc}" style="font-size:8px;padding:1px 3px;flex-shrink:0;min-width:22px;text-align:center">${r.score}/5</span>
+        <span class="scan-score ${sc}">${r.score}/5</span>
       </div>`;
     }).join('');
   });
