@@ -622,14 +622,20 @@ const SNAP=20;
 const LAYOUT_VER='v8';
 const SCREENER_TYPES=['gainers','losers','active','premarket','gappers','hod','penny','p1screen','p3screen','p5screen'];
 const WIDGET_TYPES={
-  gainers:'🚀 Top Gainers',losers:'📉 Top Losers',
-  active:'🔥 Most Active',premarket:'🌅 Gap Scanner',
-  gappers:'⚡ Top Gappers',hod:'📈 HOD Momentum',penny:'💲 Penny Stocks',
-  scanner:'🎯 5 Pillars Scanner',history:'📋 History',
-  alerts:'🔔 Alerts',news:'📰 News',
-  p1screen:'🎯 P1+P2+P4 · Price + Momentum + Volume',
+  gainers:'🚀 Top Gainers',
+  losers:'📉 Top Losers',
+  active:'🔥 Most Active',
+  premarket:'🌅 Pre-Market Gainers',
+  gappers:'⚡ Pre-Market Gap Ups',
+  hod:'💥 Most Volatile',
+  penny:'💲 Penny Stocks',
+  scanner:'🎯 5 Pillars Scanner',
+  history:'📋 History',
+  alerts:'🔔 Alerts',
+  news:'📰 News',
+  p1screen:'🎯 P1+P2+P4 · Unusual Volume Gainers',
   p3screen:'📰 P3 · News Catalyst Feed',
-  p5screen:'💎 P5 · Small Float Momentum',
+  p5screen:'💎 P5 · Penny Stocks (Small Float)',
 };
 const DEFAULT_WIDGETS=[
   {id:'w1',type:'gainers', x:20,  y:20,  w:420,h:340},
@@ -1087,19 +1093,14 @@ const SCR_LABELS={
 // to detect the symbol and load it in the bottom panel + history
 // ═══════════════════════════════════════════════
 const SCR_SCREENS={
-  gainers:'top_gainers',
-  losers:'top_losers',
-  active:'most_capitalized',
-  premarket:'pre_market_gainers',
-  gappers:'gap_up_stocks',
-  hod:'high_of_day',
-  penny:'top_gainers',
-  // 5 Pillar dedicated screens
-  p1screen:'top_gainers',      // P1: Price $1-$20 — TV filtered to this range
-  p2screen:'top_gainers',      // P2: % Change ≥10% — top gainers IS this
-  p3screen:'top_gainers',      // P3: News — TV "has news" stocks
-  p4screen:'most_capitalized', // P4: High RVol — most active by volume
-  p5screen:'top_gainers',      // P5: Small float — filtered small caps
+  // Standard widgets — all confirmed valid TV screener IDs
+  gainers:'top_gainers',            // Top % gainers today
+  losers:'biggest_losers',          // Top % losers today
+  active:'most_active',             // Highest volume today (was 'most_capitalized' — wrong)
+  premarket:'pre_market_gainers',   // Pre-market gainers (Essential+)
+  gappers:'pre_market_gap',         // Pre-market gap ups (Essential+)
+  hod:'most_volatile',              // Most volatile = high of day proxy
+  penny:'penny_stocks',             // Penny stocks filter (was 'top_gainers' — wrong)
 };
 
 // ── TV CLICK INTERCEPTION
@@ -1142,24 +1143,24 @@ window.addEventListener('focus',()=>{
 // Pillar screen configs — TV filter params for each pillar
 const PILLAR_SCREENS={
   p1screen:{
-    label:'P1+P2+P4 · Price $1-$20 + Momentum ≥10% + High Volume',
+    label:'P1+P2+P4 · Top Gainers + Unusual Volume',
     color:'#7c6aff',icon:'🎯',
-    hint:'Stocks $1-$20 gaining 10%+ with high relative volume — 3 pillars in one',
-    screen:'top_gainers',
+    hint:'Top gaining stocks with unusual volume — P1, P2 and P4 combined',
+    screen:'unusual_volume',   // unusual_volume = high rvol gainers — closest to P1+P2+P4
     type:'screener'
   },
   p3screen:{
     label:'P3 · News Catalyst Feed',
     color:'#f59e0b',icon:'📰',
-    hint:'Breaking news driving stock moves — type ticker to add to 5 Pillars',
+    hint:'Breaking news — see a catalyst, type the ticker below to add to 5 Pillars',
     screen:'timeline',
     type:'news_timeline'
   },
   p5screen:{
-    label:'P5 · Small Float Momentum',
+    label:'P5 · Small Float — Penny Stocks',
     color:'#a78bfa',icon:'💎',
-    hint:'Small cap/low float stocks with momentum — supply/demand imbalance setups',
-    screen:'top_gainers',
+    hint:'Penny stocks with momentum — small float, low price, high % move',
+    screen:'penny_stocks',     // penny_stocks = low price small float proxy
     type:'screener'
   },
 };
