@@ -496,7 +496,9 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
     </div>
   </div>
 
-  <!-- CLAUDE ASSISTANT WIDGET -->
+
+
+<!-- CLAUDE ASSISTANT WIDGET -->
   <div id="claudeBtn" onclick="toggleClaude()" title="Claude AI Assistant"
     style="position:fixed;bottom:80px;right:20px;width:48px;height:48px;border-radius:50%;
     background:linear-gradient(135deg,#7c6aff,#a78bfa);border:none;cursor:pointer;
@@ -2019,61 +2021,24 @@ const SEED_UNIVERSE=[
 ];
 
 async function loadFullUniverse(){
-  try{
-    // Fetch all US stock symbols from Finnhub (free endpoint)
-    const r=await fetch(`https://finnhub.io/api/v1/stock/symbol?exchange=US&token=${FHK}`);
-    const symbols=await r.json();
-    if(!Array.isArray(symbols))return;
-
-    // Filter to momentum-prone candidates:
-    // - Common stock only (type='Common Stock')
-    // - Symbol 1-5 chars (exclude long ETF names)
-    // - No dots or special chars (clean tickers only)
-    const filtered=symbols
-      .filter(s=>
-        s.type==='Common Stock'&&
-        /^[A-Z]{1,5}$/.test(s.symbol)&&
-        s.mic&&(s.mic.includes('XNAS')||s.mic.includes('XNYS')||s.mic.includes('XASE')||s.mic.includes('OTCM'))
-      )
-      .map(s=>s.symbol);
-
-    // Shuffle so we don't always scan alphabetically
-    for(let i=filtered.length-1;i>0;i--){
-      const j=Math.floor(Math.random()*(i+1));
-      [filtered[i],filtered[j]]=[filtered[j],filtered[i]];
-    }
-
-    SCAN_UNIVERSE=[...SEED_UNIVERSE,...filtered.filter(s=>!SEED_UNIVERSE.includes(s))];
-    universeLoaded=true;
-    console.log(`✅ Universe loaded: ${SCAN_UNIVERSE.length} symbols`);
-    // Update scanner status
-    document.querySelectorAll('[id$="-status"]').forEach(el=>{
-      if(el.closest?.('.widget'))
-        el.textContent=`⚡ Universe: ${SCAN_UNIVERSE.length} stocks loaded`;
-    });
-  }catch(e){
-    // Fallback to seed list if fetch fails
-    SCAN_UNIVERSE=SEED_UNIVERSE;
-    universeLoaded=true;
-    console.log('Universe fallback: using seed list');
-  }
+  // Finnhub stock/symbol endpoint is CORS-blocked from browser — skip it
+  // Use expanded seed list instead which covers most momentum names
+  SCAN_UNIVERSE=SEED_UNIVERSE;
+  universeLoaded=true;
+  console.log(`Universe ready: ${SCAN_UNIVERSE.length} symbols`);
 }
 
 async function runFinnhubBatch(){
   if(!appReady||!universeLoaded)return;
   const sess=getSession();
-  // During market hours be more aggressive — halve threshold pre/after
   const minC=sess==='pre'||sess==='aft'?5:10;
-  const minP=1,maxP=20;
 
-  // Skip symbols already being watched
   const unwatched=SCAN_UNIVERSE.filter(s=>!getScanSyms().includes(s));
   if(!unwatched.length)return;
 
-  // Scan 8 symbols per batch — within rate limit budget
-  const batchSize=8;
+  // 4 symbols per batch at 400ms gap = 10 calls/min — leaves room for deep scan + refresh
   const batch=[];
-  for(let i=0;i<batchSize&&i<unwatched.length;i++){
+  for(let i=0;i<4&&i<unwatched.length;i++){
     batch.push(unwatched[autoScanIdx%unwatched.length]);
     autoScanIdx=(autoScanIdx+1)%unwatched.length;
   }
@@ -2082,31 +2047,26 @@ async function runFinnhubBatch(){
     try{
       await fetchQDirect(sym);
       const q=Q[sym];if(!q?.price)continue;
-      const p1=q.price>=minP&&q.price<=maxP;
-      const pct=q.changePct||0;
-      const p2=pct>=minC;
-      if(p1&&p2){
+      if(q.price>=1&&q.price<=20&&(q.changePct||0)>=minC){
         if(!scanSyms.includes(sym)){
           scanSyms.push(sym);saveScanSyms();
           newSyms.add(sym);
           if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
-          showToast(`🎯 Auto-found: ${sym} +${pct.toFixed(1)}% $${fmtP(q.price)} → 5 Pillars`);
+          showToast(`🎯 Auto-found: ${sym} +${(q.changePct||0).toFixed(1)}% $${fmtP(q.price)} → 5 Pillars`);
           playPing();liveScanUpdate();
         }
       }
     }catch(e){}
-    await new Promise(r=>setTimeout(r,250)); // 250ms gap = 4 calls/sec = 240/min max
+    await new Promise(r=>setTimeout(r,400));
   }
 }
 
-// Load full universe 5s after startup, then start scanning
-setTimeout(async()=>{
-  SCAN_UNIVERSE=SEED_UNIVERSE;universeLoaded=true; // use seed immediately
-  runFinnhubBatch(); // first batch right away
-  loadFullUniverse(); // load full list in background
-  setInterval(extractTickersFromScreeners,5000); // TV DOM every 5s (zero API cost)
-  setTimeout(()=>setInterval(runFinnhubBatch,20000),7500); // batch every 20s, offset 7.5s
-},5000);
+// Start scanning 10s after startup
+setTimeout(()=>{
+  SCAN_UNIVERSE=SEED_UNIVERSE;universeLoaded=true;
+  setInterval(extractTickersFromScreeners,5000); // zero API cost
+  setTimeout(()=>setInterval(runFinnhubBatch,45000),12000); // every 45s, offset 12s
+},10000);
 // ═══════════════════════════════════════════════
 // ── DAILY RESET AT 3:30 AM ET
 // Clears scanner symbols and cache every morning for a fresh trading day
