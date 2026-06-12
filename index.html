@@ -357,6 +357,10 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
           <button class="wm-item" onclick="addWidget('premarket')"><span>🌅</span> Gap Scanner</button>
           <div class="wm-sect">Tools</div>
           <button class="wm-item" onclick="addWidget('scanner')"><span>🎯</span> 5 Pillars Scanner</button>
+          <div style="font-size:8px;color:var(--dim);padding:4px 12px;letter-spacing:.08em;text-transform:uppercase;margin-top:4px">5 Pillar Live Screens</div>
+          <button class="wm-item" onclick="addWidget('p1screen')"><span>🎯</span> P1+P2+P4 · Price + Momentum + Volume</button>
+          <button class="wm-item" onclick="addWidget('p3screen')"><span>📰</span> P3 · News Catalyst Feed</button>
+          <button class="wm-item" onclick="addWidget('p5screen')"><span>💎</span> P5 · Small Float Momentum</button>
           <button class="wm-item" onclick="addWidget('history')"><span>📋</span> History</button>
           <button class="wm-item" onclick="addWidget('alerts')"><span>🔔</span> Alerts</button>
           <button class="wm-item" onclick="addWidget('news')"><span>📰</span> News</button>
@@ -536,7 +540,15 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
       <div style="font-size:8px;color:var(--dim);margin-top:4px">Get free key at <span style="color:var(--ac2);cursor:pointer" onclick="window.open('https://console.anthropic.com')">console.anthropic.com</span> · <span style="color:var(--ac2);cursor:pointer" onclick="testClaudeKey()">Test connection</span></div>
     </div>
 
-    <!-- Messages -->
+      <div style="font-size:8px;color:var(--dim);margin-bottom:6px">Get free paper trading API keys at <span style="color:var(--ac2);cursor:pointer" onclick="window.open('https://alpaca.markets')">alpaca.markets</span> — no real money needed</div>
+      <div style="display:flex;gap:4px;margin-bottom:4px">
+        <input id="alpaca-key-input" placeholder="API Key ID" style="flex:1;background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:9px;padding:4px 6px;outline:none"/>
+      </div>
+      <div style="display:flex;gap:4px">
+        <input id="alpaca-secret-input" type="password" placeholder="API Secret Key" style="flex:1;background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:9px;padding:4px 6px;outline:none"/>
+        <button onclick="connectAlpacaFromUI()" style="background:var(--gr);border:none;border-radius:4px;color:#000;font-family:'DM Mono',monospace;font-size:9px;font-weight:700;padding:4px 8px;cursor:pointer">Connect</button>
+      </div>
+    </div>
     <div id="claude-messages" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:0">
       <div style="background:var(--s2);border-radius:8px;padding:10px 12px;border-left:3px solid var(--ac)">
         <div style="font-size:10px;color:var(--ac2);font-weight:700;margin-bottom:4px">Claude</div>
@@ -615,13 +627,16 @@ function logout(){sessionStorage.clear();location.reload();}
 const FHK='d8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
 const SNAP=20;
 const LAYOUT_VER='v8';
-const SCREENER_TYPES=['gainers','losers','active','premarket','gappers','hod','penny'];
+const SCREENER_TYPES=['gainers','losers','active','premarket','gappers','hod','penny','p1screen','p3screen','p5screen'];
 const WIDGET_TYPES={
   gainers:'🚀 Top Gainers',losers:'📉 Top Losers',
   active:'🔥 Most Active',premarket:'🌅 Gap Scanner',
   gappers:'⚡ Top Gappers',hod:'📈 HOD Momentum',penny:'💲 Penny Stocks',
   scanner:'🎯 5 Pillars Scanner',history:'📋 History',
-  alerts:'🔔 Alerts',news:'📰 News'
+  alerts:'🔔 Alerts',news:'📰 News',
+  p1screen:'🎯 P1+P2+P4 · Price + Momentum + Volume',
+  p3screen:'📰 P3 · News Catalyst Feed',
+  p5screen:'💎 P5 · Small Float Momentum',
 };
 const DEFAULT_WIDGETS=[
   {id:'w1',type:'gainers', x:20,  y:20,  w:420,h:340},
@@ -896,8 +911,10 @@ async function manualRefreshAll(){
   Object.values(Q).forEach(q=>q._ts=0);
   // Re-render all screener widgets
   widgets.forEach(w=>{
-    if(SCREENER_TYPES.includes(w.type)){
-      const body=document.getElementById('wb-'+w.id);
+    const body=document.getElementById('wb-'+w.id);
+    if(['p1screen','p3screen','p5screen'].includes(w.type)){
+      if(body)renderPillarScreener(body,w.type);
+    } else if(SCREENER_TYPES.includes(w.type)){
       if(body)renderScreener(body,w.type);
     }
   });
@@ -992,7 +1009,6 @@ function connectFinnhubWS(){
           Q[sym]={...Q[sym],price:px,change:px-prev,changePct:prev?(px-prev)/prev*100:0,
             high:Math.max(Q[sym].high||px,px),low:Math.min(Q[sym].low||px,px)};
         });
-        // Debounced — batches rapid ticks into single render
         debouncedHistWidgets();
         debouncedScanUpdate();
         debouncedHistBar();
@@ -1004,6 +1020,7 @@ function connectFinnhubWS(){
     fhWS.onerror=()=>fhWS.close();
   }catch(e){}
 }
+
 async function refreshPrices(){
   if(!appReady)return;
   const syms=[...new Set([...histSyms.slice(0,8),...scanSyms])];
@@ -1077,13 +1094,19 @@ const SCR_LABELS={
 // to detect the symbol and load it in the bottom panel + history
 // ═══════════════════════════════════════════════
 const SCR_SCREENS={
-  gainers:'top_gainers',            // biggest % gainers today — all stocks
-  losers:'top_losers',              // biggest % losers today
-  active:'most_capitalized',        // highest volume today
-  premarket:'pre_market_gainers',   // pre-market gainers (requires Essential+)
-  gappers:'gap_up_stocks',          // stocks that gapped UP vs prev close
-  hod:'high_of_day',                // stocks making new intraday highs
-  penny:'top_gainers'               // penny stocks — filtered by price in TV filters
+  gainers:'top_gainers',
+  losers:'top_losers',
+  active:'most_capitalized',
+  premarket:'pre_market_gainers',
+  gappers:'gap_up_stocks',
+  hod:'high_of_day',
+  penny:'top_gainers',
+  // 5 Pillar dedicated screens
+  p1screen:'top_gainers',      // P1: Price $1-$20 — TV filtered to this range
+  p2screen:'top_gainers',      // P2: % Change ≥10% — top gainers IS this
+  p3screen:'top_gainers',      // P3: News — TV "has news" stocks
+  p4screen:'most_capitalized', // P4: High RVol — most active by volume
+  p5screen:'top_gainers',      // P5: Small float — filtered small caps
 };
 
 // ── TV CLICK INTERCEPTION
@@ -1123,38 +1146,182 @@ window.addEventListener('focus',()=>{
   }
 });
 
-function renderScreener(body,type){
+// Pillar screen configs — TV filter params for each pillar
+const PILLAR_SCREENS={
+  p1screen:{
+    label:'P1+P2+P4 · Price $1-$20 + Momentum ≥10% + High Volume',
+    color:'#7c6aff',icon:'🎯',
+    hint:'Stocks $1-$20 gaining 10%+ with high relative volume — 3 pillars in one',
+    screen:'top_gainers',
+    type:'screener'
+  },
+  p3screen:{
+    label:'P3 · News Catalyst Feed',
+    color:'#f59e0b',icon:'📰',
+    hint:'Breaking news driving stock moves — type ticker to add to 5 Pillars',
+    screen:'timeline',
+    type:'news_timeline'
+  },
+  p5screen:{
+    label:'P5 · Small Float Momentum',
+    color:'#a78bfa',icon:'💎',
+    hint:'Small cap/low float stocks with momentum — supply/demand imbalance setups',
+    screen:'top_gainers',
+    type:'screener'
+  },
+};
+
+function renderPillarScreener(body,type){
+  const cfg=PILLAR_SCREENS[type];
+  if(!cfg){renderScreener(body,type);return;}
   body.style.padding='0';
   body.style.overflow='hidden';
   body.style.display='flex';
   body.style.flexDirection='column';
-  const screen=SCR_SCREENS[type]||'top_gainers';
+  const uid='scr'+type+body.id.replace(/\W/g,'');
+
+  // P3 uses TradingView news timeline widget instead of screener
+  if(cfg.type==='news_timeline'){
+    const newsParams=encodeURIComponent(JSON.stringify({
+      width:'100%',height:'100%',colorTheme:'dark',
+      locale:'en',importanceFilter:'-1,0,1,2,3',
+      countryFilter:'us'
+    }));
+    body.innerHTML=`
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${cfg.color}15;border-bottom:1px solid ${cfg.color}30;flex-shrink:0">
+        <span style="font-size:14px">${cfg.icon}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:10px;font-weight:700;color:${cfg.color};letter-spacing:.04em">${cfg.label}</div>
+          <div style="font-size:8px;color:var(--dim);margin-top:1px">${cfg.hint}</div>
+        </div>
+      </div>
+      <div style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0">
+        <iframe style="flex:1;width:100%;border:none;display:block;min-height:0" scrolling="no" allowtransparency="true" frameborder="0"
+          src="https://www.tradingview.com/embed-widget/timeline/?locale=en#${newsParams}"></iframe>
+        <div style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid ${cfg.color}30;flex-shrink:0;position:relative">
+          <span style="font-size:9px;color:${cfg.color};flex-shrink:0;font-weight:700">${cfg.icon}</span>
+          <input id="${uid}inp" placeholder="See news on a stock? Type ticker → adds to 5 Pillars"
+            maxlength="10" autocomplete="off" spellcheck="false"
+            style="flex:1;background:var(--s3);border:1px solid ${cfg.color}50;border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:4px 8px;outline:none;caret-color:${cfg.color}"
+            oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'');scrShowSuggest('${uid}',this.value)"
+            onkeydown="if(event.key==='Enter'){scrBarGo('${uid}');} if(event.key==='Escape'){this.blur();}"/>
+          <button onclick="scrBarGo('${uid}')" style="background:${cfg.color};border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer;flex-shrink:0">↵</button>
+          <button title="Paste ticker from clipboard" onclick="scrPaste('${uid}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-size:10px;padding:4px 6px;cursor:pointer;flex-shrink:0">📋</button>
+        </div>
+      </div>`;
+    return;
+  }
+
+  // P1 and P5 use standard screener
+  const params=encodeURIComponent(JSON.stringify({
+    width:'100%',height:'100%',defaultColumn:'overview',
+    defaultScreen:cfg.screen,market:'america',showToolbar:true,
+    colorTheme:'dark',locale:'en'
+  }));
+  body.innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${cfg.color}15;border-bottom:1px solid ${cfg.color}30;flex-shrink:0">
+      <span style="font-size:14px">${cfg.icon}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:10px;font-weight:700;color:${cfg.color};letter-spacing:.04em">${cfg.label}</div>
+        <div style="font-size:8px;color:var(--dim);margin-top:1px">${cfg.hint}</div>
+      </div>
+    </div>
+    <div class="scr-wrap" id="${uid}" style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0">
+      <iframe class="scr-iframe" id="${uid}fr" scrolling="no" allowtransparency="true" frameborder="0"
+        src="https://www.tradingview.com/embed-widget/screener/?locale=en#${params}"></iframe>
+      <div class="scr-overlay" onclick="scrFocusInput('${uid}')"></div>
+      <div class="scr-bar" style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid ${cfg.color}30;flex-shrink:0;position:relative">
+        <span style="font-size:9px;color:${cfg.color};flex-shrink:0;font-weight:700">${cfg.icon}</span>
+        <input class="scr-bar-inp" id="${uid}inp" placeholder="Type ticker → adds to 5 Pillars scanner"
+          maxlength="10" autocomplete="off" spellcheck="false"
+          style="flex:1;background:var(--s3);border:1px solid ${cfg.color}50;border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:4px 8px;outline:none;caret-color:${cfg.color}"
+          oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'');scrShowSuggest('${uid}',this.value)"
+          onkeydown="if(event.key==='Enter'){scrBarGo('${uid}');} if(event.key==='Escape'){this.blur();document.getElementById('${uid}sug')?.remove();} if(event.key==='Tab'){event.preventDefault();scrAcceptFirst('${uid}');}"/>
+        <button onclick="scrBarGo('${uid}')" style="background:${cfg.color};border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer;flex-shrink:0">↵</button>
+        <button title="Paste from clipboard" onclick="scrPaste('${uid}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-size:10px;padding:4px 6px;cursor:pointer;flex-shrink:0">📋</button>
+      </div>
+    </div>`;
+}
+function renderScreener(body,type){
+  body.style.padding='0';
   const params=encodeURIComponent(JSON.stringify({
     width:'100%',height:'100%',defaultColumn:'overview',
     defaultScreen:screen,market:'america',showToolbar:true,
     colorTheme:'dark',locale:'en'
   }));
   const uid='scr'+type+body.id.replace(/\W/g,'');
-  body.innerHTML=`<div class="scr-wrap" id="${uid}">
+  body.innerHTML=`<div class="scr-wrap" id="${uid}" style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0">
     <iframe class="scr-iframe" id="${uid}fr" scrolling="no" allowtransparency="true" frameborder="0"
       src="https://www.tradingview.com/embed-widget/screener/?locale=en#${params}"></iframe>
     <div class="scr-overlay" onclick="scrFocusInput('${uid}')"></div>
-    <div class="scr-hint">👁 See a mover? Click here then type ticker ↓</div>
-    <div class="scr-bar">
-      <span class="scr-bar-label">↳ OPEN:</span>
+    <div class="scr-bar" style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid var(--b2);flex-shrink:0;position:relative">
+      <span style="font-size:9px;color:var(--dim);flex-shrink:0">↳ OPEN:</span>
       <input class="scr-bar-inp" id="${uid}inp" placeholder="type ticker → Enter to open chart"
         maxlength="10" autocomplete="off" spellcheck="false"
-        oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'')"
-        onkeydown="if(event.key==='Enter'){scrBarGo('${uid}');} if(event.key==='Escape'){this.blur();}"/>
-      <button class="scr-bar-btn" onclick="scrBarGo('${uid}')">↵ Go</button>
+        style="flex:1;background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:4px 8px;outline:none;caret-color:var(--ac)"
+        oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'');scrShowSuggest('${uid}',this.value)"
+        onkeydown="if(event.key==='Enter'){scrBarGo('${uid}');} if(event.key==='Escape'){this.blur();document.getElementById('${uid}sug')?.remove();} if(event.key==='Tab'){event.preventDefault();scrAcceptFirst('${uid}');}"/>
+      <button class="scr-bar-btn" onclick="scrBarGo('${uid}')" style="background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer;flex-shrink:0">↵</button>
+      <button title="Paste from clipboard" onclick="scrPaste('${uid}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-size:10px;padding:4px 6px;cursor:pointer;flex-shrink:0">📋</button>
     </div>
   </div>`;
 }
+
 function scrFocusInput(uid){
   const inp=document.getElementById(uid+'inp');
   if(inp){inp.focus();inp.select();}
 }
+
+async function scrPaste(uid){
+  try{
+    const text=(await navigator.clipboard.readText()).trim().toUpperCase().replace(/[^A-Z0-9.]/g,'');
+    if(text&&text.length<=8){
+      const inp=document.getElementById(uid+'inp');
+      if(inp){inp.value=text;scrBarGo(uid);}
+    }
+  }catch(e){
+    // Fallback — focus input so user can paste manually
+    scrFocusInput(uid);
+    showToast('Press Ctrl+V to paste ticker');
+  }
+}
+
+function scrShowSuggest(uid,val){
+  // Remove existing suggestions
+  document.getElementById(uid+'sug')?.remove();
+  if(!val||val.length<1)return;
+  // Find matching symbols from Q cache (already fetched stocks)
+  const matches=Object.keys(Q).filter(s=>s.startsWith(val)&&s!==val).slice(0,5);
+  if(!matches.length)return;
+  const bar=document.getElementById(uid+'inp')?.parentElement;
+  if(!bar)return;
+  const sug=document.createElement('div');
+  sug.id=uid+'sug';
+  sug.style.cssText='position:absolute;bottom:100%;left:0;right:0;background:var(--s2);border:1px solid var(--ac);border-radius:6px 6px 0 0;z-index:50;overflow:hidden';
+  sug.innerHTML=matches.map(s=>{
+    const q=Q[s];
+    const u=(q?.changePct||0)>=0;
+    return `<div onclick="document.getElementById('${uid}inp').value='${s}';scrBarGo('${uid}');document.getElementById('${uid}sug')?.remove()"
+      style="padding:5px 10px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-family:'DM Mono',monospace;font-size:10px;border-bottom:1px solid var(--b2)"
+      onmouseover="this.style.background='#7c6aff15'" onmouseout="this.style.background=''">
+      <span style="font-weight:700;color:var(--tx)">${s}</span>
+      <span style="color:${u?'var(--gr)':'var(--rd)'}">${q?'$'+fmtP(q.price)+' '+(u?'+':'')+q.changePct?.toFixed(1)+'%':''}</span>
+    </div>`;
+  }).join('');
+  bar.style.position='relative';
+  bar.appendChild(sug);
+}
+
+function scrAcceptFirst(uid){
+  const sug=document.getElementById(uid+'sug');
+  if(sug){
+    const first=sug.querySelector('div');
+    if(first)first.click();
+  }
+}
+
 function scrBarGo(uid){
+  document.getElementById(uid+'sug')?.remove();
   const inp=document.getElementById(uid+'inp');
   const sym=inp?.value.trim();
   if(sym){inp.value='';selectSym(sym);}
@@ -1272,7 +1439,8 @@ function saveWS(id){
 }
 function populateWidget(el,w){
   const body=document.getElementById('wb-'+w.id);if(!body)return;
-  if(SCREENER_TYPES.includes(w.type))renderScreener(body,w.type);
+  if(['p1screen','p3screen','p5screen'].includes(w.type))renderPillarScreener(body,w.type);
+  else if(SCREENER_TYPES.includes(w.type))renderScreener(body,w.type);
   else if(w.type==='history')renderHistory(body);
   else if(w.type==='alerts')renderAL(body);
   else if(w.type==='news')renderNews(body,CUR||'AAPL');
@@ -1427,9 +1595,9 @@ function liveScanUpdate(){
         <div class="scan-pills">
           <span class="pill ${pd(r.p1)}" title="P1:Price">P1</span>
           <span class="pill ${pd(r.p2)}" title="P2:Change">P2</span>
-          <span class="pill ${pending?'na':pd(r.p3)}" title="${pending?'Scanning':'P3:News'}">P3</span>
-          <span class="pill ${pending?'na':pd(r.p4)}" title="${pending?'Scanning':'P4:RVol'}">P4</span>
-          <span class="pill ${pending?'na':pd(r.p5)}" title="${pending?'Scanning':'P5:Float'}">P5</span>
+          <span class="pill ${pending?'na':pd(r.p3)}" title="${pending?'Scanning…':'P3: News '+( r.hasNews?'✓ catalyst found':'✗ no news')}">P3</span>
+          <span class="pill ${pending?'na':pd(r.p4)}" title="${pending?'Scanning…':'P4: RVol '+( scanCache[r.sym]?.rvolValue||'?')+'x'}">P4</span>
+          <span class="pill ${pending?'na':pd(r.p5)}" title="${pending?'Scanning…':'P5: Float '+( scanCache[r.sym]?.floatValue||'?')}">P5</span>
         </div>
         <span class="scan-score ${sc}">${r.score}/5</span>
       </div>`;
@@ -1440,44 +1608,112 @@ function liveScanUpdate(){
 }
 async function startDeepScan(){
   if(!appReady)return;
-  if(scanDeepRunning)return;scanDeepRunning=true;
+  if(scanDeepRunning)return;
+  scanDeepRunning=true;
+  const sess=getSession();
+  const rvBase=parseFloat(document.querySelector('[id$="-rv"]')?.value)||5;
+  // RVol threshold — Ross uses 5x regular hours, lower pre/after due to thin volume
+  const rvThreshold=sess==='pre'?2:sess==='aft'?1.5:rvBase;
+  // % change threshold — halved pre/after market
+  const minC=sess==='pre'||sess==='aft'?5:10;
+  // Minutes elapsed in today's session (for RVol normalization)
+  const etNow=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const mktOpen=new Date(etNow);
+  mktOpen.setHours(9,30,0,0);
+  const minsElapsed=sess==='mkt'?Math.max(1,(etNow-mktOpen)/60000):390;
+
   for(const sym of getScanSyms()){
     try{
       if(!Q[sym])await fetchQ(sym);
+      const q=Q[sym];if(!q?.price)continue;
+
+      // ── MOMENTUM REMOVAL (Ross's key feature)
+      // If stock no longer passes P1+P2, remove from scanner entirely
+      const p1=q.price>=1&&q.price<=20;
+      const p2=(q.changePct||0)>=minC;
+      if(!p1||!p2){
+        // Remove from scan list if it's lost momentum
+        if(scanSyms.includes(sym)&&!histSyms.includes(sym)){
+          scanSyms=scanSyms.filter(s=>s!==sym);
+          saveScanSyms();
+          delete scanCache[sym];
+        }
+        continue;
+      }
+
       const cached=scanCache[sym]||{};
       const cacheAge=Date.now()-(cached.ts||0);
-      // Cache news/metric for 2 minutes — re-fetch if older
-      if(cacheAge<120000){continue;}
+      if(cacheAge<120000)continue; // 2-min cache
+
       let hasNews=cached.hasNews??false;
+      let p3=cached.p3??null;
       let p4=cached.p4??null;
       let p5=cached.p5??null;
+
+      // ── P3: NEWS CHECK
+      // Finnhub covers major newswires — we check last 48hrs
+      // Note: Ross says news is "preferred not required" — stocks can move without news
       await queueCall(async()=>{
         try{
           const today=new Date().toISOString().split('T')[0];
           const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];
           const r=await fetch(`https://finnhub.io/api/v1/company-news?symbol=${sym}&from=${from}&to=${today}&token=${FHK}`);
-          const news=await r.json();hasNews=Array.isArray(news)&&news.length>0;
+          const news=await r.json();
+          hasNews=Array.isArray(news)&&news.length>0;
+          p3=hasNews; // P3 pass = has news catalyst
         }catch(e){}
       });
+
+      // ── P4 + P5: METRICS
       await queueCall(async()=>{
         try{
           const r=await fetch(`https://finnhub.io/api/v1/stock/metric?symbol=${sym}&metric=all&token=${FHK}`);
           const d=await r.json();
-          const avgV=d.metric?.['10DayAverageTradingVolume']||0; // already in shares
-          const rVol=avgV>0?(Q[sym]?.volume||0)/avgV:null;
-          const rvBase=parseFloat(document.querySelector('[id$="-rv"]')?.value)||5;
-          const rvT=getSession()==='pre'||getSession()==='aft'?rvBase*.4:rvBase;
-          p4=rVol!==null?rVol>=rvT:null;
-          const fv=d.metric?.['float']??null;
-          p5=fv!==null?fv<10:null;
+          const m=d.metric||{};
+
+          // ── P4: RELATIVE VOLUME (properly normalized for time of day)
+          // avgDailyVolume is full-day average, current volume is partial
+          // Normalize: rVol = (currentVol / avgDailyVol) × (390 / minsElapsed)
+          const avgDailyVol=m['10DayAverageTradingVolume']||0;
+          if(avgDailyVol>0){
+            const currentVol=q.volume||0;
+            const normalizedRVol=(currentVol/avgDailyVol)*(390/minsElapsed);
+            p4=normalizedRVol>=rvThreshold;
+            // Store actual value for display
+            scanCache[sym]={...scanCache[sym],rvolValue:normalizedRVol.toFixed(1)};
+          } else {
+            p4=null;
+          }
+
+          // ── P5: FLOAT < 10M SHARES
+          // sharesFloat is true public float (shares outstanding - insider holdings)
+          // This is more accurate than 'float' metric
+          const trueFloat=m['shareFloat']??m['float']??null;
+          if(trueFloat!==null){
+            // Finnhub returns float in millions for some endpoints, shares for others
+            // If value > 1000, assume it's in shares, convert to millions
+            const floatM=trueFloat>1000?trueFloat/1e6:trueFloat;
+            p5=floatM<10;
+            scanCache[sym]={...scanCache[sym],floatValue:floatM.toFixed(1)+'M'};
+          } else {
+            p5=null;
+          }
         }catch(e){}
       });
-      scanCache[sym]={p3:hasNews,p4,p5,hasNews,ts:Date.now()};
+
+      scanCache[sym]={
+        ...scanCache[sym],
+        p3,p4,p5,hasNews,
+        ts:Date.now()
+      };
     }catch(e){}
   }
+
   scanDeepRunning=false;
   const now=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  document.querySelectorAll('[id$="-status"]').forEach(el=>{if(el.closest?.('.widget'))el.textContent=`⚡ Last deep scan: ${now}`;});
+  document.querySelectorAll('[id$="-status"]').forEach(el=>{
+    if(el.closest?.('.widget'))el.textContent=`⚡ Last scan: ${now}`;
+  });
   liveScanUpdate();
 }
 
@@ -1760,53 +1996,142 @@ function extractTickersFromScreeners(){
 }
 
 // Finnhub batch fallback — scans curated universe when TV iframe DOM is blocked
-const SCAN_UNIVERSE=[
-  'SPHL','BNAI','CMND','ACMR','AEHR','BLNK','BTBT','HUT','CLSK','MARA',
-  'RIOT','PLUG','FCEL','NKLA','WKHS','GOEV','NIO','SOFI','HOOD','GME',
-  'AMC','SNDL','CLOV','NOK','BB','CIFR','IREN','WULF','CORZ',
-  'SAVA','AGEN','ARDX','AVXL','AXSM','SENS','PHVS','CXAI','MLGO',
-  'NKGN','GFAI','BTAI','BURU','AEYE','LQDA','BBAI','AIXI','AULT',
-  'CRON','ACB','CGC','TLRY','HEXO','AUVI','DRUG','FAZE',
-  'SOXL','TQQQ','UVXY','SQQQ','TNA','LABU','JDST',
-];
+// ═══════════════════════════════════════════════
+// DYNAMIC UNIVERSE — loads all US stocks from Finnhub on startup
+// Filters to small/mid cap momentum candidates
+// Rotates through entire universe as fast as rate limit allows
+// ═══════════════════════════════════════════════
+let SCAN_UNIVERSE=[];
 let autoScanIdx=0;
+let universeLoaded=false;
 
-async function runFinnhubBatch(){
-  if(!appReady)return;
-  const sess=getSession();
-  const minC=sess==='pre'||sess==='aft'?5:10;
-  // Scan 6 unwatched symbols per run
-  const unwatched=SCAN_UNIVERSE.filter(s=>!getScanSyms().includes(s));
-  if(!unwatched.length)return;
-  const batch=[];
-  for(let i=0;i<6&&i<unwatched.length;i++){
-    batch.push(unwatched[autoScanIdx%unwatched.length]);
-    autoScanIdx++;
-  }
-  for(const sym of batch){
-    await fetchQDirect(sym);
-    const q=Q[sym];if(!q?.price)continue;
-    if(q.price>=1&&q.price<=20&&(q.changePct||0)>=minC){
-      if(!scanSyms.includes(sym)){
-        scanSyms.push(sym);saveScanSyms();
-        newSyms.add(sym);
-        if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
-        showToast(`🎯 Auto-found: ${sym} +${(q.changePct||0).toFixed(1)}% → 5 Pillars`);
-        playPing();liveScanUpdate();
-      }
+// Known high-probability momentum symbols — used immediately while full list loads
+const SEED_UNIVERSE=[
+  'SPHL','BNAI','CMND','ACMR','BLNK','BTBT','HUT','CLSK','MARA','RIOT',
+  'PLUG','FCEL','NIO','SOFI','HOOD','GME','AMC','SNDL','CLOV','NOK',
+  'CIFR','IREN','WULF','CORZ','SAVA','AGEN','ARDX','AVXL','AXSM','SENS',
+  'PHVS','CXAI','MLGO','NKGN','GFAI','BTAI','BURU','AEYE','LQDA','BBAI',
+  'AIXI','AULT','ACB','CGC','TLRY','HEXO','AUVI','DRUG','FAZE','WKHS',
+  'GOEV','NAKD','IDEX','EXPR','AEHR','BB','SOXL','TQQQ','UVXY','LABU',
+  'JDST','SQQQ','TNA','TBLT','AKER','QBTS','RGTI','IONQ','ARQQ','QUBT',
+  'PMAT','ABSI','CENN','MULN','FFIE','NKLA','RIDE','SOLO','XELA','CTRM',
+  'GFAI','GFAIW','IMTX','IMPP','IMPPP','CJET','BKSY','BKKT','SPIR','OPAD',
+];
+
+async function loadFullUniverse(){
+  try{
+    // Fetch all US stock symbols from Finnhub (free endpoint)
+    const r=await fetch(`https://finnhub.io/api/v1/stock/symbol?exchange=US&token=${FHK}`);
+    const symbols=await r.json();
+    if(!Array.isArray(symbols))return;
+
+    // Filter to momentum-prone candidates:
+    // - Common stock only (type='Common Stock')
+    // - Symbol 1-5 chars (exclude long ETF names)
+    // - No dots or special chars (clean tickers only)
+    const filtered=symbols
+      .filter(s=>
+        s.type==='Common Stock'&&
+        /^[A-Z]{1,5}$/.test(s.symbol)&&
+        s.mic&&(s.mic.includes('XNAS')||s.mic.includes('XNYS')||s.mic.includes('XASE')||s.mic.includes('OTCM'))
+      )
+      .map(s=>s.symbol);
+
+    // Shuffle so we don't always scan alphabetically
+    for(let i=filtered.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [filtered[i],filtered[j]]=[filtered[j],filtered[i]];
     }
-    await new Promise(r=>setTimeout(r,300));
+
+    SCAN_UNIVERSE=[...SEED_UNIVERSE,...filtered.filter(s=>!SEED_UNIVERSE.includes(s))];
+    universeLoaded=true;
+    console.log(`✅ Universe loaded: ${SCAN_UNIVERSE.length} symbols`);
+    // Update scanner status
+    document.querySelectorAll('[id$="-status"]').forEach(el=>{
+      if(el.closest?.('.widget'))
+        el.textContent=`⚡ Universe: ${SCAN_UNIVERSE.length} stocks loaded`;
+    });
+  }catch(e){
+    // Fallback to seed list if fetch fails
+    SCAN_UNIVERSE=SEED_UNIVERSE;
+    universeLoaded=true;
+    console.log('Universe fallback: using seed list');
   }
 }
 
-// Run TV extraction every 10s (zero API cost), Finnhub batch every 30s
-setTimeout(()=>{
-  extractTickersFromScreeners();
-  setInterval(extractTickersFromScreeners,5000); // every 5s — zero API cost, TV DOM read
-  // Stagger Finnhub batch 7.5s offset from refreshPrices to prevent simultaneous calls
-  setTimeout(()=>setInterval(runFinnhubBatch,30000),7500); // offset by 7.5s, every 30s
-},30000);
+async function runFinnhubBatch(){
+  if(!appReady||!universeLoaded)return;
+  const sess=getSession();
+  // During market hours be more aggressive — halve threshold pre/after
+  const minC=sess==='pre'||sess==='aft'?5:10;
+  const minP=1,maxP=20;
+
+  // Skip symbols already being watched
+  const unwatched=SCAN_UNIVERSE.filter(s=>!getScanSyms().includes(s));
+  if(!unwatched.length)return;
+
+  // Scan 8 symbols per batch — within rate limit budget
+  const batchSize=8;
+  const batch=[];
+  for(let i=0;i<batchSize&&i<unwatched.length;i++){
+    batch.push(unwatched[autoScanIdx%unwatched.length]);
+    autoScanIdx=(autoScanIdx+1)%unwatched.length;
+  }
+
+  for(const sym of batch){
+    try{
+      await fetchQDirect(sym);
+      const q=Q[sym];if(!q?.price)continue;
+      const p1=q.price>=minP&&q.price<=maxP;
+      const pct=q.changePct||0;
+      const p2=pct>=minC;
+      if(p1&&p2){
+        if(!scanSyms.includes(sym)){
+          scanSyms.push(sym);saveScanSyms();
+          newSyms.add(sym);
+          if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
+          showToast(`🎯 Auto-found: ${sym} +${pct.toFixed(1)}% $${fmtP(q.price)} → 5 Pillars`);
+          playPing();liveScanUpdate();
+        }
+      }
+    }catch(e){}
+    await new Promise(r=>setTimeout(r,250)); // 250ms gap = 4 calls/sec = 240/min max
+  }
+}
+
+// Load full universe 5s after startup, then start scanning
+setTimeout(async()=>{
+  SCAN_UNIVERSE=SEED_UNIVERSE;universeLoaded=true; // use seed immediately
+  runFinnhubBatch(); // first batch right away
+  loadFullUniverse(); // load full list in background
+  setInterval(extractTickersFromScreeners,5000); // TV DOM every 5s (zero API cost)
+  setTimeout(()=>setInterval(runFinnhubBatch,20000),7500); // batch every 20s, offset 7.5s
+},5000);
 // ═══════════════════════════════════════════════
+// ── DAILY RESET AT 3:30 AM ET
+// Clears scanner symbols and cache every morning for a fresh trading day
+function scheduleDailyReset(){
+  const now=new Date();
+  const et=new Date(now.toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const reset=new Date(et);
+  reset.setHours(3,30,0,0);
+  if(et>=reset)reset.setDate(reset.getDate()+1);
+  const msUntil=reset-et;
+  setTimeout(()=>{
+    scanSyms=[];saveScanSyms();
+    Object.keys(scanCache).forEach(k=>delete scanCache[k]);
+    newSyms.clear();
+    widgets.filter(w=>w.type==='scanner').forEach(w=>{
+      const b=document.getElementById('wb-'+w.id);
+      if(b)renderScanner(b);
+    });
+    showToast('🌅 5 Pillars Scanner reset for new trading day');
+    playPing();
+    scheduleDailyReset(); // schedule next day
+  },msUntil);
+}
+scheduleDailyReset();
+
 let currentView='desktop';
 let currentMobileTab=0;
 let currentMobileScreener='gainers';
@@ -2019,6 +2344,7 @@ function toggleClaude(){
   if(claudeOpen){
     if(claudeAPIKey)activateClaudeAPI(false);
     restoreChatMessages();
+
   }
 }
 
