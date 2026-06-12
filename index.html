@@ -508,8 +508,8 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
   </div>
 
   <div id="claudePanel" style="display:none;position:fixed;bottom:140px;right:20px;
-    width:420px;height:560px;background:var(--s1);border:1px solid var(--ac);
-    border-radius:12px;z-index:401;box-shadow:0 8px 40px #00000088;
+    width:420px;height:560px;max-height:calc(100vh - 160px);background:var(--s1);border:1px solid var(--ac);
+    border-radius:12px;z-index:9999;box-shadow:0 8px 40px #00000088;
     flex-direction:column;overflow:hidden">
     <!-- Panel header -->
     <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;
@@ -542,15 +542,6 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
       <div style="font-size:8px;color:var(--dim);margin-top:4px">Get free key at <span style="color:var(--ac2);cursor:pointer" onclick="window.open('https://console.anthropic.com')">console.anthropic.com</span> · <span style="color:var(--ac2);cursor:pointer" onclick="testClaudeKey()">Test connection</span></div>
     </div>
 
-      <div style="font-size:8px;color:var(--dim);margin-bottom:6px">Get free paper trading API keys at <span style="color:var(--ac2);cursor:pointer" onclick="window.open('https://alpaca.markets')">alpaca.markets</span> — no real money needed</div>
-      <div style="display:flex;gap:4px;margin-bottom:4px">
-        <input id="alpaca-key-input" placeholder="API Key ID" style="flex:1;background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:9px;padding:4px 6px;outline:none"/>
-      </div>
-      <div style="display:flex;gap:4px">
-        <input id="alpaca-secret-input" type="password" placeholder="API Secret Key" style="flex:1;background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:9px;padding:4px 6px;outline:none"/>
-        <button onclick="connectAlpacaFromUI()" style="background:var(--gr);border:none;border-radius:4px;color:#000;font-family:'DM Mono',monospace;font-size:9px;font-weight:700;padding:4px 8px;cursor:pointer">Connect</button>
-      </div>
-    </div>
     <div id="claude-messages" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;min-height:0">
       <div style="background:var(--s2);border-radius:8px;padding:10px 12px;border-left:3px solid var(--ac)">
         <div style="font-size:10px;color:var(--ac2);font-weight:700;margin-bottom:4px">Claude</div>
@@ -2283,6 +2274,15 @@ if(Notification.permission==='default')Notification.requestPermission();
 // ═══════════════════════════════════════════════
 // CLAUDE ASSISTANT WIDGET
 // ═══════════════════════════════════════════════
+// Clean up stale Alpaca keys from localStorage
+localStorage.removeItem('alpaca_key');
+localStorage.removeItem('alpaca_secret');
+// Reset chat history if it's corrupted/oversized
+try{
+  const h=JSON.parse(localStorage.getItem('claude_chat_history')||'[]');
+  if(!Array.isArray(h)||h.length>60)localStorage.removeItem('claude_chat_history');
+}catch(e){localStorage.removeItem('claude_chat_history');}
+
 let claudeOpen=false;
 let claudeAPIMode=false;
 let claudeAPIKey=localStorage.getItem('claude_api_key')||'';
