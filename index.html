@@ -2157,8 +2157,14 @@ function showMobileScreener(type,idx){
     defaultScreen:screen,market:'america',showToolbar:true,
     colorTheme:'dark',locale:'en'
   }));
-  document.getElementById('mscr-frame').src=
-    `https://www.tradingview.com/embed-widget/screener/?locale=en#${params}`;
+  const frame=document.getElementById('mscr-frame');
+  if(frame){
+    // Force fresh load by blanking first, then setting new src
+    frame.src='about:blank';
+    setTimeout(()=>{
+      frame.src=`https://www.tradingview.com/embed-widget/screener/?locale=en#${params}`;
+    },50);
+  }
 }
 
 function renderMobileHistory(){
