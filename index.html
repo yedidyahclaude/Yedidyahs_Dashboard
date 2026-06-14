@@ -660,9 +660,6 @@ let curChartSym='';
 let profiles=JSON.parse(localStorage.getItem('sv_profiles')||'[]');
 let activeProfileId=localStorage.getItem('sv_active_profile')||null;
 // Screener cache & timers
-const scrCache={};
-const scrTimers={};
-const SCR_TTL=30; // refresh every 30 seconds
 
 function getWidgets(){
   if(activeProfileId){const p=profiles.find(x=>x.id===activeProfileId);if(p?.widgets)return p.widgets;}
@@ -1076,200 +1073,106 @@ function refreshHistWidgets(){
 // Gainers / Losers / Most Active: refresh every 30s
 // Gap Scanner: pre-market gaps from prev close (uses Yahoo quote data)
 // ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// SCREENER SYSTEM — Yahoo Finance per-type symbol sets
+// Each type has its own curated symbol list → sorted by type
+// ═══════════════════════════════════════════════
 const SCR_LABELS={
-  gainers:'🚀 Top Gainers  <$20',
+  gainers:'🚀 Top Gainers',
   losers:'📉 Top Losers',
   active:'🔥 Most Active',
-  premarket:'🌅 Gap Scanner',
-  gappers:'⚡ Top Gappers  <$20',
-  hod:'📈 HOD Momentum',
-  penny:'💲 Penny Stocks  <$5'
+  premarket:'🌅 Pre-Market Gainers',
+  gappers:'⚡ Pre-Market Gap Ups',
+  hod:'💥 Most Volatile',
+  penny:'💲 Penny Stocks',
 };
 
-
-// ═══════════════════════════════════════════════
-// SCREENERS — TradingView iframes (real market-wide live data)
-// Clicks in the iframe open TV's page — we intercept via window blur event
-// to detect the symbol and load it in the bottom panel + history
-// ═══════════════════════════════════════════════
-const SCR_SCREENS={
-  // Standard widgets — all confirmed valid TV screener IDs
-  gainers:'top_gainers',            // Top % gainers today
-  losers:'biggest_losers',          // Top % losers today
-  active:'most_active',             // Highest volume today (was 'most_capitalized' — wrong)
-  premarket:'pre_market_gainers',   // Pre-market gainers (Essential+)
-  gappers:'pre_market_gap',         // Pre-market gap ups (Essential+)
-  hod:'most_volatile',              // Most volatile = high of day proxy
-  penny:'penny_stocks',             // Penny stocks filter (was 'top_gainers' — wrong)
+// Each type fetches its OWN symbol set — this is what makes them different
+const SCR_SYMS={
+  gainers:['SUNE','CHAI','AGEN','VSME','CIIT','DSY','SPHL','CMND','MARA','RIOT',
+            'BTBT','HUT','CLSK','BNAI','ACMR','AEHR','BLNK','PLTR','COIN','SOFI',
+            'HOOD','GME','AMC','NVAX','SAVA','ARDX','AVXL','AXSM','CRSP','BEAM'],
+  losers:['NVDA','AMD','AAPL','MSFT','META','TSLA','PLTR','COIN','SOFI','HOOD',
+           'MARA','RIOT','GME','AMC','NIO','RIVN','LCID','SNAP','PLUG','FCEL',
+           'NKLA','OPEN','RBLX','BYND','WISH','EXPR','SPCE','WKHS','GOEV','RIDE'],
+  active:['NVDA','AMD','AAPL','MSFT','META','TSLA','SPY','QQQ','SOXL','TQQQ',
+           'GME','AMC','PLTR','COIN','MSTR','SOFI','HOOD','MARA','RIOT','SNAP',
+           'AMZN','GOOGL','NFLX','BABA','NIO','RIVN','F','BAC','T','VZ'],
+  premarket:['SPHL','BNAI','CMND','ACMR','CHAI','VSME','CIIT','DSY','AGEN',
+              'AEHR','GME','AMC','MARA','RIOT','BTBT','HUT','CLSK',
+              'PLUG','FCEL','NKLA','NIO','RIVN','SOFI','HOOD','PLTR'],
+  gappers:['SPHL','CHAI','VSME','CIIT','DSY','AGEN','BNAI','CMND','ACMR','AEHR',
+            'GME','AMC','MARA','RIOT','BTBT','PLUG','FCEL','NKLA','NIO','RIVN',
+            'SOFI','HOOD','PLTR','COIN','BLNK','SAVA','ARDX','NVAX','CRSP','AXSM'],
+  hod:['SPHL','CHAI','VSME','CIIT','DSY','AGEN','BNAI','CMND','ACMR','AEHR',
+        'GME','AMC','MARA','RIOT','PLTR','COIN','SOFI','HOOD','NIO','RIVN',
+        'PLUG','FCEL','BLNK','BTBT','HUT','SAVA','ARDX','AVXL','AXSM','NVAX'],
+  penny:['PLUG','FCEL','NKLA','BTBT','HUT','CLSK','BNAI','CMND','SPHL','ACMR',
+          'AEHR','BLNK','CLOV','NOK','BB','SNDL','IDEX','OGEN','GFAI','BKSY',
+          'SAVA','ARDX','AVXL','BNAI','MARA','RIOT','CIFR','HASH','MIGI','KTTA'],
 };
 
-// ── TV CLICK INTERCEPTION
-// When user clicks a row in TradingView screener, TV opens tradingview.com/symbols/EXCHANGE-SYM/
-// We detect window blur (our window loses focus), wait briefly, then check if a new
-// window was opened by injecting a listener via the iframe's postMessage
-// Fallback: parse the symbol from document.activeElement or last known hover
+// Sort functions per screener type
+const SCR_SORT={
+  gainers:(a,b)=>(b.changePct||0)-(a.changePct||0),
+  losers:(a,b)=>(a.changePct||0)-(b.changePct||0),
+  active:(a,b)=>(b.volume||0)-(a.volume||0),
+  premarket:(a,b)=>(b.changePct||0)-(a.changePct||0),
+  gappers:(a,b)=>Math.abs(b.changePct||0)-Math.abs(a.changePct||0),
+  hod:(a,b)=>Math.abs(b.changePct||0)-Math.abs(a.changePct||0),
+  penny:(a,b)=>(b.changePct||0)-(a.changePct||0),
+};
 
-let tvClickSym='';
-let tvHoverSym='';
-let blurAt=0;
+const scrCache={};
+const scrTimers={};
+const SCR_TTL=30;
 
-// Listen for messages from TV iframe (TV sends postMessage on some interactions)
-window.addEventListener('message',e=>{
-  if(!e.data)return;
-  const d=typeof e.data==='string'?e.data:JSON.stringify(e.data);
-  // TV sometimes sends symbol info in postMessage
-  const symMatch=d.match(/"symbol"\s*:\s*"([A-Z]{1,6})"/);
-  if(symMatch&&symMatch[1]){tvHoverSym=symMatch[1];}
-});
-
-window.addEventListener('blur',()=>{
-  blurAt=Date.now();
-});
-
-window.addEventListener('focus',()=>{
-  const elapsed=Date.now()-blurAt;
-  // If we lost focus for 50ms–4s, user probably clicked a TV row
-  if(elapsed>50&&elapsed<4000&&tvHoverSym){
-    const sym=tvHoverSym;
-    tvHoverSym='';
-    // Small delay to let the new tab open, then intercept
-    setTimeout(()=>{
-      // Try to find and close the TV tab if it opened
-      selectSym(sym);
-    },100);
+async function fetchScreenerData(type){
+  const syms=SCR_SYMS[type]||SCR_SYMS.gainers;
+  const toFetch=syms.filter(s=>!Q[s]||Date.now()-(Q[s]._ts||0)>60000);
+  // Fetch in parallel batches of 5, 300ms apart
+  for(let i=0;i<toFetch.length;i+=5){
+    const batch=toFetch.slice(i,i+5);
+    await Promise.all(batch.map(s=>fetchQDirect(s)));
+    if(i+5<toFetch.length)await new Promise(r=>setTimeout(r,300));
   }
-});
-
-// Pillar screen configs — TV filter params for each pillar
-const PILLAR_SCREENS={
-  p1screen:{
-    label:'P1+P2+P4 · Top Gainers + Unusual Volume',
-    color:'#7c6aff',icon:'🎯',
-    hint:'Top gaining stocks with unusual volume — P1, P2 and P4 combined',
-    screen:'unusual_volume',   // confirmed: /market-movers-unusual-volume/
-    type:'screener'
-  },
-  p3screen:{
-    label:'P3 · News Catalyst Feed',
-    color:'#f59e0b',icon:'📰',
-    hint:'Breaking news — see a catalyst, type the ticker below to add to 5 Pillars',
-    screen:'timeline',
-    type:'news_timeline'
-  },
-  p5screen:{
-    label:'P5 · Small Float — Penny Stocks',
-    color:'#a78bfa',icon:'💎',
-    hint:'Penny stocks with momentum — small float, low price, high % move',
-    screen:'small_cap',        // confirmed: /market-movers-small-cap/ — actual small float stocks
-    type:'screener'
-  },
-};
-
-function renderPillarScreener(body,type){
-  const cfg=PILLAR_SCREENS[type];
-  if(!cfg){renderScreener(body,type);return;}
-  body.style.padding='0';
-  body.style.overflow='hidden';
-  body.style.display='flex';
-  body.style.flexDirection='column';
-  const uid='scr'+type+body.id.replace(/\W/g,'');
-
-  // P3 uses TradingView news timeline widget instead of screener
-  if(cfg.type==='news_timeline'){
-    const newsParams=encodeURIComponent(JSON.stringify({
-      width:'100%',height:'100%',colorTheme:'dark',
-      locale:'en',importanceFilter:'-1,0,1,2,3',
-      countryFilter:'us'
-    }));
-    body.innerHTML=`
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${cfg.color}15;border-bottom:1px solid ${cfg.color}30;flex-shrink:0">
-        <span style="font-size:14px">${cfg.icon}</span>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:10px;font-weight:700;color:${cfg.color};letter-spacing:.04em">${cfg.label}</div>
-          <div style="font-size:8px;color:var(--dim);margin-top:1px">${cfg.hint}</div>
-        </div>
-      </div>
-      <div style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0">
-        <iframe style="flex:1;width:100%;border:none;display:block;min-height:0" scrolling="no" allowtransparency="true" frameborder="0"
-          src="https://www.tradingview.com/embed-widget/timeline/?locale=en#${newsParams}"></iframe>
-        <div style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid ${cfg.color}30;flex-shrink:0;position:relative">
-          <span style="font-size:9px;color:${cfg.color};flex-shrink:0;font-weight:700">${cfg.icon}</span>
-          <input id="${uid}inp" placeholder="See news on a stock? Type ticker → adds to 5 Pillars"
-            maxlength="10" autocomplete="off" spellcheck="false"
-            style="flex:1;background:var(--s3);border:1px solid ${cfg.color}50;border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:4px 8px;outline:none;caret-color:${cfg.color}"
-            oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'');scrShowSuggest('${uid}',this.value)"
-            onkeydown="if(event.key==='Enter'){scrBarGo('${uid}');} if(event.key==='Escape'){this.blur();}"/>
-          <button onclick="scrBarGo('${uid}')" style="background:${cfg.color};border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer;flex-shrink:0">↵</button>
-          <button title="Paste ticker from clipboard" onclick="scrPaste('${uid}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-size:10px;padding:4px 6px;cursor:pointer;flex-shrink:0">📋</button>
-        </div>
-      </div>`;
-    return;
-  }
-
-  // P1 and P5 use standard screener
-  const scrCfg=JSON.stringify({
-    width:'100%',height:'100%',defaultColumn:'overview',
-    defaultScreen:cfg.screen,showToolbar:true,
-    locale:'en',market:'us',colorTheme:'dark'
-  });
-  body.innerHTML=`
-    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${cfg.color}15;border-bottom:1px solid ${cfg.color}30;flex-shrink:0">
-      <span style="font-size:14px">${cfg.icon}</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:10px;font-weight:700;color:${cfg.color};letter-spacing:.04em">${cfg.label}</div>
-        <div style="font-size:8px;color:var(--dim);margin-top:1px">${cfg.hint}</div>
-      </div>
-    </div>
-    <div class="scr-wrap" id="${uid}" style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0">
-      <div style="flex:1;min-height:0;overflow:hidden">
-        <div class="tradingview-widget-container" style="height:100%">
-          <div class="tradingview-widget-container__widget" style="height:100%"></div>
-          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>${scrCfg}<\/script>
-        </div>
-      </div>
-      <div class="scr-overlay" onclick="scrFocusInput('${uid}')"></div>
-      <div class="scr-bar" style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid ${cfg.color}30;flex-shrink:0;position:relative">
-        <span style="font-size:9px;color:${cfg.color};flex-shrink:0;font-weight:700">${cfg.icon}</span>
-        <input class="scr-bar-inp" id="${uid}inp" placeholder="Type ticker → adds to 5 Pillars scanner"
-          maxlength="10" autocomplete="off" spellcheck="false"
-          style="flex:1;background:var(--s3);border:1px solid ${cfg.color}50;border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:4px 8px;outline:none;caret-color:${cfg.color}"
-          oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'');scrShowSuggest('${uid}',this.value)"
-          onkeydown="if(event.key==='Enter'){scrBarGo('${uid}');} if(event.key==='Escape'){this.blur();document.getElementById('${uid}sug')?.remove();} if(event.key==='Tab'){event.preventDefault();scrAcceptFirst('${uid}');}"/>
-        <button onclick="scrBarGo('${uid}')" style="background:${cfg.color};border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer;flex-shrink:0">↵</button>
-        <button onclick="scrPaste('${uid}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-size:10px;padding:4px 6px;cursor:pointer;flex-shrink:0">📋</button>
-      </div>
-    </div>`;
-  setTimeout(()=>{
-    const wgt=document.getElementById(uid+'wgt');
-    if(!wgt)return;
-    const s=document.createElement('script');
-    s.type='text/javascript';s.async=true;
-    s.src='https://s3.tradingview.com/external-embedding/embed-widget-screener.js';
-    s.text=JSON.stringify(scrCfg);
-    wgt.appendChild(s);
-  },80);
+  const rows=syms
+    .filter(s=>Q[s]?.price)
+    .map(s=>({symbol:s,price:Q[s].price,changePct:Q[s].changePct||0,volume:Q[s].volume||0,name:Q[s].name||s}))
+    .sort(SCR_SORT[type]||SCR_SORT.gainers);
+  if(rows.length)scrCache[type]={rows,ts:Date.now()};
 }
+
+// Direct fetch without queue — for screeners
+async function fetchQDirect(sym){
+  if(Q[sym]?._ts&&Date.now()-Q[sym]._ts<60000)return;
+  try{
+    const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FHK}`);
+    const q=await r.json();
+    if(!q.c)return;
+    Q[sym]={...Q[sym],symbol:sym,price:q.c,prevClose:q.pc,
+      change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,
+      volume:q.v||0,name:Q[sym]?.name||sym,_ts:Date.now()};
+  }catch(e){}
+}
+
 function renderScreener(body,type){
   body.style.cssText='padding:0;overflow:hidden;display:flex;flex-direction:column';
-  const screen=SCR_SCREENS[type]||'top_gainers';
   const uid='scr'+type+body.id.replace(/\W/g,'');
-  const cfg=JSON.stringify({
-    width:'100%',height:'100%',
-    defaultColumn:'overview',
-    defaultScreen:screen,
-    showToolbar:true,
-    locale:'en',
-    market:'us',
-    colorTheme:'dark'
-  });
-  body.innerHTML=`<div class="scr-wrap" id="${uid}" style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0">
-    <div style="flex:1;min-height:0;overflow:hidden">
-      <div class="tradingview-widget-container" style="height:100%">
-        <div class="tradingview-widget-container__widget" style="height:100%"></div>
-        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>${cfg}<\/script>
-      </div>
+  body.innerHTML=`
+    <div class="scr-hdr">
+      <span class="scr-badge"><span class="scr-dot"></span>${SCR_LABELS[type]||type}</span>
+      <span class="scr-timer" id="${uid}t">loading…</span>
     </div>
-    <div class="scr-overlay" onclick="scrFocusInput('${uid}')"></div>
+    <div class="scr-cols">
+      <span class="scr-ch">TICKER</span>
+      <span class="scr-ch r">PRICE</span>
+      <span class="scr-ch r">CHG%</span>
+      <span class="scr-ch r">VOL</span>
+    </div>
+    <div class="scr-rows" id="${uid}r" style="flex:1;overflow-y:auto;min-height:0">
+      <div class="scr-empty"><span class="scr-spin"></span>Fetching live data…</div>
+    </div>
     <div class="scr-bar" style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid var(--b2);flex-shrink:0;position:relative">
       <span style="font-size:9px;color:var(--dim);flex-shrink:0">↳ OPEN:</span>
       <input class="scr-bar-inp" id="${uid}inp" placeholder="type ticker → Enter to open chart"
@@ -1279,9 +1182,166 @@ function renderScreener(body,type){
         onkeydown="if(event.key==='Enter'){scrBarGo('${uid}');} if(event.key==='Escape'){this.blur();document.getElementById('${uid}sug')?.remove();} if(event.key==='Tab'){event.preventDefault();scrAcceptFirst('${uid}');}"/>
       <button onclick="scrBarGo('${uid}')" style="background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer;flex-shrink:0">↵</button>
       <button onclick="scrPaste('${uid}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-size:10px;padding:4px 6px;cursor:pointer;flex-shrink:0">📋</button>
-    </div>
-  </div>`;
+    </div>`;
+  loadAndRenderScr(type,uid);
+  startScrTimer(type,uid);
 }
+
+async function loadAndRenderScr(type,uid){
+  const tmr=document.getElementById(uid+'t');
+  if(tmr)tmr.textContent='updating…';
+  if(!scrCache[type]||Date.now()-scrCache[type].ts>SCR_TTL*1000)
+    await fetchScreenerData(type);
+  paintScrRows(type,uid);
+}
+
+function paintScrRows(type,uid){
+  const tbody=document.getElementById(uid+'r');if(!tbody)return;
+  const data=scrCache[type];
+  if(!data?.rows?.length){
+    tbody.innerHTML='<div class="scr-empty"><span class="scr-spin"></span>Fetching…<br><span style="font-size:8px;color:var(--dim)">Retrying in 10s</span></div>';
+    return;
+  }
+  tbody.innerHTML=data.rows.map(q=>{
+    const u=(q.changePct||0)>=0;
+    return `<div class="scr-row" onclick="selectSym('${q.symbol}')">
+      <div><div class="scr-sym">${q.symbol}</div><div class="scr-name">${(q.name||q.symbol).slice(0,18)}</div></div>
+      <div class="scr-px">$${fmtP(q.price)}</div>
+      <div class="scr-chg ${u?'up':'dn'}">${u?'+':''}${(q.changePct||0).toFixed(2)}%</div>
+      <div class="scr-vol">${fmtV(q.volume||0)}</div>
+    </div>`;
+  }).join('');
+  const tmr=document.getElementById(uid+'t');
+  if(tmr)tmr.textContent=`↺ ${SCR_TTL}s`;
+}
+
+function startScrTimer(type,uid){
+  if(scrTimers[uid])clearInterval(scrTimers[uid]);
+  let secs=SCR_TTL;
+  scrTimers[uid]=setInterval(async()=>{
+    secs--;
+    const el=document.getElementById(uid+'t');
+    if(!el){clearInterval(scrTimers[uid]);delete scrTimers[uid];return;}
+    if(secs<=0){secs=SCR_TTL;scrCache[type]=null;await loadAndRenderScr(type,uid);}
+    else el.textContent=`↺ ${secs}s`;
+  },1000);
+}
+
+// Pillar screeners use same engine with custom label/color
+const PILLAR_CFG={
+  p1screen:{label:'🎯 P1+P2+P4 · Unusual Volume Gainers',color:'#7c6aff',
+    hint:'Stocks $1-$20 with high % gain and unusual volume',
+    syms:['SUNE','CHAI','AGEN','VSME','CIIT','DSY','SPHL','CMND','MARA','RIOT',
+          'BTBT','HUT','CLSK','BNAI','ACMR','AEHR','BLNK','SAVA','ARDX','NVAX',
+          'AVXL','AXSM','CRSP','BEAM','PLUG','FCEL','GME','AMC','SOFI','HOOD'],
+    sort:(a,b)=>(b.changePct||0)-(a.changePct||0),
+    filter:q=>q.price>=1&&q.price<=20&&(q.changePct||0)>=5},
+  p3screen:{label:'📰 P3 · News Catalyst Feed',color:'#f59e0b',
+    hint:'Breaking news — see a stock moving, type ticker below',type:'news'},
+  p5screen:{label:'💎 P5 · Small Float Penny Stocks',color:'#a78bfa',
+    hint:'Low price small cap stocks with momentum',
+    syms:['PLUG','FCEL','NKLA','BTBT','HUT','CLSK','BNAI','CMND','SPHL','ACMR',
+          'AEHR','BLNK','CLOV','NOK','SNDL','IDEX','OGEN','GFAI','SAVA','ARDX',
+          'AVXL','BNAI','CIFR','HASH','MIGI','KTTA','AGEN','VSME','CIIT','DSY'],
+    sort:(a,b)=>(b.changePct||0)-(a.changePct||0),
+    filter:q=>q.price>=0.5&&q.price<=10},
+};
+
+function renderPillarScreener(body,type){
+  const cfg=PILLAR_CFG[type];
+  if(!cfg){renderScreener(body,type);return;}
+  body.style.cssText='padding:0;overflow:hidden;display:flex;flex-direction:column';
+
+  if(cfg.type==='news'){
+    // P3: TradingView news timeline widget
+    const newsParams=encodeURIComponent(JSON.stringify({
+      width:'100%',height:'100%',colorTheme:'dark',locale:'en',
+      importanceFilter:'-1,0,1,2,3',countryFilter:'us'
+    }));
+    const uid='scr'+type+body.id.replace(/\W/g,'');
+    body.innerHTML=`
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${cfg.color}15;border-bottom:1px solid ${cfg.color}30;flex-shrink:0">
+        <div style="flex:1"><div style="font-size:10px;font-weight:700;color:${cfg.color}">${cfg.label}</div>
+        <div style="font-size:8px;color:var(--dim);margin-top:1px">${cfg.hint}</div></div>
+      </div>
+      <iframe style="flex:1;width:100%;border:none;min-height:0"
+        src="https://www.tradingview.com/embed-widget/timeline/?locale=en#${newsParams}"></iframe>
+      <div style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid ${cfg.color}30;flex-shrink:0;position:relative">
+        <span style="font-size:9px;color:${cfg.color};font-weight:700;flex-shrink:0">📰</span>
+        <input id="${uid}inp" placeholder="See news on a stock? Type ticker here → adds to 5 Pillars"
+          maxlength="10" autocomplete="off" spellcheck="false"
+          style="flex:1;background:var(--s3);border:1px solid ${cfg.color}50;border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:4px 8px;outline:none"
+          oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'')"
+          onkeydown="if(event.key==='Enter'){scrBarGo('${uid}');}"/>
+        <button onclick="scrBarGo('${uid}')" style="background:${cfg.color};border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer">↵</button>
+        <button onclick="scrPaste('${uid}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-size:10px;padding:4px 6px;cursor:pointer">📋</button>
+      </div>`;
+    return;
+  }
+
+  // P1 and P5: custom screener with own symbol set
+  const uid='scr'+type+body.id.replace(/\W/g,'');
+  body.innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${cfg.color}15;border-bottom:1px solid ${cfg.color}30;flex-shrink:0">
+      <div style="flex:1"><div style="font-size:10px;font-weight:700;color:${cfg.color}">${cfg.label}</div>
+      <div style="font-size:8px;color:var(--dim);margin-top:1px">${cfg.hint}</div></div>
+      <span class="scr-timer" id="${uid}t" style="font-size:8px;color:var(--dim)">loading…</span>
+    </div>
+    <div class="scr-cols">
+      <span class="scr-ch">TICKER</span>
+      <span class="scr-ch r">PRICE</span>
+      <span class="scr-ch r">CHG%</span>
+      <span class="scr-ch r">VOL</span>
+    </div>
+    <div class="scr-rows" id="${uid}r" style="flex:1;overflow-y:auto;min-height:0">
+      <div class="scr-empty"><span class="scr-spin"></span>Fetching live data…</div>
+    </div>
+    <div class="scr-bar" style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid ${cfg.color}30;flex-shrink:0;position:relative">
+      <span style="font-size:9px;color:${cfg.color};font-weight:700;flex-shrink:0">🎯</span>
+      <input class="scr-bar-inp" id="${uid}inp" placeholder="Type ticker → adds to 5 Pillars scanner"
+        maxlength="10" autocomplete="off" spellcheck="false"
+        style="flex:1;background:var(--s3);border:1px solid ${cfg.color}50;border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:4px 8px;outline:none;caret-color:${cfg.color}"
+        oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'');scrShowSuggest('${uid}',this.value)"
+        onkeydown="if(event.key==='Enter'){scrBarGo('${uid}');} if(event.key==='Escape'){this.blur();} if(event.key==='Tab'){event.preventDefault();scrAcceptFirst('${uid}');}"/>
+      <button onclick="scrBarGo('${uid}')" style="background:${cfg.color};border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer">↵</button>
+      <button onclick="scrPaste('${uid}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-size:10px;padding:4px 6px;cursor:pointer">📋</button>
+    </div>`;
+  loadPillarScr(type,uid,cfg);
+  startScrTimer('pillar_'+type,uid);
+}
+
+async function loadPillarScr(type,uid,cfg){
+  const tmr=document.getElementById(uid+'t');
+  if(tmr)tmr.textContent='updating…';
+  const cacheKey='pillar_'+type;
+  if(!scrCache[cacheKey]||Date.now()-scrCache[cacheKey].ts>SCR_TTL*1000){
+    const syms=cfg.syms;
+    const toFetch=syms.filter(s=>!Q[s]||Date.now()-(Q[s]._ts||0)>60000);
+    for(let i=0;i<toFetch.length;i+=5){
+      await Promise.all(toFetch.slice(i,i+5).map(s=>fetchQDirect(s)));
+      if(i+5<toFetch.length)await new Promise(r=>setTimeout(r,300));
+    }
+    const rows=syms
+      .filter(s=>Q[s]?.price&&(!cfg.filter||cfg.filter(Q[s])))
+      .map(s=>({symbol:s,price:Q[s].price,changePct:Q[s].changePct||0,volume:Q[s].volume||0,name:Q[s].name||s}))
+      .sort(cfg.sort||(()=>0));
+    scrCache[cacheKey]={rows,ts:Date.now()};
+  }
+  const tbody=document.getElementById(uid+'r');if(!tbody)return;
+  const rows=scrCache[cacheKey]?.rows||[];
+  if(!rows.length){tbody.innerHTML='<div class="scr-empty">No stocks matching criteria yet…<br><span style="font-size:8px;color:var(--dim)">Retrying in 30s</span></div>';return;}
+  tbody.innerHTML=rows.map(q=>{
+    const u=(q.changePct||0)>=0;
+    return `<div class="scr-row" onclick="selectSym('${q.symbol}')">
+      <div><div class="scr-sym">${q.symbol}</div><div class="scr-name">${(q.name||q.symbol).slice(0,18)}</div></div>
+      <div class="scr-px">$${fmtP(q.price)}</div>
+      <div class="scr-chg ${u?'up':'dn'}">${u?'+':''}${(q.changePct||0).toFixed(2)}%</div>
+      <div class="scr-vol">${fmtV(q.volume||0)}</div>
+    </div>`;
+  }).join('');
+  if(tmr)tmr.textContent=`↺ ${SCR_TTL}s`;
+}
+
 
 function scrFocusInput(uid){
   const inp=document.getElementById(uid+'inp');
