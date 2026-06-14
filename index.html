@@ -434,7 +434,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
       </div>
       <!-- TV iframe screener — full width -->
       <div style="flex:1;position:relative;overflow:hidden;display:flex;flex-direction:column">
-        <iframe id="mscr-frame" scrolling="no" allowtransparency="true" frameborder="0"
+        <div id="mscr-frame" style="flex:1;width:100%;min-height:0;overflow:hidden"></div>
           style="flex:1;width:100%;border:none;display:block"></iframe>
         <!-- Input bar to open chart -->
         <div style="display:flex;gap:6px;padding:8px 10px;background:var(--s1);border-top:2px solid var(--ac);flex-shrink:0">
@@ -1206,12 +1206,12 @@ function renderPillarScreener(body,type){
     return;
   }
 
-  // P1 and P5 use standard screener
-  const params=encodeURIComponent(JSON.stringify({
+  // P1 and P5 use standard screener — official TV script method
+  const scrCfg={
     width:'100%',height:'100%',defaultColumn:'overview',
-    defaultScreen:cfg.screen,market:'america',showToolbar:true,
-    colorTheme:'dark',locale:'en'
-  }));
+    defaultScreen:cfg.screen,showToolbar:true,
+    locale:'en',market:'us',colorTheme:'dark'
+  };
   body.innerHTML=`
     <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${cfg.color}15;border-bottom:1px solid ${cfg.color}30;flex-shrink:0">
       <span style="font-size:14px">${cfg.icon}</span>
@@ -1221,8 +1221,9 @@ function renderPillarScreener(body,type){
       </div>
     </div>
     <div class="scr-wrap" id="${uid}" style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0">
-      <iframe class="scr-iframe" id="${uid}fr" scrolling="no" allowtransparency="true" frameborder="0"
-        src="https://www.tradingview.com/embed-widget/screener/?locale=en#${params}"></iframe>
+      <div class="tradingview-widget-container" style="flex:1;min-height:0;overflow:hidden">
+        <div id="${uid}wgt" style="height:100%;width:100%"></div>
+      </div>
       <div class="scr-overlay" onclick="scrFocusInput('${uid}')"></div>
       <div class="scr-bar" style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid ${cfg.color}30;flex-shrink:0;position:relative">
         <span style="font-size:9px;color:${cfg.color};flex-shrink:0;font-weight:700">${cfg.icon}</span>
@@ -1232,21 +1233,36 @@ function renderPillarScreener(body,type){
           oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'');scrShowSuggest('${uid}',this.value)"
           onkeydown="if(event.key==='Enter'){scrBarGo('${uid}');} if(event.key==='Escape'){this.blur();document.getElementById('${uid}sug')?.remove();} if(event.key==='Tab'){event.preventDefault();scrAcceptFirst('${uid}');}"/>
         <button onclick="scrBarGo('${uid}')" style="background:${cfg.color};border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer;flex-shrink:0">↵</button>
-        <button title="Paste from clipboard" onclick="scrPaste('${uid}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-size:10px;padding:4px 6px;cursor:pointer;flex-shrink:0">📋</button>
+        <button onclick="scrPaste('${uid}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-size:10px;padding:4px 6px;cursor:pointer;flex-shrink:0">📋</button>
       </div>
     </div>`;
+  setTimeout(()=>{
+    const wgt=document.getElementById(uid+'wgt');
+    if(!wgt)return;
+    const s=document.createElement('script');
+    s.type='text/javascript';s.async=true;
+    s.src='https://s3.tradingview.com/external-embedding/embed-widget-screener.js';
+    s.text=JSON.stringify(scrCfg);
+    wgt.appendChild(s);
+  },80);
 }
 function renderScreener(body,type){
-  body.style.padding='0';
-  const params=encodeURIComponent(JSON.stringify({
-    width:'100%',height:'100%',defaultColumn:'overview',
-    defaultScreen:screen,market:'america',showToolbar:true,
-    colorTheme:'dark',locale:'en'
-  }));
+  body.style.cssText='padding:0;overflow:hidden;display:flex;flex-direction:column';
+  const screen=SCR_SCREENS[type]||'top_gainers';
   const uid='scr'+type+body.id.replace(/\W/g,'');
+  const cfg={
+    width:'100%',height:'100%',
+    defaultColumn:'overview',
+    defaultScreen:screen,
+    showToolbar:true,
+    locale:'en',
+    market:'us',
+    colorTheme:'dark'
+  };
   body.innerHTML=`<div class="scr-wrap" id="${uid}" style="position:relative;flex:1;display:flex;flex-direction:column;min-height:0">
-    <iframe class="scr-iframe" id="${uid}fr" scrolling="no" allowtransparency="true" frameborder="0"
-      src="https://www.tradingview.com/embed-widget/screener/?locale=en#${params}"></iframe>
+    <div class="tradingview-widget-container" style="flex:1;min-height:0;overflow:hidden">
+      <div id="${uid}wgt" style="height:100%;width:100%"></div>
+    </div>
     <div class="scr-overlay" onclick="scrFocusInput('${uid}')"></div>
     <div class="scr-bar" style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid var(--b2);flex-shrink:0;position:relative">
       <span style="font-size:9px;color:var(--dim);flex-shrink:0">↳ OPEN:</span>
@@ -1255,10 +1271,21 @@ function renderScreener(body,type){
         style="flex:1;background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:4px 8px;outline:none;caret-color:var(--ac)"
         oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'');scrShowSuggest('${uid}',this.value)"
         onkeydown="if(event.key==='Enter'){scrBarGo('${uid}');} if(event.key==='Escape'){this.blur();document.getElementById('${uid}sug')?.remove();} if(event.key==='Tab'){event.preventDefault();scrAcceptFirst('${uid}');}"/>
-      <button class="scr-bar-btn" onclick="scrBarGo('${uid}')" style="background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer;flex-shrink:0">↵</button>
-      <button title="Paste from clipboard" onclick="scrPaste('${uid}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-size:10px;padding:4px 6px;cursor:pointer;flex-shrink:0">📋</button>
+      <button onclick="scrBarGo('${uid}')" style="background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer;flex-shrink:0">↵</button>
+      <button onclick="scrPaste('${uid}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-size:10px;padding:4px 6px;cursor:pointer;flex-shrink:0">📋</button>
     </div>
   </div>`;
+  // Use official TV script method — correct way to set defaultScreen
+  setTimeout(()=>{
+    const wgt=document.getElementById(uid+'wgt');
+    if(!wgt)return;
+    const s=document.createElement('script');
+    s.type='text/javascript';
+    s.async=true;
+    s.src='https://s3.tradingview.com/external-embedding/embed-widget-screener.js';
+    s.text=JSON.stringify(cfg);
+    wgt.appendChild(s);
+  },80);
 }
 
 function scrFocusInput(uid){
@@ -2152,19 +2179,25 @@ function showMobileScreener(type,idx){
   currentMobileScreener=type;currentMobileScreenerIdx=idx;
   for(let i=0;i<5;i++)document.getElementById('msb'+i)?.classList.toggle('active',i===idx);
   const screen=SCR_SCREENS[type]||'top_gainers';
-  const params=encodeURIComponent(JSON.stringify({
-    width:'100%',height:'100%',defaultColumn:'overview',
-    defaultScreen:screen,market:'america',showToolbar:true,
-    colorTheme:'dark',locale:'en'
-  }));
-  const frame=document.getElementById('mscr-frame');
-  if(frame){
-    // Force fresh load by blanking first, then setting new src
-    frame.src='about:blank';
-    setTimeout(()=>{
-      frame.src=`https://www.tradingview.com/embed-widget/screener/?locale=en#${params}`;
-    },50);
-  }
+  const container=document.getElementById('mscr-frame');
+  if(!container)return;
+  // Clear and rebuild with official TV script method
+  container.innerHTML='<div id="mscr-wgt" style="height:100%;width:100%"></div>';
+  setTimeout(()=>{
+    const wgt=document.getElementById('mscr-wgt');
+    if(!wgt)return;
+    const s=document.createElement('script');
+    s.type='text/javascript';s.async=true;
+    s.src='https://s3.tradingview.com/external-embedding/embed-widget-screener.js';
+    s.text=JSON.stringify({
+      width:'100%',height:'100%',
+      defaultColumn:'overview',
+      defaultScreen:screen,
+      showToolbar:true,locale:'en',
+      market:'us',colorTheme:'dark'
+    });
+    wgt.appendChild(s);
+  },80);
 }
 
 function renderMobileHistory(){
