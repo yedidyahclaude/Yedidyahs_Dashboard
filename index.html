@@ -1156,48 +1156,25 @@ async function fetchQDirect(sym){
   }catch(e){}
 }
 
-// TV screener screen IDs — verified from tradingview.com/markets/stocks-usa/market-movers-*/
-const SCR_SCREENS={
-  gainers:'top_gainers',
-  losers:'biggest_losers',
-  active:'most_active',
-  premarket:'pre_market_gainers',
-  gappers:'pre_market_gap',
-  hod:'most_volatile',
-  penny:'penny_stocks',
+// TV market-movers URLs — confirmed working, each shows different live data
+const SCR_URLS={
+  gainers:'https://www.tradingview.com/markets/stocks-usa/market-movers-gainers/',
+  losers:'https://www.tradingview.com/markets/stocks-usa/market-movers-losers/',
+  active:'https://www.tradingview.com/markets/stocks-usa/market-movers-active/',
+  premarket:'https://www.tradingview.com/markets/stocks-usa/market-movers-pre-market-gainers/',
+  gappers:'https://www.tradingview.com/markets/stocks-usa/market-movers-pre-market-gappers/',
+  hod:'https://www.tradingview.com/markets/stocks-usa/market-movers-most-volatile/',
+  penny:'https://www.tradingview.com/markets/stocks-usa/market-movers-penny-stocks/',
+  unusual_volume:'https://www.tradingview.com/markets/stocks-usa/market-movers-unusual-volume/',
+  small_cap:'https://www.tradingview.com/markets/stocks-usa/market-movers-small-cap/',
 };
-
-// Build a self-contained HTML page for the TV widget — loaded into an iframe
-// The script tag executes correctly because it's in a real HTML document
-function buildTVScreenerHTML(defaultScreen){
-  const cfg=JSON.stringify({
-    width:'100%',height:'100%',
-    defaultColumn:'overview',
-    defaultScreen:defaultScreen,
-    showToolbar:true,
-    locale:'en',
-    market:'us',
-    colorTheme:'dark'
-  });
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
-<style>*{margin:0;padding:0;box-sizing:border-box}html,body{height:100%;overflow:hidden}</style>
-</head><body>
-<div class="tradingview-widget-container" style="height:100%;width:100%">
-  <div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>${cfg}</script>
-</div>
-</body></html>`;
-}
 
 function renderScreener(body,type){
   body.style.cssText='padding:0;overflow:hidden;display:flex;flex-direction:column';
-  const screen=SCR_SCREENS[type]||'top_gainers';
+  const url=SCR_URLS[type]||SCR_URLS.gainers;
   const uid='scr'+type+body.id.replace(/\W/g,'');
-  const html=buildTVScreenerHTML(screen);
-  const blob=new Blob([html],{type:'text/html'});
-  const blobUrl=URL.createObjectURL(blob);
   body.innerHTML=`
-    <iframe id="${uid}fr" src="${blobUrl}" style="flex:1;width:100%;border:none;min-height:0" allowfullscreen></iframe>
+    <iframe id="${uid}fr" src="${url}" style="flex:1;width:100%;border:none;min-height:0"></iframe>
     <div class="scr-bar" style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid var(--b2);flex-shrink:0;position:relative">
       <span style="font-size:9px;color:var(--dim);flex-shrink:0">↳ OPEN:</span>
       <input class="scr-bar-inp" id="${uid}inp" placeholder="type ticker → Enter to open chart"
@@ -1302,18 +1279,15 @@ function renderPillarScreener(body,type){
     return;
   }
 
-  // P1 and P5: TV screener blob iframe with appropriate screen
+  // P1 and P5: direct TV market-movers URL
   const uid='scr'+type+body.id.replace(/\W/g,'');
-  const tvScreen=type==='p1screen'?'unusual_volume':'penny_stocks';
-  const html=buildTVScreenerHTML(tvScreen);
-  const blob=new Blob([html],{type:'text/html'});
-  const blobUrl=URL.createObjectURL(blob);
+  const tvUrl=type==='p1screen'?SCR_URLS.unusual_volume:SCR_URLS.small_cap;
   body.innerHTML=`
     <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${cfg.color}15;border-bottom:1px solid ${cfg.color}30;flex-shrink:0">
       <div style="flex:1"><div style="font-size:10px;font-weight:700;color:${cfg.color}">${cfg.label}</div>
       <div style="font-size:8px;color:var(--dim);margin-top:1px">${cfg.hint}</div></div>
     </div>
-    <iframe src="${blobUrl}" style="flex:1;width:100%;border:none;min-height:0" allowfullscreen></iframe>
+    <iframe src="${tvUrl}" style="flex:1;width:100%;border:none;min-height:0"></iframe>
     <div class="scr-bar" style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid ${cfg.color}30;flex-shrink:0;position:relative">
       <span style="font-size:9px;color:${cfg.color};font-weight:700;flex-shrink:0">${cfg.label.split('·')[0].trim()}</span>
       <input class="scr-bar-inp" id="${uid}inp" placeholder="Type ticker → adds to 5 Pillars scanner"
@@ -2249,16 +2223,10 @@ function showMobileTab(idx){
 function showMobileScreener(type,idx){
   currentMobileScreener=type;currentMobileScreenerIdx=idx;
   for(let i=0;i<5;i++)document.getElementById('msb'+i)?.classList.toggle('active',i===idx);
-  const screen=SCR_SCREENS[type]||'top_gainers';
+  const url=SCR_URLS[type]||SCR_URLS.gainers;
   const container=document.getElementById('mscr-frame');
   if(!container)return;
-  // Revoke previous blob URL to free memory
-  if(container._blobUrl){URL.revokeObjectURL(container._blobUrl);}
-  const html=buildTVScreenerHTML(screen);
-  const blob=new Blob([html],{type:'text/html'});
-  const blobUrl=URL.createObjectURL(blob);
-  container._blobUrl=blobUrl;
-  container.innerHTML=`<iframe src="${blobUrl}" style="width:100%;height:100%;border:none;display:block"></iframe>`;
+  container.innerHTML=`<iframe src="${url}" style="width:100%;height:100%;border:none;display:block"></iframe>`;
 }
 
 function renderMobileHistory(){
