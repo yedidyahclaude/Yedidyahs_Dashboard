@@ -1156,23 +1156,48 @@ async function fetchQDirect(sym){
   }catch(e){}
 }
 
+// TV screener screen IDs — verified from tradingview.com/markets/stocks-usa/market-movers-*/
+const SCR_SCREENS={
+  gainers:'top_gainers',
+  losers:'biggest_losers',
+  active:'most_active',
+  premarket:'pre_market_gainers',
+  gappers:'pre_market_gap',
+  hod:'most_volatile',
+  penny:'penny_stocks',
+};
+
+// Build a self-contained HTML page for the TV widget — loaded into an iframe
+// The script tag executes correctly because it's in a real HTML document
+function buildTVScreenerHTML(defaultScreen){
+  const cfg=JSON.stringify({
+    width:'100%',height:'100%',
+    defaultColumn:'overview',
+    defaultScreen:defaultScreen,
+    showToolbar:true,
+    locale:'en',
+    market:'us',
+    colorTheme:'dark'
+  });
+  return `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>*{margin:0;padding:0;box-sizing:border-box}html,body{height:100%;overflow:hidden}</style>
+</head><body>
+<div class="tradingview-widget-container" style="height:100%;width:100%">
+  <div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>
+  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>${cfg}</script>
+</div>
+</body></html>`;
+}
+
 function renderScreener(body,type){
   body.style.cssText='padding:0;overflow:hidden;display:flex;flex-direction:column';
+  const screen=SCR_SCREENS[type]||'top_gainers';
   const uid='scr'+type+body.id.replace(/\W/g,'');
+  const html=buildTVScreenerHTML(screen);
+  const blob=new Blob([html],{type:'text/html'});
+  const blobUrl=URL.createObjectURL(blob);
   body.innerHTML=`
-    <div class="scr-hdr">
-      <span class="scr-badge"><span class="scr-dot"></span>${SCR_LABELS[type]||type}</span>
-      <span class="scr-timer" id="${uid}t">loading…</span>
-    </div>
-    <div class="scr-cols">
-      <span class="scr-ch">TICKER</span>
-      <span class="scr-ch r">PRICE</span>
-      <span class="scr-ch r">CHG%</span>
-      <span class="scr-ch r">VOL</span>
-    </div>
-    <div class="scr-rows" id="${uid}r" style="flex:1;overflow-y:auto;min-height:0">
-      <div class="scr-empty"><span class="scr-spin"></span>Fetching live data…</div>
-    </div>
+    <iframe id="${uid}fr" src="${blobUrl}" style="flex:1;width:100%;border:none;min-height:0" allowfullscreen></iframe>
     <div class="scr-bar" style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid var(--b2);flex-shrink:0;position:relative">
       <span style="font-size:9px;color:var(--dim);flex-shrink:0">↳ OPEN:</span>
       <input class="scr-bar-inp" id="${uid}inp" placeholder="type ticker → Enter to open chart"
@@ -1183,8 +1208,6 @@ function renderScreener(body,type){
       <button onclick="scrBarGo('${uid}')" style="background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer;flex-shrink:0">↵</button>
       <button onclick="scrPaste('${uid}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-size:10px;padding:4px 6px;cursor:pointer;flex-shrink:0">📋</button>
     </div>`;
-  loadAndRenderScr(type,uid);
-  startScrTimer(type,uid);
 }
 
 async function loadAndRenderScr(type,uid){
@@ -1279,25 +1302,20 @@ function renderPillarScreener(body,type){
     return;
   }
 
-  // P1 and P5: custom screener with own symbol set
+  // P1 and P5: TV screener blob iframe with appropriate screen
   const uid='scr'+type+body.id.replace(/\W/g,'');
+  const tvScreen=type==='p1screen'?'unusual_volume':'penny_stocks';
+  const html=buildTVScreenerHTML(tvScreen);
+  const blob=new Blob([html],{type:'text/html'});
+  const blobUrl=URL.createObjectURL(blob);
   body.innerHTML=`
     <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${cfg.color}15;border-bottom:1px solid ${cfg.color}30;flex-shrink:0">
       <div style="flex:1"><div style="font-size:10px;font-weight:700;color:${cfg.color}">${cfg.label}</div>
       <div style="font-size:8px;color:var(--dim);margin-top:1px">${cfg.hint}</div></div>
-      <span class="scr-timer" id="${uid}t" style="font-size:8px;color:var(--dim)">loading…</span>
     </div>
-    <div class="scr-cols">
-      <span class="scr-ch">TICKER</span>
-      <span class="scr-ch r">PRICE</span>
-      <span class="scr-ch r">CHG%</span>
-      <span class="scr-ch r">VOL</span>
-    </div>
-    <div class="scr-rows" id="${uid}r" style="flex:1;overflow-y:auto;min-height:0">
-      <div class="scr-empty"><span class="scr-spin"></span>Fetching live data…</div>
-    </div>
+    <iframe src="${blobUrl}" style="flex:1;width:100%;border:none;min-height:0" allowfullscreen></iframe>
     <div class="scr-bar" style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid ${cfg.color}30;flex-shrink:0;position:relative">
-      <span style="font-size:9px;color:${cfg.color};font-weight:700;flex-shrink:0">🎯</span>
+      <span style="font-size:9px;color:${cfg.color};font-weight:700;flex-shrink:0">${cfg.label.split('·')[0].trim()}</span>
       <input class="scr-bar-inp" id="${uid}inp" placeholder="Type ticker → adds to 5 Pillars scanner"
         maxlength="10" autocomplete="off" spellcheck="false"
         style="flex:1;background:var(--s3);border:1px solid ${cfg.color}50;border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:4px 8px;outline:none;caret-color:${cfg.color}"
@@ -1306,8 +1324,6 @@ function renderPillarScreener(body,type){
       <button onclick="scrBarGo('${uid}')" style="background:${cfg.color};border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer">↵</button>
       <button onclick="scrPaste('${uid}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-size:10px;padding:4px 6px;cursor:pointer">📋</button>
     </div>`;
-  loadPillarScr(type,uid,cfg);
-  startScrTimer('pillar_'+type,uid);
 }
 
 async function loadPillarScr(type,uid,cfg){
@@ -2236,15 +2252,13 @@ function showMobileScreener(type,idx){
   const screen=SCR_SCREENS[type]||'top_gainers';
   const container=document.getElementById('mscr-frame');
   if(!container)return;
-  const mcfg=JSON.stringify({
-    width:'100%',height:'100%',defaultColumn:'overview',
-    defaultScreen:screen,showToolbar:true,
-    locale:'en',market:'us',colorTheme:'dark'
-  });
-  container.innerHTML=`<div class="tradingview-widget-container" style="height:100%">
-    <div class="tradingview-widget-container__widget" style="height:100%"></div>
-    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>${mcfg}<\/script>
-  </div>`;
+  // Revoke previous blob URL to free memory
+  if(container._blobUrl){URL.revokeObjectURL(container._blobUrl);}
+  const html=buildTVScreenerHTML(screen);
+  const blob=new Blob([html],{type:'text/html'});
+  const blobUrl=URL.createObjectURL(blob);
+  container._blobUrl=blobUrl;
+  container.innerHTML=`<iframe src="${blobUrl}" style="width:100%;height:100%;border:none;display:block"></iframe>`;
 }
 
 function renderMobileHistory(){
