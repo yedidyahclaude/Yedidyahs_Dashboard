@@ -1098,6 +1098,13 @@ function refreshHistWidgets(){
 // SCREENER SYSTEM — Yahoo Finance per-type symbol sets
 // Each type has its own curated symbol list → sorted by type
 // ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+// SCREENER SYSTEM
+// Standard screeners: Yahoo Finance API (real full-market data, free)
+// Pillar screeners (p1, p5): Finnhub with filtered symbol sets
+// P3: TradingView news timeline (only TV embed that actually works)
+// ═══════════════════════════════════════════════
+
 const SCR_LABELS={
   gainers:'🚀 Top Gainers',
   losers:'📉 Top Losers',
@@ -1108,40 +1115,26 @@ const SCR_LABELS={
   penny:'💲 Penny Stocks',
 };
 
-// Each type fetches its OWN symbol set — this is what makes them different
-const SCR_SYMS={
-  gainers:['SUNE','CHAI','AGEN','VSME','CIIT','DSY','SPHL','CMND','MARA','RIOT',
-            'BTBT','HUT','CLSK','BNAI','ACMR','AEHR','BLNK','PLTR','COIN','SOFI',
-            'HOOD','GME','AMC','NVAX','SAVA','ARDX','AVXL','AXSM','CRSP','BEAM'],
-  losers:['NVDA','AMD','AAPL','MSFT','META','TSLA','PLTR','COIN','SOFI','HOOD',
-           'MARA','RIOT','GME','AMC','NIO','RIVN','LCID','SNAP','PLUG','FCEL',
-           'NKLA','OPEN','RBLX','BYND','WISH','EXPR','SPCE','WKHS','GOEV','RIDE'],
-  active:['NVDA','AMD','AAPL','MSFT','META','TSLA','SPY','QQQ','SOXL','TQQQ',
-           'GME','AMC','PLTR','COIN','MSTR','SOFI','HOOD','MARA','RIOT','SNAP',
-           'AMZN','GOOGL','NFLX','BABA','NIO','RIVN','F','BAC','T','VZ'],
-  premarket:['SPHL','BNAI','CMND','ACMR','CHAI','VSME','CIIT','DSY','AGEN',
-              'AEHR','GME','AMC','MARA','RIOT','BTBT','HUT','CLSK',
-              'PLUG','FCEL','NKLA','NIO','RIVN','SOFI','HOOD','PLTR'],
-  gappers:['SPHL','CHAI','VSME','CIIT','DSY','AGEN','BNAI','CMND','ACMR','AEHR',
-            'GME','AMC','MARA','RIOT','BTBT','PLUG','FCEL','NKLA','NIO','RIVN',
-            'SOFI','HOOD','PLTR','COIN','BLNK','SAVA','ARDX','NVAX','CRSP','AXSM'],
-  hod:['SPHL','CHAI','VSME','CIIT','DSY','AGEN','BNAI','CMND','ACMR','AEHR',
-        'GME','AMC','MARA','RIOT','PLTR','COIN','SOFI','HOOD','NIO','RIVN',
-        'PLUG','FCEL','BLNK','BTBT','HUT','SAVA','ARDX','AVXL','AXSM','NVAX'],
-  penny:['PLUG','FCEL','NKLA','BTBT','HUT','CLSK','BNAI','CMND','SPHL','ACMR',
-          'AEHR','BLNK','CLOV','NOK','BB','SNDL','IDEX','OGEN','GFAI','BKSY',
-          'SAVA','ARDX','AVXL','BNAI','MARA','RIOT','CIFR','HASH','MIGI','KTTA'],
+// Yahoo Finance screener IDs — each returns genuinely different data
+const YAHOO_IDS={
+  gainers:'day_gainers',
+  losers:'day_losers',
+  active:'most_actives',
+  premarket:'day_gainers',
+  gappers:'day_gainers',
+  hod:'most_actives',
+  penny:'day_gainers',
 };
 
-// Sort functions per screener type
-const SCR_SORT={
-  gainers:(a,b)=>(b.changePct||0)-(a.changePct||0),
-  losers:(a,b)=>(a.changePct||0)-(b.changePct||0),
-  active:(a,b)=>(b.volume||0)-(a.volume||0),
-  premarket:(a,b)=>(b.changePct||0)-(a.changePct||0),
-  gappers:(a,b)=>Math.abs(b.changePct||0)-Math.abs(a.changePct||0),
-  hod:(a,b)=>Math.abs(b.changePct||0)-Math.abs(a.changePct||0),
-  penny:(a,b)=>(b.changePct||0)-(a.changePct||0),
+// Sort/filter per type to differentiate where Yahoo IDs overlap
+const SCR_POST={
+  gainers:{sort:(a,b)=>(b.regularMarketChangePercent||0)-(a.regularMarketChangePercent||0),filter:null},
+  losers:{sort:(a,b)=>(a.regularMarketChangePercent||0)-(b.regularMarketChangePercent||0),filter:q=>(q.regularMarketChangePercent||0)<0},
+  active:{sort:(a,b)=>(b.regularMarketVolume||0)-(a.regularMarketVolume||0),filter:null},
+  premarket:{sort:(a,b)=>(b.regularMarketChangePercent||0)-(a.regularMarketChangePercent||0),filter:q=>q.regularMarketPrice<20},
+  gappers:{sort:(a,b)=>Math.abs(b.regularMarketChangePercent||0)-Math.abs(a.regularMarketChangePercent||0),filter:null},
+  hod:{sort:(a,b)=>Math.abs(b.regularMarketChangePercent||0)-Math.abs(a.regularMarketChangePercent||0),filter:null},
+  penny:{sort:(a,b)=>(b.regularMarketChangePercent||0)-(a.regularMarketChangePercent||0),filter:q=>(q.regularMarketPrice||0)<5},
 };
 
 const scrCache={};
@@ -1149,34 +1142,38 @@ const scrTimers={};
 const SCR_TTL=30;
 
 async function fetchScreenerData(type){
-  const syms=SCR_SYMS[type]||SCR_SYMS.gainers;
-  const toFetch=syms.filter(s=>!Q[s]||Date.now()-(Q[s]._ts||0)>60000);
-  // Sequential with 1.2s gap to avoid 429s — shared Finnhub 60/min limit
-  for(const sym of toFetch){
-    await fetchQDirect(sym);
-    await new Promise(r=>setTimeout(r,1200));
+  const yahooId=YAHOO_IDS[type]||'day_gainers';
+  const url=`https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved?formatted=false&scrIds=${yahooId}&count=30&corsDomain=finance.yahoo.com`;
+  const proxies=[
+    `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  ];
+  let quotes=[];
+  for(const proxy of proxies){
+    try{
+      const r=await fetch(proxy,{headers:{'x-requested-with':'XMLHttpRequest'}});
+      if(!r.ok)continue;
+      const d=await r.json();
+      quotes=d?.finance?.result?.[0]?.quotes||[];
+      if(quotes.length)break;
+    }catch(e){}
   }
-  const rows=syms
-    .filter(s=>Q[s]?.price)
-    .map(s=>({symbol:s,price:Q[s].price,changePct:Q[s].changePct||0,volume:Q[s].volume||0,name:Q[s].name||s}))
-    .sort(SCR_SORT[type]||SCR_SORT.gainers);
+  // Fallback: use Finnhub cached data if Yahoo fails
+  if(!quotes.length){
+    const fallback=['SUNE','CHAI','AGEN','VSME','CIIT','DSY','SPHL','CMND','MARA','RIOT',
+      'BTBT','GME','AMC','NVAX','SAVA','PLTR','COIN','SOFI','HOOD','NVDA','AMD','TSLA'];
+    quotes=fallback.filter(s=>Q[s]?.price).map(s=>({
+      symbol:s,regularMarketPrice:Q[s].price,
+      regularMarketChangePercent:Q[s].changePct||0,
+      regularMarketVolume:Q[s].volume||0,shortName:Q[s].name||s
+    }));
+  }
+  const post=SCR_POST[type]||SCR_POST.gainers;
+  let rows=quotes;
+  if(post.filter)rows=rows.filter(post.filter);
+  rows=rows.sort(post.sort).slice(0,20);
   if(rows.length)scrCache[type]={rows,ts:Date.now()};
 }
-
-// Direct fetch without queue — for screeners
-
-// TV market-movers URLs — kept for reference only (TV blocks iframes)
-const SCR_URLS={
-  gainers:'https://www.tradingview.com/markets/stocks-usa/market-movers-gainers/',
-  losers:'https://www.tradingview.com/markets/stocks-usa/market-movers-losers/',
-  active:'https://www.tradingview.com/markets/stocks-usa/market-movers-active/',
-  premarket:'https://www.tradingview.com/markets/stocks-usa/market-movers-pre-market-gainers/',
-  gappers:'https://www.tradingview.com/markets/stocks-usa/market-movers-pre-market-gappers/',
-  hod:'https://www.tradingview.com/markets/stocks-usa/market-movers-most-volatile/',
-  penny:'https://www.tradingview.com/markets/stocks-usa/market-movers-penny-stocks/',
-  unusual_volume:'https://www.tradingview.com/markets/stocks-usa/market-movers-unusual-volume/',
-  small_cap:'https://www.tradingview.com/markets/stocks-usa/market-movers-small-cap/',
-};
 
 function renderScreener(body,type){
   body.style.cssText='padding:0;overflow:hidden;display:flex;flex-direction:column';
@@ -1192,14 +1189,13 @@ function renderScreener(body,type){
       <span class="scr-ch r">CHG%</span>
       <span class="scr-ch r">VOL</span>
     </div>
-    <div class="scr-rows" id="${uid}r" style="flex:1;overflow-y:auto;min-height:0">
+    <div class="scr-rows" id="${uid}r">
       <div class="scr-empty"><span class="scr-spin"></span>Fetching live data…</div>
     </div>
     <div class="scr-bar" style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid var(--b2);flex-shrink:0;position:relative">
       <span style="font-size:9px;color:var(--dim);flex-shrink:0">↳ OPEN:</span>
       <input class="scr-bar-inp" id="${uid}inp" placeholder="type ticker → Enter to open chart"
         maxlength="10" autocomplete="off" spellcheck="false"
-        style="flex:1;background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:4px 8px;outline:none;caret-color:var(--ac)"
         oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'');scrShowSuggest('${uid}',this.value)"
         onkeydown="if(event.key==='Enter'){scrBarGo('${uid}');} if(event.key==='Escape'){this.blur();document.getElementById('${uid}sug')?.remove();} if(event.key==='Tab'){event.preventDefault();scrAcceptFirst('${uid}');}"/>
       <button onclick="scrBarGo('${uid}')" style="background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer;flex-shrink:0">↵</button>
@@ -1225,12 +1221,17 @@ function paintScrRows(type,uid){
     return;
   }
   tbody.innerHTML=data.rows.map(q=>{
-    const u=(q.changePct||0)>=0;
-    return `<div class="scr-row" onclick="selectSym('${q.symbol}')">
-      <div><div class="scr-sym">${q.symbol}</div><div class="scr-name">${(q.name||q.symbol).slice(0,18)}</div></div>
-      <div class="scr-px">$${fmtP(q.price)}</div>
-      <div class="scr-chg ${u?'up':'dn'}">${u?'+':''}${(q.changePct||0).toFixed(2)}%</div>
-      <div class="scr-vol">${fmtV(q.volume||0)}</div>
+    const sym=(q.symbol||'').toUpperCase().replace(/[^A-Z0-9./-]/g,'');
+    const px=q.regularMarketPrice||0;
+    const chg=q.regularMarketChangePercent||0;
+    const vol=q.regularMarketVolume||0;
+    const name=(q.shortName||q.longName||sym).slice(0,18);
+    const u=chg>=0;
+    return `<div class="scr-row" onclick="selectSym('${sym}')">
+      <div><div class="scr-sym">${sym}</div><div class="scr-name">${name}</div></div>
+      <div class="scr-px">$${fmtP(px)}</div>
+      <div class="scr-chg ${u?'up':'dn'}">${u?'+':''}${chg.toFixed(2)}%</div>
+      <div class="scr-vol">${fmtV(vol)}</div>
     </div>`;
   }).join('');
   const tmr=document.getElementById(uid+'t');
@@ -1249,24 +1250,34 @@ function startScrTimer(type,uid){
   },1000);
 }
 
-// Pillar screeners use same engine with custom label/color
+// ═══════════════════════════════════════════════
+// PILLAR SCREENERS
+// P1+P2+P4: Finnhub — unusual volume gainers $1-$20
+// P3: TradingView news timeline (the only TV embed that works)
+// P5: Finnhub — penny/small float stocks
+// ═══════════════════════════════════════════════
+const PILLAR_SYMS={
+  p1screen:['SUNE','CHAI','AGEN','VSME','CIIT','DSY','SPHL','CMND','MARA','RIOT',
+             'BTBT','HUT','CLSK','BNAI','ACMR','AEHR','BLNK','SAVA','ARDX','NVAX',
+             'AVXL','AXSM','CRSP','BEAM','GME','AMC','SOFI','HOOD','PLUG','FCEL'],
+  p5screen:['PLUG','FCEL','NKLA','BTBT','HUT','CLSK','BNAI','CMND','SPHL','ACMR',
+             'AEHR','BLNK','CLOV','NOK','SNDL','OGEN','SAVA','ARDX','AVXL','AGEN',
+             'VSME','CIIT','DSY','MARA','RIOT','CIFR','MIGI','KTTA','GFAI','BKSY'],
+};
+
 const PILLAR_CFG={
-  p1screen:{label:'🎯 P1+P2+P4 · Unusual Volume Gainers',color:'#7c6aff',
-    hint:'Stocks $1-$20 with high % gain and unusual volume',
-    syms:['SUNE','CHAI','AGEN','VSME','CIIT','DSY','SPHL','CMND','MARA','RIOT',
-          'BTBT','HUT','CLSK','BNAI','ACMR','AEHR','BLNK','SAVA','ARDX','NVAX',
-          'AVXL','AXSM','CRSP','BEAM','PLUG','FCEL','GME','AMC','SOFI','HOOD'],
+  p1screen:{
+    label:'🎯 P1+P2+P4 · Unusual Volume Gainers',color:'#7c6aff',
+    hint:'$1-$20 · gaining · high relative volume — 3 pillars combined',
+    filter:q=>q.price>=1&&q.price<=20&&(q.changePct||0)>=5,
     sort:(a,b)=>(b.changePct||0)-(a.changePct||0),
-    filter:q=>q.price>=1&&q.price<=20&&(q.changePct||0)>=5},
-  p3screen:{label:'📰 P3 · News Catalyst Feed',color:'#f59e0b',
-    hint:'Breaking news — see a stock moving, type ticker below',type:'news'},
-  p5screen:{label:'💎 P5 · Small Float Penny Stocks',color:'#a78bfa',
+  },
+  p5screen:{
+    label:'💎 P5 · Small Float Penny Stocks',color:'#a78bfa',
     hint:'Low price small cap stocks with momentum',
-    syms:['PLUG','FCEL','NKLA','BTBT','HUT','CLSK','BNAI','CMND','SPHL','ACMR',
-          'AEHR','BLNK','CLOV','NOK','SNDL','IDEX','OGEN','GFAI','SAVA','ARDX',
-          'AVXL','BNAI','CIFR','HASH','MIGI','KTTA','AGEN','VSME','CIIT','DSY'],
+    filter:q=>q.price>=0.5&&q.price<=10,
     sort:(a,b)=>(b.changePct||0)-(a.changePct||0),
-    filter:q=>q.price>=0.5&&q.price<=10},
+  },
 };
 
 function renderPillarScreener(body,type){
@@ -1274,79 +1285,84 @@ function renderPillarScreener(body,type){
   if(!cfg){renderScreener(body,type);return;}
   body.style.cssText='padding:0;overflow:hidden;display:flex;flex-direction:column';
 
-  if(cfg.type==='news'){
-    // P3: TradingView news timeline widget
-    const newsParams=encodeURIComponent(JSON.stringify({
+  if(type==='p3screen'){
+    // P3: TradingView news timeline — the one TV embed that actually works
+    const params=encodeURIComponent(JSON.stringify({
       width:'100%',height:'100%',colorTheme:'dark',locale:'en',
       importanceFilter:'-1,0,1,2,3',countryFilter:'us'
     }));
-    const uid='scr'+type+body.id.replace(/\W/g,'');
+    const uid='scrp3'+body.id.replace(/\W/g,'');
     body.innerHTML=`
-      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${cfg.color}15;border-bottom:1px solid ${cfg.color}30;flex-shrink:0">
-        <div style="flex:1"><div style="font-size:10px;font-weight:700;color:${cfg.color}">${cfg.label}</div>
-        <div style="font-size:8px;color:var(--dim);margin-top:1px">${cfg.hint}</div></div>
+      <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:#f59e0b15;border-bottom:1px solid #f59e0b30;flex-shrink:0">
+        <div style="flex:1">
+          <div style="font-size:10px;font-weight:700;color:#f59e0b">📰 P3 · News Catalyst Feed</div>
+          <div style="font-size:8px;color:var(--dim)">Breaking news — see a catalyst, type ticker below</div>
+        </div>
       </div>
       <iframe style="flex:1;width:100%;border:none;min-height:0"
-        src="https://www.tradingview.com/embed-widget/timeline/?locale=en#${newsParams}"></iframe>
-      <div style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid ${cfg.color}30;flex-shrink:0;position:relative">
-        <span style="font-size:9px;color:${cfg.color};font-weight:700;flex-shrink:0">📰</span>
-        <input id="${uid}inp" placeholder="See news on a stock? Type ticker here → adds to 5 Pillars"
+        src="https://www.tradingview.com/embed-widget/timeline/?locale=en#${params}"></iframe>
+      <div style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid #f59e0b30;flex-shrink:0;position:relative">
+        <span style="font-size:9px;color:#f59e0b;font-weight:700;flex-shrink:0">📰</span>
+        <input id="${uid}inp" placeholder="See news? Type ticker → adds to 5 Pillars"
           maxlength="10" autocomplete="off" spellcheck="false"
-          style="flex:1;background:var(--s3);border:1px solid ${cfg.color}50;border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:4px 8px;outline:none"
+          style="flex:1;background:var(--s3);border:1px solid #f59e0b50;border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:4px 8px;outline:none"
           oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'')"
           onkeydown="if(event.key==='Enter'){scrBarGo('${uid}');}"/>
-        <button onclick="scrBarGo('${uid}')" style="background:${cfg.color};border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer">↵</button>
+        <button onclick="scrBarGo('${uid}')" style="background:#f59e0b;border:none;border-radius:4px;color:#000;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer">↵</button>
         <button onclick="scrPaste('${uid}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-size:10px;padding:4px 6px;cursor:pointer">📋</button>
       </div>`;
     return;
   }
 
-  // P1 and P5: custom rows using Finnhub data
+  // P1 and P5: Finnhub data rows
   const uid='scr'+type+body.id.replace(/\W/g,'');
+  const cacheKey='pillar_'+type;
   body.innerHTML=`
     <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:${cfg.color}15;border-bottom:1px solid ${cfg.color}30;flex-shrink:0">
-      <div style="flex:1"><div style="font-size:10px;font-weight:700;color:${cfg.color}">${cfg.label}</div>
-      <div style="font-size:8px;color:var(--dim);margin-top:1px">${cfg.hint}</div></div>
+      <div style="flex:1">
+        <div style="font-size:10px;font-weight:700;color:${cfg.color}">${cfg.label}</div>
+        <div style="font-size:8px;color:var(--dim)">${cfg.hint}</div>
+      </div>
       <span class="scr-timer" id="${uid}t" style="font-size:8px;color:var(--dim)">loading…</span>
     </div>
     <div class="scr-cols"><span class="scr-ch">TICKER</span><span class="scr-ch r">PRICE</span><span class="scr-ch r">CHG%</span><span class="scr-ch r">VOL</span></div>
-    <div class="scr-rows" id="${uid}r" style="flex:1;overflow-y:auto;min-height:0">
-      <div class="scr-empty"><span class="scr-spin"></span>Fetching…</div>
-    </div>
+    <div class="scr-rows" id="${uid}r"><div class="scr-empty"><span class="scr-spin"></span>Fetching…</div></div>
     <div class="scr-bar" style="display:flex;align-items:center;gap:4px;padding:4px 6px;background:var(--s2);border-top:1px solid ${cfg.color}30;flex-shrink:0;position:relative">
-      <span style="font-size:9px;color:${cfg.color};font-weight:700;flex-shrink:0">${cfg.icon||'🎯'}</span>
-      <input class="scr-bar-inp" id="${uid}inp" placeholder="Type ticker → adds to 5 Pillars scanner"
+      <span style="font-size:9px;color:${cfg.color};font-weight:700;flex-shrink:0">↳</span>
+      <input class="scr-bar-inp" id="${uid}inp" placeholder="Type ticker → adds to 5 Pillars"
         maxlength="10" autocomplete="off" spellcheck="false"
-        style="flex:1;background:var(--s3);border:1px solid ${cfg.color}50;border-radius:4px;color:var(--tx);font-family:'DM Mono',monospace;font-size:11px;padding:4px 8px;outline:none;caret-color:${cfg.color}"
         oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'');scrShowSuggest('${uid}',this.value)"
         onkeydown="if(event.key==='Enter'){scrBarGo('${uid}');} if(event.key==='Escape'){this.blur();} if(event.key==='Tab'){event.preventDefault();scrAcceptFirst('${uid}');}"/>
       <button onclick="scrBarGo('${uid}')" style="background:${cfg.color};border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:10px;font-weight:700;padding:4px 10px;cursor:pointer">↵</button>
       <button onclick="scrPaste('${uid}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-size:10px;padding:4px 6px;cursor:pointer">📋</button>
     </div>`;
-  loadPillarScr(type,uid,cfg);
-  startScrTimer('p_'+type,uid);
+  loadPillarScr(type,uid,cfg,cacheKey);
+  startScrTimer(cacheKey,uid);
 }
 
-async function loadPillarScr(type,uid,cfg){
+async function loadPillarScr(type,uid,cfg,cacheKey){
   const tmr=document.getElementById(uid+'t');
   if(tmr)tmr.textContent='updating…';
-  const cacheKey='pillar_'+type;
   if(!scrCache[cacheKey]||Date.now()-scrCache[cacheKey].ts>SCR_TTL*1000){
-    const syms=cfg.syms;
+    const syms=PILLAR_SYMS[type]||[];
     const toFetch=syms.filter(s=>!Q[s]||Date.now()-(Q[s]._ts||0)>60000);
-    for(let i=0;i<toFetch.length;i+=5){
-      await Promise.all(toFetch.slice(i,i+5).map(s=>fetchQDirect(s)));
-      if(i+5<toFetch.length)await new Promise(r=>setTimeout(r,300));
+    for(const sym of toFetch){
+      await fetchQDirect(sym);
+      await new Promise(r=>setTimeout(r,800));
     }
     const rows=syms
       .filter(s=>Q[s]?.price&&(!cfg.filter||cfg.filter(Q[s])))
       .map(s=>({symbol:s,price:Q[s].price,changePct:Q[s].changePct||0,volume:Q[s].volume||0,name:Q[s].name||s}))
-      .sort(cfg.sort||(()=>0));
+      .sort(cfg.sort||(()=>0)).slice(0,20);
     scrCache[cacheKey]={rows,ts:Date.now()};
   }
   const tbody=document.getElementById(uid+'r');if(!tbody)return;
   const rows=scrCache[cacheKey]?.rows||[];
-  if(!rows.length){tbody.innerHTML='<div class="scr-empty">No stocks matching criteria yet…<br><span style="font-size:8px;color:var(--dim)">Retrying in 30s</span></div>';return;}
+  if(!rows.length){
+    tbody.innerHTML='<div class="scr-empty">No matching stocks yet…<br><span style="font-size:8px;color:var(--dim)">Retrying in 30s</span></div>';
+    if(tmr)tmr.textContent=`↺ ${SCR_TTL}s`;
+    return;
+  }
   tbody.innerHTML=rows.map(q=>{
     const u=(q.changePct||0)>=0;
     return `<div class="scr-row" onclick="selectSym('${q.symbol}')">
@@ -1530,17 +1546,11 @@ function saveWS(id){
   if(el){el.innerHTML=widgetHTML(w);makeDraggable(el,w);makeResizable(el,w);populateWidget(el,w);if(w.pinned)el.classList.add('pinned');}
   document.querySelectorAll('.ws-panel.open').forEach(x=>x.classList.remove('open'));
 }
-let _scrDelay=0;
 function populateWidget(el,w){
   const body=document.getElementById('wb-'+w.id);if(!body)return;
-  const isScr=['p1screen','p3screen','p5screen'].includes(w.type)||SCREENER_TYPES.includes(w.type);
-  if(['p1screen','p3screen','p5screen'].includes(w.type)){
-    setTimeout(()=>renderPillarScreener(body,w.type),_scrDelay);
-    _scrDelay+=3000; // 3s stagger between screeners
-  } else if(SCREENER_TYPES.includes(w.type)){
-    setTimeout(()=>renderScreener(body,w.type),_scrDelay);
-    _scrDelay+=3000;
-  } else if(w.type==='history')renderHistory(body);
+  if(['p1screen','p3screen','p5screen'].includes(w.type))renderPillarScreener(body,w.type);
+  else if(SCREENER_TYPES.includes(w.type))renderScreener(body,w.type);
+  else if(w.type==='history')renderHistory(body);
   else if(w.type==='alerts')renderAL(body);
   else if(w.type==='news')renderNews(body,CUR||'AAPL');
   else if(w.type==='scanner')renderScanner(body);
