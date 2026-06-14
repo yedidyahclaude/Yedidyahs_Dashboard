@@ -619,7 +619,7 @@ function logout(){sessionStorage.clear();location.reload();}
 // ═══════════════════════════════════════════════
 const FHK='d8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
 const SNAP=20;
-const LAYOUT_VER='v8';
+const LAYOUT_VER='v9';
 const SCREENER_TYPES=['gainers','losers','active','premarket','gappers','hod','penny','p1screen','p3screen','p5screen'];
 const WIDGET_TYPES={
   gainers:'🚀 Top Gainers',
@@ -1144,19 +1144,8 @@ async function fetchScreenerData(type){
 }
 
 // Direct fetch without queue — for screeners
-async function fetchQDirect(sym){
-  if(Q[sym]?._ts&&Date.now()-Q[sym]._ts<60000)return;
-  try{
-    const r=await fetch(`https://finnhub.io/api/v1/quote?symbol=${sym}&token=${FHK}`);
-    const q=await r.json();
-    if(!q.c)return;
-    Q[sym]={...Q[sym],symbol:sym,price:q.c,prevClose:q.pc,
-      change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,
-      volume:q.v||0,name:Q[sym]?.name||sym,_ts:Date.now()};
-  }catch(e){}
-}
 
-// TV market-movers URLs — confirmed working, each shows different live data
+// TV market-movers URLs — kept for reference only (TV blocks iframes)
 const SCR_URLS={
   gainers:'https://www.tradingview.com/markets/stocks-usa/market-movers-gainers/',
   losers:'https://www.tradingview.com/markets/stocks-usa/market-movers-losers/',
