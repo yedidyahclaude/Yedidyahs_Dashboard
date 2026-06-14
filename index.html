@@ -153,13 +153,11 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .resize-br::after{content:'';position:absolute;bottom:3px;right:3px;width:6px;height:6px;border-right:2px solid var(--dim);border-bottom:2px solid var(--dim)}
 .resize-br:hover::after{border-color:var(--ac)}
 
-/* SCREENER WIDGET — TradingView iframe */
+/* SCREENER WIDGET — data rows */
 @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
 .scr-wrap{position:relative;width:100%;height:100%;display:flex;flex-direction:column}
 .scr-iframe{flex:1;width:100%;border:none;display:block;min-height:0}
-/* Transparent overlay blocks iframe clicks — prevents new tab, focuses input instead */
 .scr-overlay{position:absolute;top:0;left:0;right:16px;bottom:48px;z-index:3;cursor:text;background:transparent}
-/* Ticker input bar at bottom */
 .scr-bar{flex-shrink:0;display:flex;align-items:center;gap:6px;padding:5px 8px;background:var(--s1);border-top:2px solid var(--ac);position:relative;z-index:4}
 .scr-bar-label{font-size:8px;color:var(--ac2);font-weight:700;letter-spacing:.06em;text-transform:uppercase;flex-shrink:0}
 .scr-bar-inp{flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;padding:4px 8px;outline:none;text-transform:uppercase;letter-spacing:.06em;transition:border-color .15s}
@@ -168,6 +166,29 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .scr-bar-btn{background:var(--ac);border:none;border-radius:4px;color:#fff;font-family:'DM Mono',monospace;font-size:9px;font-weight:700;padding:4px 10px;cursor:pointer;white-space:nowrap}
 .scr-bar-btn:hover{opacity:.85}
 .scr-hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:9px;color:rgba(96,97,114,0.6);pointer-events:none;z-index:2;white-space:nowrap;text-align:center;line-height:1.6}
+/* Screener header */
+.scr-hdr{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:var(--s2);border-bottom:1px solid var(--b1);flex-shrink:0}
+.scr-badge{font-size:9px;font-weight:600;color:var(--tx);display:flex;align-items:center;gap:5px}
+.scr-dot{width:5px;height:5px;border-radius:50%;background:var(--gr);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
+.scr-timer{font-size:8px;color:var(--dim);font-variant-numeric:tabular-nums}
+/* Screener column headers */
+.scr-cols{display:grid;grid-template-columns:1fr 62px 54px 48px;padding:3px 8px;border-bottom:1px solid var(--b1);flex-shrink:0;background:var(--s2)}
+.scr-ch{font-size:7px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase}
+.scr-ch.r{text-align:right}
+/* Screener rows */
+.scr-rows{flex:1;overflow-y:auto;min-height:0}
+.scr-rows::-webkit-scrollbar{width:3px}
+.scr-rows::-webkit-scrollbar-thumb{background:var(--b2)}
+.scr-row{display:grid;grid-template-columns:1fr 62px 54px 48px;padding:5px 8px;cursor:pointer;border-bottom:1px solid #0b0c16;transition:background .07s;align-items:center}
+.scr-row:hover{background:#7c6aff0e}
+.scr-sym{font-size:11px;font-weight:600;color:#e0e1f0;line-height:1.2}
+.scr-name{font-size:8px;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scr-px{font-size:10px;text-align:right;color:var(--tx)}
+.scr-chg{font-size:10px;font-weight:600;text-align:right}
+.scr-vol{font-size:9px;color:var(--mu);text-align:right}
+.scr-empty{text-align:center;padding:28px 12px;color:var(--mu);font-size:10px;line-height:1.9}
+.scr-spin{display:inline-block;width:11px;height:11px;border:2px solid var(--b2);border-top-color:var(--ac);border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:4px}
+@keyframes spin{to{transform:rotate(360deg)}}
 
 /* HISTORY / WATCHLIST ROWS */
 .wi{display:flex;align-items:center;justify-content:space-between;padding:7px 8px;border-radius:5px;cursor:pointer;margin-bottom:3px;border:1px solid transparent;transition:all .08s}
@@ -1130,11 +1151,10 @@ const SCR_TTL=30;
 async function fetchScreenerData(type){
   const syms=SCR_SYMS[type]||SCR_SYMS.gainers;
   const toFetch=syms.filter(s=>!Q[s]||Date.now()-(Q[s]._ts||0)>60000);
-  // Fetch in parallel batches of 5, 300ms apart
-  for(let i=0;i<toFetch.length;i+=5){
-    const batch=toFetch.slice(i,i+5);
-    await Promise.all(batch.map(s=>fetchQDirect(s)));
-    if(i+5<toFetch.length)await new Promise(r=>setTimeout(r,300));
+  // Sequential with 1.2s gap to avoid 429s — shared Finnhub 60/min limit
+  for(const sym of toFetch){
+    await fetchQDirect(sym);
+    await new Promise(r=>setTimeout(r,1200));
   }
   const rows=syms
     .filter(s=>Q[s]?.price)
@@ -1510,11 +1530,17 @@ function saveWS(id){
   if(el){el.innerHTML=widgetHTML(w);makeDraggable(el,w);makeResizable(el,w);populateWidget(el,w);if(w.pinned)el.classList.add('pinned');}
   document.querySelectorAll('.ws-panel.open').forEach(x=>x.classList.remove('open'));
 }
+let _scrDelay=0;
 function populateWidget(el,w){
   const body=document.getElementById('wb-'+w.id);if(!body)return;
-  if(['p1screen','p3screen','p5screen'].includes(w.type))renderPillarScreener(body,w.type);
-  else if(SCREENER_TYPES.includes(w.type))renderScreener(body,w.type);
-  else if(w.type==='history')renderHistory(body);
+  const isScr=['p1screen','p3screen','p5screen'].includes(w.type)||SCREENER_TYPES.includes(w.type);
+  if(['p1screen','p3screen','p5screen'].includes(w.type)){
+    setTimeout(()=>renderPillarScreener(body,w.type),_scrDelay);
+    _scrDelay+=3000; // 3s stagger between screeners
+  } else if(SCREENER_TYPES.includes(w.type)){
+    setTimeout(()=>renderScreener(body,w.type),_scrDelay);
+    _scrDelay+=3000;
+  } else if(w.type==='history')renderHistory(body);
   else if(w.type==='alerts')renderAL(body);
   else if(w.type==='news')renderNews(body,CUR||'AAPL');
   else if(w.type==='scanner')renderScanner(body);
