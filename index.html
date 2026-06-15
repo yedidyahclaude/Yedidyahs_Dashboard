@@ -146,7 +146,7 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:48px;flex-
 .wb{flex:1;overflow-y:auto;overflow-x:hidden;padding:8px;border-radius:0 0 7px 7px;min-height:0}
 .wb::-webkit-scrollbar{width:3px}
 .wb::-webkit-scrollbar-thumb{background:var(--b2);border-radius:2px}
-.wb.scr-wb{padding:0;overflow:hidden;display:flex;flex-direction:column}
+.wb.scr-wb{padding:0;overflow:hidden;display:flex;flex-direction:column;height:100%}
 
 /* RESIZE HANDLE */
 .resize-br{position:absolute;bottom:0;right:0;width:14px;height:14px;cursor:se-resize;z-index:10}
@@ -640,7 +640,7 @@ function logout(){sessionStorage.clear();location.reload();}
 // ═══════════════════════════════════════════════
 const FHK='d8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
 const SNAP=20;
-const LAYOUT_VER='v10';
+const LAYOUT_VER='v11';
 const SCREENER_TYPES=['gainers','losers','active','premarket','gappers','hod','penny','p1screen','p3screen','p5screen'];
 const WIDGET_TYPES={
   gainers:'🚀 Top Gainers',
@@ -656,7 +656,7 @@ const WIDGET_TYPES={
   news:'📰 News',
   p1screen:'🎯 P1+P2+P4 · Unusual Volume Gainers',
   p3screen:'📰 P3 · News Catalyst Feed',
-  p5screen:'💎 P5 · Penny Stocks (Small Float)',
+  p5screen:'💎 P5 · Small Float Momentum',
 };
 const DEFAULT_WIDGETS=[
   {id:'w1',type:'gainers', x:20,  y:20,  w:420,h:340},
@@ -1104,7 +1104,7 @@ const SCR_SCREENS={
   hod:       'most_volatile',
   penny:     'penny_stocks',
   p1screen:  'unusual_volume',
-  p5screen:  'penny_stocks',
+  p5screen:  'small_cap',
 };
 
 const SCR_LABELS={
@@ -1158,7 +1158,7 @@ function renderScreener(body,type){
     <div style="position:relative;flex:1;min-height:0;overflow:hidden">
       <iframe id="${uid}fr" src="${page}"
         scrolling="no" allowtransparency="true" frameborder="0"
-        style="position:absolute;top:0;left:0;width:100%;height:100%;border:none"></iframe>
+        style="position:absolute;inset:0;width:100%;height:100%;border:none;display:block"></iframe>
       <div class="scr-overlay" onclick="scrFocusInput('${uid}')"></div>
     </div>
     <div class="scr-bar">
@@ -1206,7 +1206,7 @@ function renderPillarScreener(body,type){
   // P5: Penny Stocks Small Float — TV penny_stocks screen
   const pillarCfg={
     p1screen:{label:'🎯 P1+P2+P4 · Unusual Volume Gainers',color:'#7c6aff',hint:'High relative volume · $1-$20 · momentum'},
-    p5screen:{label:'💎 P5 · Penny Stocks (Small Float)',    color:'#a78bfa',hint:'Low price small float stocks with momentum'},
+    p5screen:{label:'💎 P5 · Small Float Momentum',color:'#a78bfa',hint:'Small cap stocks with momentum'},
   };
   const pcfg=pillarCfg[type]||{label:type,color:'var(--ac)',hint:''};
   const screen=SCR_SCREENS[type]||'unusual_volume';
@@ -1219,7 +1219,7 @@ function renderPillarScreener(body,type){
     <div style="position:relative;flex:1;min-height:0;overflow:hidden">
       <iframe id="${uid}fr" src="${page}"
         scrolling="no" allowtransparency="true" frameborder="0"
-        style="position:absolute;top:0;left:0;width:100%;height:100%;border:none"></iframe>
+        style="position:absolute;inset:0;width:100%;height:100%;border:none;display:block"></iframe>
       <div class="scr-overlay" onclick="scrFocusInput('${uid}')"></div>
     </div>
     <div class="scr-bar" style="border-top:1px solid ${pcfg.color}30">
