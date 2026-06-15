@@ -1114,7 +1114,7 @@ const SCR_SCREENS={
   hod:'most_volatile',
   penny:'penny_stocks',
   p1screen:'unusual_volume',
-  p5screen:'small_cap',
+  p5screen:'penny_stocks',
 };
 
 const SCR_LABELS={
@@ -1130,8 +1130,9 @@ const SCR_LABELS={
 const scrCache={};
 const scrTimers={};
 
-// Build self-contained HTML with TV widget script — works via srcdoc (no CSP block)
-function buildTVWidgetPage(defaultScreen){
+// Build self-contained TV screener page — loaded via data: URI in iframe
+// data: URIs bypass frame-ancestors CSP and don't have srcdoc escaping issues
+function buildTVScreenerSrc(defaultScreen){
   const cfg=JSON.stringify({
     width:'100%',height:'100%',
     defaultColumn:'overview',
@@ -1141,7 +1142,8 @@ function buildTVWidgetPage(defaultScreen){
     market:'us',
     colorTheme:'dark'
   });
-  return `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>*{margin:0;padding:0}html,body{height:100%;overflow:hidden;background:#07080f}</style></head><body><div class="tradingview-widget-container" style="height:100%;width:100%"><div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div><script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>${cfg}<\/script></div></body></html>`;
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><style>*{margin:0;padding:0}html,body{height:100%;overflow:hidden;background:#07080f}</style></head><body><div class="tradingview-widget-container" style="height:100%;width:100%"><div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div><script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>${cfg}</script></div></body></html>`;
+  return 'data:text/html;charset=utf-8,'+encodeURIComponent(html);
 }
 
 function renderScreener(body,type){
@@ -1149,13 +1151,13 @@ function renderScreener(body,type){
   const screen=SCR_SCREENS[type]||'top_gainers';
   const label=SCR_LABELS[type]||type;
   const uid='scr'+type+body.id.replace(/\W/g,'');
-  const page=buildTVWidgetPage(screen);
+  const page=buildTVScreenerSrc(screen);
   body.innerHTML=`
     <div class="scr-hdr">
       <span class="scr-badge"><span class="scr-dot"></span>${label}</span>
     </div>
     <div style="position:relative;flex:1;min-height:0">
-      <iframe class="scr-iframe" id="${uid}fr" srcdoc="${page.replace(/"/g,'&quot;')}"
+      <iframe class="scr-iframe" id="${uid}fr" src="${page}"
         scrolling="no" allowtransparency="true" frameborder="0"
         style="width:100%;height:100%;border:none;display:block"></iframe>
       <div class="scr-overlay" onclick="scrFocusInput('${uid}')"></div>
@@ -1206,14 +1208,14 @@ function renderPillarScreener(body,type){
   };
   const pcfg=pillarLabels[type]||{label:type,color:'var(--ac)',hint:''};
   const screen=SCR_SCREENS[type]||'unusual_volume';
-  const page=buildTVWidgetPage(screen);
+  const page=buildTVScreenerSrc(screen);
   body.innerHTML=`
     <div class="scr-hdr" style="background:${pcfg.color}15;border-bottom:1px solid ${pcfg.color}30">
       <span class="scr-badge"><span class="scr-dot" style="background:${pcfg.color}"></span>${pcfg.label}</span>
       <span style="font-size:8px;color:var(--dim)">${pcfg.hint}</span>
     </div>
     <div style="position:relative;flex:1;min-height:0">
-      <iframe class="scr-iframe" id="${uid}fr" srcdoc="${page.replace(/"/g,'&quot;')}"
+      <iframe class="scr-iframe" id="${uid}fr" src="${page}"
         scrolling="no" allowtransparency="true" frameborder="0"
         style="width:100%;height:100%;border:none;display:block"></iframe>
       <div class="scr-overlay" onclick="scrFocusInput('${uid}')"></div>
@@ -2127,8 +2129,8 @@ function showMobileScreener(type,idx){
   const container=document.getElementById('mscr-frame');
   if(!container)return;
   const screen=SCR_SCREENS[type]||'top_gainers';
-  const page=buildTVWidgetPage(screen);
-  container.innerHTML=`<iframe srcdoc="${page.replace(/"/g,'&quot;')}"
+  const page=buildTVScreenerSrc(screen);
+  container.innerHTML=`<iframe src="${page}"
     scrolling="no" allowtransparency="true" frameborder="0"
     style="width:100%;height:100%;border:none;display:block"></iframe>`;
 }
