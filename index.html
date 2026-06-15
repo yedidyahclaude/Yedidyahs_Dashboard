@@ -680,7 +680,6 @@ let tvWin=null,newsWin=null;
 let curChartSym='';
 let profiles=JSON.parse(localStorage.getItem('sv_profiles')||'[]');
 let activeProfileId=localStorage.getItem('sv_active_profile')||null;
-// Screener cache & timers
 
 function getWidgets(){
   if(activeProfileId){const p=profiles.find(x=>x.id===activeProfileId);if(p?.widgets)return p.widgets;}
@@ -1090,29 +1089,12 @@ function refreshHistWidgets(){
 }
 
 // ═══════════════════════════════════════════════
-// SCREENERS — Yahoo Finance, no API key, real-time
-// Gainers / Losers / Most Active: refresh every 30s
-// Gap Scanner: pre-market gaps from prev close (uses Yahoo quote data)
-// ═══════════════════════════════════════════════
-// ═══════════════════════════════════════════════
-// SCREENER SYSTEM — Yahoo Finance per-type symbol sets
-// Each type has its own curated symbol list → sorted by type
-// ═══════════════════════════════════════════════
-// ═══════════════════════════════════════════════
 // SCREENER SYSTEM — TV embed-widget-screener.js
-// Uses official TV script-tag method inside an iframe via srcdoc
-// Overlay allows scrolling while input bar at bottom lets user open chart
-// ═══════════════════════════════════════════════
-
-// Confirmed valid TV defaultScreen values (from TV market-movers URLs)
-// ═══════════════════════════════════════════════
-// SCREENER SYSTEM
-// TV embed-widget-screener.js via data: URI iframes
-// Each screen has a confirmed TV defaultScreen value
+// Each screen uses a confirmed TV defaultScreen value
 // Overlay allows scrolling; input bar opens chart
 // ═══════════════════════════════════════════════
 
-// Confirmed TV defaultScreen IDs — verified against TV's own market movers pages
+// Confirmed TV defaultScreen IDs
 const SCR_SCREENS={
   gainers:   'top_gainers',
   losers:    'biggest_losers',
@@ -1137,7 +1119,7 @@ const SCR_LABELS={
 
 // Build a complete HTML page with the TV screener widget
 // Uses data: URI so frame-ancestors CSP does not apply
-// Script tags built with string concat so HTML parser never sees </script> mid-file
+// Script tags built with string concat — safe for HTML parser
 function buildTVScreenerSrc(defaultScreen){
   const cfg=JSON.stringify({
     width:'100%',height:'100%',
@@ -1315,8 +1297,6 @@ function scrBarGo(uid){
   else inp?.focus();
 }
 
-// ═══════════════════════════════════════════════
-// WIDGET SYSTEM
 // ═══════════════════════════════════════════════
 // WIDGET SYSTEM
 // ═══════════════════════════════════════════════
