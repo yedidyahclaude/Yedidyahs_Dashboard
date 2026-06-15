@@ -1105,33 +1105,39 @@ function refreshHistWidgets(){
 // ═══════════════════════════════════════════════
 
 // Confirmed valid TV defaultScreen values (from TV market-movers URLs)
+// ═══════════════════════════════════════════════
+// SCREENER SYSTEM
+// TV embed-widget-screener.js via data: URI iframes
+// Each screen has a confirmed TV defaultScreen value
+// Overlay allows scrolling; input bar opens chart
+// ═══════════════════════════════════════════════
+
+// Confirmed TV defaultScreen IDs — verified against TV's own market movers pages
 const SCR_SCREENS={
-  gainers:'top_gainers',
-  losers:'biggest_losers',
-  active:'most_active',
-  premarket:'pre_market_gainers',
-  gappers:'pre_market_gap',
-  hod:'most_volatile',
-  penny:'penny_stocks',
-  p1screen:'unusual_volume',
-  p5screen:'penny_stocks',
+  gainers:   'top_gainers',
+  losers:    'biggest_losers',
+  active:    'most_active',
+  premarket: 'pre_market_gainers',
+  gappers:   'pre_market_gap',
+  hod:       'most_volatile',
+  penny:     'penny_stocks',
+  p1screen:  'unusual_volume',
+  p5screen:  'penny_stocks',
 };
 
 const SCR_LABELS={
-  gainers:'🚀 Top Gainers',
-  losers:'📉 Top Losers',
-  active:'🔥 Most Active',
-  premarket:'🌅 Pre-Market Gainers',
-  gappers:'⚡ Pre-Market Gap Ups',
-  hod:'💥 Most Volatile',
-  penny:'💲 Penny Stocks',
+  gainers:   '🚀 Top Gainers',
+  losers:    '📉 Top Losers',
+  active:    '🔥 Most Active',
+  premarket: '🌅 Pre-Market Gainers',
+  gappers:   '⚡ Pre-Market Gap Ups',
+  hod:       '💥 Most Volatile',
+  penny:     '💲 Penny Stocks',
 };
 
-const scrCache={};
-const scrTimers={};
-
-// Build self-contained TV screener page — loaded via data: URI in iframe
-// data: URIs bypass frame-ancestors CSP and don't have srcdoc escaping issues
+// Build a complete HTML page with the TV screener widget
+// Uses data: URI so frame-ancestors CSP does not apply
+// Script tags built with string concat so HTML parser never sees </script> mid-file
 function buildTVScreenerSrc(defaultScreen){
   const cfg=JSON.stringify({
     width:'100%',height:'100%',
@@ -1143,16 +1149,22 @@ function buildTVScreenerSrc(defaultScreen){
     colorTheme:'dark'
   });
   const st='scri'+'pt';
-  const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><style>*{margin:0;padding:0}html,body{height:100%;overflow:hidden;background:#07080f}</style></head><body>'
+  const html=
+    '<!DOCTYPE html><html><head><meta charset="UTF-8">'
+    +'<style>*{margin:0;padding:0}html,body{height:100%;overflow:hidden;background:#07080f}</style>'
+    +'</head><body>'
     +'<div class="tradingview-widget-container" style="height:100%;width:100%">'
     +'<div class="tradingview-widget-container__widget" style="height:100%;width:100%"></div>'
-    +'<'+st+' type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>'+cfg+'</'+st+'>'
+    +'<'+st+' type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-screener.js" async>'
+    +cfg
+    +'</'+st+'>'
     +'</div></body></html>';
   return 'data:text/html;charset=utf-8,'+encodeURIComponent(html);
 }
 
+// Standard screener widget — TV iframe with overlay + input bar
 function renderScreener(body,type){
-  body.style.cssText='padding:0;overflow:hidden;display:flex;flex-direction:column';
+  body.style.cssText='padding:0;overflow:hidden;display:flex;flex-direction:column;height:100%';
   const screen=SCR_SCREENS[type]||'top_gainers';
   const label=SCR_LABELS[type]||type;
   const uid='scr'+type+body.id.replace(/\W/g,'');
@@ -1161,10 +1173,10 @@ function renderScreener(body,type){
     <div class="scr-hdr">
       <span class="scr-badge"><span class="scr-dot"></span>${label}</span>
     </div>
-    <div style="position:relative;flex:1;min-height:0">
-      <iframe class="scr-iframe" id="${uid}fr" src="${page}"
+    <div style="position:relative;flex:1;min-height:0;overflow:hidden">
+      <iframe id="${uid}fr" src="${page}"
         scrolling="no" allowtransparency="true" frameborder="0"
-        style="width:100%;height:100%;border:none;display:block"></iframe>
+        style="position:absolute;top:0;left:0;width:100%;height:100%;border:none"></iframe>
       <div class="scr-overlay" onclick="scrFocusInput('${uid}')"></div>
     </div>
     <div class="scr-bar">
@@ -1178,22 +1190,24 @@ function renderScreener(body,type){
     </div>`;
 }
 
+// Pillar screener widgets — P1, P3, P5
 function renderPillarScreener(body,type){
-  body.style.cssText='padding:0;overflow:hidden;display:flex;flex-direction:column';
+  body.style.cssText='padding:0;overflow:hidden;display:flex;flex-direction:column;height:100%';
   const uid='scrp'+type+body.id.replace(/\W/g,'');
 
+  // P3: TradingView news timeline — special embed that TV actually allows
   if(type==='p3screen'){
     const params=encodeURIComponent(JSON.stringify({
       width:'100%',height:'100%',colorTheme:'dark',locale:'en',
       importanceFilter:'-1,0,1,2,3',countryFilter:'us'
     }));
     body.innerHTML=`
-      <div class="scr-hdr">
+      <div class="scr-hdr" style="background:#f59e0b15;border-bottom:1px solid #f59e0b30">
         <span class="scr-badge"><span class="scr-dot" style="background:#f59e0b"></span>📰 P3 · News Catalyst Feed</span>
       </div>
-      <iframe class="scr-iframe" src="https://www.tradingview.com/embed-widget/timeline/?locale=en#${params}"
+      <iframe src="https://www.tradingview.com/embed-widget/timeline/?locale=en#${params}"
         scrolling="no" allowtransparency="true" frameborder="0"
-        style="flex:1;width:100%;border:none;min-height:0"></iframe>
+        style="flex:1;width:100%;border:none;min-height:0;display:block"></iframe>
       <div class="scr-bar" style="border-top:1px solid #f59e0b40">
         <span class="scr-bar-label" style="color:#f59e0b">📰 OPEN:</span>
         <input class="scr-bar-inp" id="${uid}inp" placeholder="see news? type ticker → adds to 5 Pillars"
@@ -1206,28 +1220,29 @@ function renderPillarScreener(body,type){
     return;
   }
 
-  // p1screen = Unusual Volume Gainers, p5screen = Small Cap
-  const pillarLabels={
-    p1screen:{label:'🎯 P1+P2+P4 · Unusual Volume Gainers',color:'#7c6aff',hint:'$1-$20 · gaining · high relative volume'},
-    p5screen:{label:'💎 P5 · Small Float / Small Cap',color:'#a78bfa',hint:'Small cap momentum stocks'},
+  // P1: Unusual Volume Gainers — TV unusual_volume screen
+  // P5: Penny Stocks Small Float — TV penny_stocks screen
+  const pillarCfg={
+    p1screen:{label:'🎯 P1+P2+P4 · Unusual Volume Gainers',color:'#7c6aff',hint:'High relative volume · $1-$20 · momentum'},
+    p5screen:{label:'💎 P5 · Penny Stocks (Small Float)',    color:'#a78bfa',hint:'Low price small float stocks with momentum'},
   };
-  const pcfg=pillarLabels[type]||{label:type,color:'var(--ac)',hint:''};
+  const pcfg=pillarCfg[type]||{label:type,color:'var(--ac)',hint:''};
   const screen=SCR_SCREENS[type]||'unusual_volume';
   const page=buildTVScreenerSrc(screen);
   body.innerHTML=`
     <div class="scr-hdr" style="background:${pcfg.color}15;border-bottom:1px solid ${pcfg.color}30">
       <span class="scr-badge"><span class="scr-dot" style="background:${pcfg.color}"></span>${pcfg.label}</span>
-      <span style="font-size:8px;color:var(--dim)">${pcfg.hint}</span>
+      <span style="font-size:8px;color:var(--dim);margin-left:4px">${pcfg.hint}</span>
     </div>
-    <div style="position:relative;flex:1;min-height:0">
-      <iframe class="scr-iframe" id="${uid}fr" src="${page}"
+    <div style="position:relative;flex:1;min-height:0;overflow:hidden">
+      <iframe id="${uid}fr" src="${page}"
         scrolling="no" allowtransparency="true" frameborder="0"
-        style="width:100%;height:100%;border:none;display:block"></iframe>
+        style="position:absolute;top:0;left:0;width:100%;height:100%;border:none"></iframe>
       <div class="scr-overlay" onclick="scrFocusInput('${uid}')"></div>
     </div>
     <div class="scr-bar" style="border-top:1px solid ${pcfg.color}30">
       <span class="scr-bar-label" style="color:${pcfg.color}">↳ ADD:</span>
-      <input class="scr-bar-inp" id="${uid}inp" placeholder="type ticker → adds to 5 Pillars"
+      <input class="scr-bar-inp" id="${uid}inp" placeholder="type ticker → adds to 5 Pillars scanner"
         maxlength="10" autocomplete="off" spellcheck="false"
         style="border-color:${pcfg.color}40"
         oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9.]/g,'');scrShowSuggest('${uid}',this.value)"
@@ -1236,8 +1251,6 @@ function renderPillarScreener(body,type){
       <button onclick="scrPaste('${uid}')" style="background:var(--s3);border:1px solid var(--b2);border-radius:4px;color:var(--mu);font-size:10px;padding:4px 6px;cursor:pointer;flex-shrink:0">📋</button>
     </div>`;
 }
-
-async function loadPillarScr(){}
 
 
 
