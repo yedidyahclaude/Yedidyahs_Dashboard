@@ -499,7 +499,7 @@ function logout(){sessionStorage.clear();location.reload();}
 // ═══ CONSTANTS & STATE ═══
 const FHK='d8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
 const SNAP=20;
-const LAYOUT_VER='v13';
+const LAYOUT_VER='v14';
 const SCREENER_TYPES=['gainers','losers','active','premarket','gappers','hod','penny'];
 const TV_WIDGET_TYPES=['tvheatmap','tvhotlists','tvmarketoverview','argus'];
 const WIDGET_TYPES={
@@ -540,9 +540,18 @@ const scanCache={};
 let scanDeepRunning=false,deepScanCountdown=30;
 
 function getWidgets(){
+  // Check version FIRST — if stale, nuke everything including active profile
+  const ver=localStorage.getItem('sv_layout_ver');
+  if(ver!==LAYOUT_VER){
+    localStorage.setItem('sv_layout_ver',LAYOUT_VER);
+    localStorage.removeItem('sv_widgets5');
+    localStorage.removeItem('sv_active_profile');
+    activeProfileId=null;
+    return JSON.parse(JSON.stringify(DEFAULT_WIDGETS));
+  }
   if(activeProfileId){const p=profiles.find(x=>x.id===activeProfileId);if(p?.widgets)return p.widgets;}
-  const saved=localStorage.getItem('sv_widgets5'),ver=localStorage.getItem('sv_layout_ver');
-  if(!saved||ver!==LAYOUT_VER){localStorage.setItem('sv_layout_ver',LAYOUT_VER);localStorage.removeItem('sv_widgets5');return JSON.parse(JSON.stringify(DEFAULT_WIDGETS));}
+  const saved=localStorage.getItem('sv_widgets5');
+  if(!saved)return JSON.parse(JSON.stringify(DEFAULT_WIDGETS));
   return JSON.parse(saved);
 }
 function saveWidgets(){
