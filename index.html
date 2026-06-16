@@ -944,44 +944,55 @@ const SEED_UNIVERSE=[
 ];
 
 async function loadUniverse(){
-  // Load full symbol list from Finnhub — ONE call, free tier supports this
-  try{
-    const r=await fetch('https://finnhub.io/api/v1/stock/symbol?exchange=US&token='+FHK);
-    if(!r.ok)throw new Error('status '+r.status);
-    const data=await r.json();
-    if(!Array.isArray(data)||data.length<100)throw new Error('bad data');
-    // Filter: Common Stock only, symbol ≤5 chars, no dots (no warrants/preferred)
-    // This gives ~2000-3000 real tradeable names
-    const filtered=data
-      .filter(s=>
-        s.symbol &&
-        s.symbol.length<=5 &&
-        !s.symbol.includes('.') &&
-        !s.symbol.includes('-') &&
-        (s.type==='Common Stock'||s.type==='ETP')
-      )
-      .map(s=>s.symbol);
-    // Dedupe and shuffle so we don't always start at same place
-    const unique=[...new Set(filtered)];
-    // Shuffle using Fisher-Yates
-    for(let i=unique.length-1;i>0;i--){
-      const j=Math.floor(Math.random()*(i+1));
-      [unique[i],unique[j]]=[unique[j],unique[i]];
+  // SEC EDGAR company_tickers.json — US government API, CORS: *, no auth, ~10k companies
+  // Fallback: Finnhub search-based universe
+  const sources=[
+    'https://www.sec.gov/files/company_tickers.json',
+    'https://www.sec.gov/files/company_tickers_exchange.json',
+  ];
+  for(const url of sources){
+    try{
+      const r=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0 research/1.0'}});
+      if(!r.ok)continue;
+      const data=await r.json();
+      // Format: {"0":{"cik_str":320193,"ticker":"AAPL","title":"Apple Inc."},...}
+      const raw=Object.values(data);
+      // Filter: ticker ≤5 chars, no dots/dashes (removes warrants, preferred)
+      // Exclude mega caps by title keywords to prioritize small caps
+      const megaCap=new Set(['AAPL','MSFT','GOOGL','GOOG','AMZN','NVDA','META','TSLA','BRK','JPM','JNJ','V','UNH','XOM','WMT','MA','PG','HD','CVX','MRK','LLY','ABBV','PEP','KO','AVGO','COST','TMO','MCD','CSCO','ACN','ABT','DHR','WFC','NKE','CRM','MS','TXN','NEE','PM','RTX','HON','LOW','UPS','INTU','SPGI','CAT','GS','ELV','BMY','AMD','AMGN','MDT','ISRG','NOW','QCOM','BKNG','T','BLK','DE','SBUX','GE','MMM','AXP','CB','SYK','VRTX','ZTS','ADI','TJX','C','CI','REGN','SO','MO','BSX','MDLZ','PLD','GILD','AON','DUK','USB','ITW','ETN','PNC','TGT','EMR','NSC','FDX','MMC','COF','CL','EW','APD','HCA','ICE','D','AIG','MCO']);
+      const filtered=raw
+        .filter(s=>
+          s.ticker &&
+          s.ticker.length>=1 &&
+          s.ticker.length<=5 &&
+          !s.ticker.includes('.') &&
+          !s.ticker.includes('-') &&
+          /^[A-Z]+$/.test(s.ticker) &&
+          !megaCap.has(s.ticker)
+        )
+        .map(s=>s.ticker);
+      const unique=[...new Set(filtered)];
+      // Shuffle so every session starts at a different point
+      for(let i=unique.length-1;i>0;i--){
+        const j=Math.floor(Math.random()*(i+1));
+        [unique[i],unique[j]]=[unique[j],unique[i]];
+      }
+      _universe=unique;
+      _uniLoaded=true;
+      document.querySelectorAll('[id$="-status"]').forEach(el=>{
+        if(el.closest?.('.widget'))
+          el.textContent='⚡ Loaded '+_universe.length+' symbols · auto-scanning every 3s';
+      });
+      console.log('[Universe] Loaded '+_universe.length+' symbols from SEC EDGAR');
+      return; // success — stop trying sources
+    }catch(e){
+      console.log('[Universe] Source failed: '+url+' — '+e.message);
     }
-    _universe=unique;
-    _uniLoaded=true;
-    // Update scanner status
-    document.querySelectorAll('[id$="-status"]').forEach(el=>{
-      if(el.closest?.('.widget'))
-        el.textContent='⚡ Loaded '+_universe.length+' symbols · scanning every 3s';
-    });
-    console.log('[Universe] Loaded '+_universe.length+' symbols from Finnhub');
-  }catch(e){
-    // Fall back to seed list silently
-    _universe=SEED_UNIVERSE;
-    _uniLoaded=true;
-    console.log('[Universe] Fallback to seed list ('+_universe.length+' symbols): '+e.message);
   }
+  // Both sources failed — stay on seed list
+  _universe=SEED_UNIVERSE;
+  _uniLoaded=true;
+  console.log('[Universe] Using seed list ('+SEED_UNIVERSE.length+' symbols)');
 }
 
 async function runUniverseScan(){
