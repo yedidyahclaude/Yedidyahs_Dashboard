@@ -308,7 +308,7 @@ header{display:flex;align-items:center;gap:10px;padding:0 14px;height:48px;flex-
           <button class="wm-item" onclick="addWidget('premarket')"><span>🌅</span> Pre-Market Gainers</button>
           <button class="wm-item" onclick="addWidget('gappers')"><span>⚡</span> Pre-Market Gap Ups</button>
           <button class="wm-item" onclick="addWidget('hod')"><span>💥</span> Most Volatile</button>
-          <button class="wm-item" onclick="addWidget('penny')"><span>💲</span> Penny Stocks</button>
+          <button class="wm-item" onclick="addWidget('penny')"><span>💲</span> Penny Stocks (pick screen ↓)</button>
           <div class="wm-sect">5 Pillar Screens</div>
           <button class="wm-item" onclick="addWidget('p1screen')"><span>🎯</span> P1+P2+P4 · Unusual Volume</button>
           <button class="wm-item" onclick="addWidget('p3screen')"><span>📰</span> P3 · News Catalyst Feed</button>
@@ -513,7 +513,7 @@ const WIDGET_TYPES={
 };
 const SCR_SCREENS={
   gainers:'top_gainers',losers:'biggest_losers',active:'most_active',
-  premarket:'pre_market_gainers',gappers:'pre_market_gap',hod:'most_volatile',penny:'top_gainers',
+  premarket:'pre_market_gainers',gappers:'pre_market_gap',hod:'most_volatile',penny:'general',
   p1screen:'unusual_volume',p5screen:'small_cap',
 };
 const DEFAULT_WIDGETS=[
