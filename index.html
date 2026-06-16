@@ -1092,13 +1092,19 @@ async function renderNews(body,sym){
 
 // ═══ CHART PANEL ═══
 function setChartInterval(interval,btnId){curInterval=interval;document.querySelectorAll('.iv-btn').forEach(b=>b.classList.remove('active'));document.getElementById(btnId)?.classList.add('active');if(curChartSym)openChartPanel(curChartSym);}
-function openChartPanel(sym){let tvSym=sym;if(sym==='BTC/USD')tvSym='BINANCE:BTCUSDT';else if(sym==='ETH/USD')tvSym='BINANCE:ETHUSDT';curChartSym=sym;const symEl=document.getElementById('cpSym');symEl.textContent=sym;symEl.style.color='#fff';document.getElementById('cpLabel').textContent='TradingView · real-time · pre/after hours';updateCPPrice();renderHistBar();openTVPopup();}
+function openChartPanel(sym){let tvSym=sym;if(sym==='BTC/USD')tvSym='BINANCE:BTCUSDT';else if(sym==='ETH/USD')tvSym='BINANCE:ETHUSDT';curChartSym=sym;const symEl=document.getElementById('cpSym');symEl.textContent=sym;symEl.style.color='#fff';document.getElementById('cpLabel').textContent='TradingView · real-time · pre/after hours';updateCPPrice();renderHistBar();
+  // IMPORTANT: this no longer auto-opens or auto-refreshes the TradingView popup.
+  // Previously every stock click anywhere on the dashboard force-closed and
+  // reopened the popup with &interval=10S baked in, which wiped out any
+  // per-pane intervals manually set inside TradingView's multi-chart layout.
+  // The popup now ONLY opens/updates when the user explicitly clicks "POP OUT".
+}
 function toggleChartPanel(){if(curChartSym)openTVPopup();}
 function updateCPPrice(){if(!curChartSym)return;const q=Q[curChartSym];if(!q)return;const u=(q.changePct||0)>=0;const px=document.getElementById('cpPx'),chg=document.getElementById('cpChg');if(px){px.textContent='$'+fmtP(q.price);px.className=u?'up':'dn';}if(chg){chg.textContent=(u?'+':'')+q.changePct.toFixed(2)+'%';chg.className=u?'up':'dn';}}
 function openTVPopup(){
   if(!curChartSym){showToast('Select a stock first');return;}
   let tvSym=curChartSym;if(curChartSym==='BTC/USD')tvSym='BINANCE:BTCUSDT';else if(curChartSym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
-  const base='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSym)+'&theme=dark&extended_hours=1&session=extended&interval='+curInterval+'&_='+Date.now();
+  const base='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSym)+'&theme=dark&extended_hours=1&session=extended&interval='+curInterval+'&clear=1&_='+Date.now();
   const sw=screen.availWidth,sh=screen.availHeight;const cw=Math.floor(sw*0.9),ch=Math.floor(sh*0.9);const ol=Math.floor((sw-cw)/2),ot=Math.floor((sh-ch)/2);
   const feat='width='+cw+',height='+ch+',left='+ol+',top='+ot+',resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no';
   // Always open a fresh window with a unique name per symbol — reusing one window and
