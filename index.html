@@ -499,8 +499,8 @@ function logout(){sessionStorage.clear();location.reload();}
 // ═══ CONSTANTS & STATE ═══
 const FHK='d8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
 const SNAP=20;
-const LAYOUT_VER='v12';
-const SCREENER_TYPES=['gainers','losers','active','premarket','gappers','hod','penny','p1screen','p3screen','p5screen'];
+const LAYOUT_VER='v13';
+const SCREENER_TYPES=['gainers','losers','active','premarket','gappers','hod','penny'];
 const TV_WIDGET_TYPES=['tvheatmap','tvhotlists','tvmarketoverview','argus'];
 const WIDGET_TYPES={
   gainers:'🚀 Top Gainers',losers:'📉 Top Losers',active:'🔥 Most Active',
@@ -517,13 +517,13 @@ const SCR_SCREENS={
   p1screen:'unusual_volume',p5screen:'small_cap',
 };
 const DEFAULT_WIDGETS=[
-  {id:'w1',type:'gainers',    x:20,  y:20,  w:400,h:340},
-  {id:'w2',type:'active',     x:20,  y:380, w:400,h:300},
-  {id:'w3',type:'scanner',    x:440, y:20,  w:400,h:660},
-  {id:'w4',type:'news',       x:860, y:20,  w:300,h:440},
-  {id:'w5',type:'history',    x:860, y:480, w:300,h:200},
-  {id:'w6',type:'tvheatmap',  x:1180,y:20,  w:420,h:340},
-  {id:'w7',type:'premarket',  x:1180,y:380, w:420,h:300},
+  {id:'w1',type:'gainers',    x:20,  y:20,  w:380,h:340},
+  {id:'w2',type:'premarket',  x:20,  y:380, w:380,h:300},
+  {id:'w3',type:'scanner',    x:420, y:20,  w:380,h:680},
+  {id:'w4',type:'p1screen',   x:820, y:20,  w:380,h:340},
+  {id:'w5',type:'p3screen',   x:820, y:380, w:380,h:300},
+  {id:'w6',type:'tvheatmap',  x:1220,y:20,  w:420,h:340},
+  {id:'w7',type:'news',       x:1220,y:380, w:420,h:300},
 ];
 const Q={};
 let CUR='',alts=JSON.parse(localStorage.getItem('sv_al')||'[]');
@@ -856,7 +856,7 @@ function liveScanUpdate(){
     if(!results.length){res.innerHTML='<div class="scan-empty"><div style="font-size:20px;margin-bottom:8px">🎯</div><div style="font-weight:600;color:var(--tx);margin-bottom:4px">Watching '+getScanSyms().length+' symbols</div><div style="font-size:10px">Stocks passing P1 ($'+minP+'-$'+maxP+') + P2 (≥'+minC+'%) appear here</div><div style="font-size:9px;color:var(--dim);margin-top:6px">Type a ticker in any screener bar to add it</div></div>';return;}
     const scanOrder=getScanSyms();results.sort((a,b)=>{const aNew=newSyms.has(a.sym)?1:0,bNew=newSyms.has(b.sym)?1:0;if(bNew!==aNew)return bNew-aNew;return scanOrder.indexOf(a.sym)-scanOrder.indexOf(b.sym);});
     const pd=v=>v===true?'pass':v===false?'fail':'na';
-    res.innerHTML=results.map(r=>{const u=(r.q.changePct||0)>=0;const sc=r.score>=5?'s5':r.score>=4?'s4':r.score>=3?'s3':'s0';const isNew=newSyms.has(r.sym);const pending=r.p3===null&&r.p4===null&&r.p5===null;return '<div class="scan-row'+(r.score>=5?' score5':r.score>=4?' score4':'')+(isNew?' scan-row-new':'')+'" data-sym="'+r.sym+'" onclick="selectSym(this.dataset.sym)"><div style="min-width:0;overflow:hidden">'+(isNew?'<span style="font-size:7px;background:#19c48a;color:#000;border-radius:2px;padding:0 3px;font-weight:700;margin-right:3px">NEW</span>':'')+'<span class="scan-sym '+(u?'up':'dn')+'">'+r.sym+(r.hasNews?' 🔥':'')+'</span></div><span class="scan-px">$'+fmtP(r.q.price)+'</span><span class="scan-chg '+(u?'up':'dn')+'">'+(u?'+':'')+((r.q.changePct||0).toFixed(1))+'%</span><div class="scan-pills"><span class="pill '+pd(r.p1)+'" title="P1:Price">P1</span><span class="pill '+pd(r.p2)+'" title="P2:Change">P2</span><span class="pill '+(pending?'na':pd(r.p3))+'" title="P3:News">P3</span><span class="pill '+(pending?'na':pd(r.p4))+'" title="P4:RVol">P4</span><span class="pill '+(pending?'na':pd(r.p5))+'" title="P5:Float">P5</span></div><span class="scan-score '+sc+'">'+r.score+'/5</span></div>';}).join('');
+    res.innerHTML=results.map(r=>{const u=(r.q.changePct||0)>=0;const sc=r.score>=5?'s5':r.score>=4?'s4':r.score>=3?'s3':'s0';const isNew=newSyms.has(r.sym);const pending=r.p3===null||r.p4===null||r.p5===null;return '<div class="scan-row'+(r.score>=5?' score5':r.score>=4?' score4':'')+(isNew?' scan-row-new':'')+'" data-sym="'+r.sym+'" onclick="selectSym(this.dataset.sym)"><div style="min-width:0;overflow:hidden">'+(isNew?'<span style="font-size:7px;background:#19c48a;color:#000;border-radius:2px;padding:0 3px;font-weight:700;margin-right:3px">NEW</span>':'')+'<span class="scan-sym '+(u?'up':'dn')+'">'+r.sym+(r.hasNews?' 🔥':'')+'</span></div><span class="scan-px">$'+fmtP(r.q.price)+'</span><span class="scan-chg '+(u?'up':'dn')+'">'+(u?'+':'')+((r.q.changePct||0).toFixed(1))+'%</span><div class="scan-pills"><span class="pill '+pd(r.p1)+'" title="P1:Price">P1</span><span class="pill '+pd(r.p2)+'" title="P2:Change">P2</span><span class="pill '+(pending?'na':pd(r.p3))+'" title="P3:News">P3</span><span class="pill '+(pending?'na':pd(r.p4))+'" title="P4:RVol">P4</span><span class="pill '+(pending?'na':pd(r.p5))+'" title="P5:Float">P5</span></div><span class="scan-score '+sc+'">'+r.score+'/5</span></div>';}).join('');
   });
   if(currentView==='mobile')renderMobileScanner();
 }
@@ -871,8 +871,21 @@ async function startDeepScan(){
       const p1=q.price>=1&&q.price<=20,p2=(q.changePct||0)>=minC;if(!p1||!p2)continue;
       const cached=scanCache[sym]||{};if(Date.now()-(cached.ts||0)<120000)continue;
       let hasNews=cached.hasNews??false,p3=cached.p3??null,p4=cached.p4??null,p5=cached.p5??null;
-      await queueCall(async()=>{try{const today=new Date().toISOString().split('T')[0];const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];const r=await fetch('https://finnhub.io/api/v1/company-news?symbol='+sym+'&from='+from+'&to='+today+'&token='+FHK);const news=await r.json();hasNews=Array.isArray(news)&&news.length>0;p3=hasNews;}catch(e){}});
-      await queueCall(async()=>{try{const r=await fetch('https://finnhub.io/api/v1/stock/metric?symbol='+sym+'&metric=all&token='+FHK);const d=await r.json();const m=d.metric||{};const avgDailyVol=m['10DayAverageTradingVolume']||0;if(avgDailyVol>0){const normalizedRVol=(q.volume/avgDailyVol)*(390/minsElapsed);p4=normalizedRVol>=rvThreshold;scanCache[sym]={...scanCache[sym],rvolValue:normalizedRVol.toFixed(1)};}else p4=null;const trueFloat=m['shareFloat']??m['float']??null;if(trueFloat!==null){const floatM=trueFloat>1000?trueFloat/1e6:trueFloat;p5=floatM<10;scanCache[sym]={...scanCache[sym],floatValue:floatM.toFixed(1)+'M'};}else p5=null;}catch(e){}});
+      await queueCall(async()=>{try{const today=new Date().toISOString().split('T')[0];const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];const r=await fetch('https://finnhub.io/api/v1/company-news?symbol='+sym+'&from='+from+'&to='+today+'&token='+FHK);if(r.status===403||r.status===429){p3=null;return;}const news=await r.json();hasNews=Array.isArray(news)&&news.length>0;p3=hasNews;}catch(e){p3=null;}});
+      await queueCall(async()=>{try{
+        // P4: RVOL — use Finnhub basic metrics (free tier compatible)
+        const r=await fetch('https://finnhub.io/api/v1/stock/metric?symbol='+sym+'&metric=all&token='+FHK);
+        if(r.status===403||r.status===429){p4=null;p5=null;return;}
+        const d=await r.json();const m=d.metric||{};
+        const avgDailyVol=m['10DayAverageTradingVolume']||0;
+        if(avgDailyVol>0){const normalizedRVol=(q.volume/avgDailyVol)*(390/minsElapsed);p4=normalizedRVol>=rvThreshold;scanCache[sym]={...scanCache[sym],rvolValue:normalizedRVol.toFixed(1)};}
+        else{// Fallback: estimate RVOL from changePct as proxy (high % move = high relative activity)
+          p4=(q.changePct||0)>=20;scanCache[sym]={...scanCache[sym],rvolValue:'est'};}
+        // P5: Float — Finnhub free tier may not have this; mark as unknown if missing
+        const trueFloat=m['shareFloat']??m['float']??null;
+        if(trueFloat!==null){const floatM=trueFloat>1000?trueFloat/1e6:trueFloat;p5=floatM<10;scanCache[sym]={...scanCache[sym],floatValue:floatM.toFixed(1)+'M'};}
+        else{p5=null;scanCache[sym]={...scanCache[sym],floatValue:'—'};}
+      }catch(e){p4=null;p5=null;}});
       scanCache[sym]={...scanCache[sym],p3,p4,p5,hasNews,ts:Date.now()};
     }catch(e){}
   }
