@@ -1101,8 +1101,13 @@ function openTVPopup(){
   const base='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSym)+'&theme=dark&extended_hours=1&session=extended&interval='+curInterval+'&_='+Date.now();
   const sw=screen.availWidth,sh=screen.availHeight;const cw=Math.floor(sw*0.9),ch=Math.floor(sh*0.9);const ol=Math.floor((sw-cw)/2),ot=Math.floor((sh-ch)/2);
   const feat='width='+cw+',height='+ch+',left='+ol+',top='+ot+',resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no';
-  try{if(tvWinRef&&!tvWinRef.closed){tvWinRef.location.href=base;tvWinRef.focus();return;}}catch(e){}
-  tvWinRef=window.open(base,'StockViewTV',feat);if(!tvWinRef||tvWinRef.closed)showToast('⚠ Allow popups for this site in your browser');
+  // Always open a fresh window with a unique name per symbol — reusing one window and
+  // navigating via location.href is async and TradingView restores its last-viewed symbol
+  // from its own localStorage before our URL param applies, causing the wrong chart to show.
+  try{if(tvWinRef&&!tvWinRef.closed)tvWinRef.close();}catch(e){}
+  tvWinRef=window.open(base,'StockViewTV_'+tvSym.replace(/[^A-Z0-9]/g,''),feat);
+  if(!tvWinRef||tvWinRef.closed)showToast('⚠ Allow popups for this site in your browser');
+  else tvWinRef.focus();
 }
 function openNewsPopup(url){const w=Math.floor(screen.width*.65),h=Math.floor(screen.height*.85);const l=Math.floor((screen.width-w)/2),t=Math.floor((screen.height-h)/10);if(newsWin&&!newsWin.closed){newsWin.location.href=url;newsWin.focus();}else newsWin=window.open(url,'StockViewNews','width='+w+',height='+h+',left='+l+',top='+t+',resizable=yes,scrollbars=yes,toolbar=yes,location=yes');}
 
@@ -1115,7 +1120,7 @@ function closeDrop(){dd.classList.remove('open');hlt=-1;}
 inp.addEventListener('input',e=>{const v=e.target.value.trim();clearTimeout(srt);if(!v){showPop();return;}spin.style.display='block';srt=setTimeout(()=>doSearch(v),320);});
 inp.addEventListener('focus',()=>showPop());
 inp.addEventListener('keydown',e=>{const its=dd.querySelectorAll('.dit');if(e.key==='ArrowDown'){e.preventDefault();hlt=Math.min(hlt+1,its.length-1);its.forEach((x,i)=>x.classList.toggle('hl',i===hlt));}else if(e.key==='ArrowUp'){e.preventDefault();hlt=Math.max(hlt-1,0);its.forEach((x,i)=>x.classList.toggle('hl',i===hlt));}else if(e.key==='Enter'){const p=flt[hlt>=0?hlt:0]||(histSyms[hlt>=0?hlt:0]?{symbol:histSyms[0]}:null);if(p){selectSym(p.symbol);closeDrop();}}else if(e.key==='Escape'){closeDrop();inp.blur();}});
-document.addEventListener('keydown',e=>{if(e.target===inp)return;const tag=e.target.tagName;if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;if(e.target.isContentEditable)return;if(e.metaKey||e.ctrlKey||e.altKey)return;if(e.key==='Escape'){if(claudeOpen){toggleClaude();return;}closeDrop();return;}if(e.key.length===1&&/[a-zA-Z0-9]/.test(e.key)){inp.focus();inp.value=e.key;doSearch(e.key);}});
+document.addEventListener('keydown',e=>{if(e.target===inp)return;const tag=e.target.tagName;if(tag==='INPUT'||tag==='TEXTAREA'||tag==='SELECT')return;if(e.target.isContentEditable)return;if(e.metaKey||e.ctrlKey||e.altKey)return;if(e.key==='Escape'){if(claudeOpen){toggleClaude();return;}closeDrop();return;}if(e.key.length===1&&/[a-zA-Z0-9]/.test(e.key)){e.preventDefault();inp.value+=e.key;inp.focus();doSearch(inp.value);}});
 document.addEventListener('click',e=>{if(!e.target.closest('.sw'))closeDrop();if(!e.target.closest('.wm-wrap'))document.getElementById('widgetMenu').classList.remove('open');if(!e.target.closest('.ws-wrap'))document.querySelectorAll('.ws-panel.open').forEach(x=>x.classList.remove('open'));});
 document.getElementById('addWidgetBtn').addEventListener('click',e=>{document.getElementById('widgetMenu').classList.toggle('open');e.stopPropagation();});
 
