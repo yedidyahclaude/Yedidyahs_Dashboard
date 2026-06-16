@@ -635,7 +635,9 @@ function queueCall(fn){return new Promise((resolve,reject)=>{apiQueue.push({fn,r
 async function drainQueue(){if(apiRunning)return;apiRunning=true;while(apiQueue.length){const{fn,resolve,reject}=apiQueue.shift();try{resolve(await fn());}catch(e){reject(e);}if(apiQueue.length)await new Promise(r=>setTimeout(r,1200));}apiRunning=false;}
 async function fetchQDirect(sym){
   if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<25000)return;
-  try{const r=await fetch('https://finnhub.io/api/v1/quote?symbol='+sym+'&token='+FHK);if(r.status===429)return;const q=await r.json();if(q.c)Q[sym]={symbol:sym,price:q.c,open:q.o,high:q.h,low:q.l,prevClose:q.pc,change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,volume:q.v||0,name:Q[sym]?.name||sym,_ts:Date.now()};}catch(e){}
+  return queueCall(async()=>{
+    try{const r=await fetch('https://finnhub.io/api/v1/quote?symbol='+sym+'&token='+FHK);if(r.status===429||r.status===403)return;const q=await r.json();if(q.c)Q[sym]={symbol:sym,price:q.c,open:q.o,high:q.h,low:q.l,prevClose:q.pc,change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,volume:q.v||0,name:Q[sym]?.name||sym,_ts:Date.now()};}catch(e){}
+  });
 }
 async function fetchQ(sym){if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<25000)return;await fetchQDirect(sym);}
 async function fetchProfile(sym){
@@ -1042,8 +1044,6 @@ async function runUniverseScan(){
         }
       }
     }catch(e){}
-
-    await new Promise(r=>setTimeout(r,1000)); // 1s between each call
   }
   _uniRunning=false;
 }
