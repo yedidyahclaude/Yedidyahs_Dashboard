@@ -534,7 +534,7 @@ let tvWinRef=null,newsWin=null,curChartSym='';
 let profiles=JSON.parse(localStorage.getItem('sv_profiles')||'[]');
 let activeProfileId=localStorage.getItem('sv_active_profile')||null;
 let appReady=false,currentView='desktop',currentMobileTab=0;
-const newSyms=new Set();
+const newSyms=new Map(); // sym -> timestamp added, enables true newest-first sort
 let curInterval='10S';
 const scanCache={};
 let scanDeepRunning=false,deepScanCountdown=30;
@@ -670,7 +670,7 @@ async function manualRefreshAll(){
 function addToHistory(sym){
   const isNew=!histSyms.includes(sym);histSyms=histSyms.filter(s=>s!==sym);histSyms.unshift(sym);
   if(histSyms.length>15)histSyms=histSyms.slice(0,15);localStorage.setItem('sv_hist',JSON.stringify(histSyms));
-  if(isNew){newSyms.add(sym);playPing();showToast('📈 '+sym+' added to History & 5 Pillars Scanner');}
+  if(isNew){newSyms.set(sym,Date.now());playPing();showToast('📈 '+sym+' added to History & 5 Pillars Scanner');}
   renderHistBar();
 }
 function renderHistBar(){
@@ -861,9 +861,15 @@ function liveScanUpdate(){
     const minP=parseFloat(document.getElementById(bid+'-minp')?.value)||1;const maxP=parseFloat(document.getElementById(bid+'-maxp')?.value)||20;
     const baseC=parseFloat(document.getElementById(bid+'-chg')?.value)||10;const sess=getSession();const minC=sess==='pre'||sess==='aft'?baseC*.5:baseC;
     const results=[];
-    getScanSyms().forEach(sym=>{const q=Q[sym];if(!q?.price)return;const p1=q.price>=minP&&q.price<=maxP,p2=(q.changePct||0)>=minC;if(!p1||!p2)return;const c=scanCache[sym]||{};const score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false});});
-    if(!results.length){res.innerHTML='<div class="scan-empty"><div style="font-size:20px;margin-bottom:8px">🎯</div><div style="font-weight:600;color:var(--tx);margin-bottom:4px">Watching '+getScanSyms().length+' symbols</div><div style="font-size:10px">Stocks passing P1 ($'+minP+'-$'+maxP+') + P2 (≥'+minC+'%) appear here</div><div style="font-size:9px;color:var(--dim);margin-top:6px">Type a ticker in any screener bar to add it</div></div>';return;}
-    const scanOrder=getScanSyms();results.sort((a,b)=>{const aNew=newSyms.has(a.sym)?1:0,bNew=newSyms.has(b.sym)?1:0;if(bNew!==aNew)return bNew-aNew;return scanOrder.indexOf(a.sym)-scanOrder.indexOf(b.sym);});
+    getScanSyms().forEach(sym=>{const q=Q[sym];if(!q?.price)return;const p1=q.price>=minP&&q.price<=maxP,p2=(q.changePct||0)>=minC;if(!p1||!p2)return;const c=scanCache[sym]||{};const score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;if(score<3)return;results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false});});
+    if(!results.length){res.innerHTML='<div class="scan-empty"><div style="font-size:20px;margin-bottom:8px">🎯</div><div style="font-weight:600;color:var(--tx);margin-bottom:4px">Watching '+getScanSyms().length+' symbols</div><div style="font-size:10px">Stocks scoring 3/5+ pillars appear here (P1 $'+minP+'-$'+maxP+' + P2 ≥'+minC+'% required)</div><div style="font-size:9px;color:var(--dim);margin-top:6px">Type a ticker in any screener bar to add it</div></div>';return;}
+    // Sort: newest finds first (by actual add timestamp), then by score, then by % change
+    results.sort((a,b)=>{
+      const aT=newSyms.get(a.sym)||0,bT=newSyms.get(b.sym)||0;
+      if(aT||bT)return bT-aT; // newer timestamp = higher = sorts first
+      if(b.score!==a.score)return b.score-a.score;
+      return (b.q.changePct||0)-(a.q.changePct||0);
+    });
     const pd=v=>v===true?'pass':v===false?'fail':'na';
     res.innerHTML=results.map(r=>{const u=(r.q.changePct||0)>=0;const sc=r.score>=5?'s5':r.score>=4?'s4':r.score>=3?'s3':'s0';const isNew=newSyms.has(r.sym);const pending=r.p3===null||r.p4===null||r.p5===null;return '<div class="scan-row'+(r.score>=5?' score5':r.score>=4?' score4':'')+(isNew?' scan-row-new':'')+'" data-sym="'+r.sym+'" onclick="selectSym(this.dataset.sym)"><div style="min-width:0;overflow:hidden">'+(isNew?'<span style="font-size:7px;background:#19c48a;color:#000;border-radius:2px;padding:0 3px;font-weight:700;margin-right:3px">NEW</span>':'')+'<span class="scan-sym '+(u?'up':'dn')+'">'+r.sym+(r.hasNews?' 🔥':'')+'</span></div><span class="scan-px">$'+fmtP(r.q.price)+'</span><span class="scan-chg '+(u?'up':'dn')+'">'+(u?'+':'')+((r.q.changePct||0).toFixed(1))+'%</span><div class="scan-pills"><span class="pill '+pd(r.p1)+'" title="P1:Price">P1</span><span class="pill '+pd(r.p2)+'" title="P2:Change">P2</span><span class="pill '+(pending?'na':pd(r.p3))+'" title="P3:News">P3</span><span class="pill '+(pending?'na':pd(r.p4))+'" title="P4:RVol">P4</span><span class="pill '+(pending?'na':pd(r.p5))+'" title="P5:Float">P5</span></div><span class="scan-score '+sc+'">'+r.score+'/5</span></div>';}).join('');
   });
@@ -1027,7 +1033,7 @@ async function runUniverseScan(){
         if(!scanSyms.includes(sym)){
           scanSyms.push(sym);
           saveScanSyms();
-          newSyms.add(sym);
+          newSyms.set(sym,Date.now());
           if(fhWS?.readyState===1)
             fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
           showToast('🔥 Auto-found: '+sym+' +'+(q.changePct||0).toFixed(1)+'% $'+fmtP(q.price));
