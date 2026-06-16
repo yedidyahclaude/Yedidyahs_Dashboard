@@ -841,7 +841,7 @@ function removeFromHistory(sym){histSyms=histSyms.filter(s=>s!==sym);localStorag
 // ═══ 5 PILLARS SCANNER ═══
 function renderScanner(body){
   const bid=body.id;
-  body.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-bottom:1px solid var(--b1);flex-shrink:0"><span style="font-size:8px;color:var(--dim)" id="'+bid+'-status">⚡ Live · Deep scan every 30s</span><div style="display:flex;gap:4px;align-items:center"><button onclick="toggleScanFilters(\''+bid+'\')" style="background:none;border:1px solid var(--b2);border-radius:3px;color:var(--mu);font-family:\'DM Mono\',monospace;font-size:8px;padding:2px 7px;cursor:pointer">⚙ Filters</button><button onclick="startDeepScan()" style="background:var(--ac);border:none;border-radius:3px;color:#fff;font-family:\'DM Mono\',monospace;font-size:8px;padding:2px 7px;cursor:pointer">↺</button></div></div>'
+  body.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-bottom:1px solid var(--b1);flex-shrink:0"><span style="font-size:8px;color:var(--dim)" id="'+bid+'-status">⚡ Live · Auto-scanning 200+ symbols every 8s</span><div style="display:flex;gap:4px;align-items:center"><button onclick="toggleScanFilters(\''+bid+'\')" style="background:none;border:1px solid var(--b2);border-radius:3px;color:var(--mu);font-family:\'DM Mono\',monospace;font-size:8px;padding:2px 7px;cursor:pointer">⚙ Filters</button><button onclick="startDeepScan()" style="background:var(--ac);border:none;border-radius:3px;color:#fff;font-family:\'DM Mono\',monospace;font-size:8px;padding:2px 7px;cursor:pointer">↺</button></div></div>'
     +'<div id="'+bid+'-filters" style="display:none;padding:6px 8px;border-bottom:1px solid var(--b1);background:var(--s3);flex-shrink:0"><div class="scan-filters"><div class="flt-g"><span class="flt-l">Min Price $</span><input class="flt-i" type="number" value="1" step="0.5" id="'+bid+'-minp"/></div><div class="flt-g"><span class="flt-l">Max Price $</span><input class="flt-i" type="number" value="20" id="'+bid+'-maxp"/></div><div class="flt-g"><span class="flt-l">Min % Change</span><input class="flt-i" type="number" value="10" id="'+bid+'-chg"/></div><div class="flt-g"><span class="flt-l">Min RVol</span><input class="flt-i" type="number" value="5" step="0.5" id="'+bid+'-rv"/></div></div>'
     +'<div style="margin-top:5px"><div style="font-size:7px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px">Symbols to scan</div><div id="'+bid+'-tags" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px">'+getScanSyms().map(s=>'<span style="display:inline-flex;align-items:center;gap:2px;background:'+(histSyms.includes(s)?'#7c6aff12':'var(--s2)')+';border:1px solid '+(histSyms.includes(s)?'#7c6aff28':'var(--b2)')+';border-radius:10px;padding:2px 6px;font-size:9px;color:'+(histSyms.includes(s)?'var(--ac2)':'var(--mu)')+'">'+s+(!histSyms.includes(s)?'<button onclick="rmScanSym(\''+s+'\')" style="background:none;border:none;color:var(--rd);cursor:pointer;font-size:9px;opacity:.5;line-height:1">×</button>':'')+'</span>').join('')+'</div>'
     +'<div style="display:flex;gap:4px"><input type="text" placeholder="Add symbol…" id="'+bid+'-inp" onkeydown="if(event.key===\'Enter\')addScanSym(\''+bid+'\')" style="flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:\'DM Mono\',monospace;font-size:10px;padding:4px 6px;outline:none"/><button onclick="addScanSym(\''+bid+'\')" style="background:var(--ac);border:none;border-radius:4px;color:#fff;font-size:13px;width:24px;cursor:pointer;line-height:1">+</button></div></div></div>'
@@ -907,7 +907,143 @@ setInterval(async()=>{deepScanCountdown--;if(deepScanCountdown<=0){deepScanCount
 
 function scheduleDailyReset(){
   const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));const reset=new Date(et);reset.setHours(3,30,0,0);if(et>=reset)reset.setDate(reset.getDate()+1);
-  setTimeout(()=>{scanSyms=[];saveScanSyms();Object.keys(scanCache).forEach(k=>delete scanCache[k]);newSyms.clear();widgets.filter(w=>w.type==='scanner').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderScanner(b);});showToast('🌅 5 Pillars Scanner reset for new trading day');playPing();scheduleDailyReset();},reset-et);
+  setTimeout(()=>{scanSyms=[];saveScanSyms();Object.keys(scanCache).forEach(k=>delete scanCache[k]);newSyms.clear();_uniIdx=0;widgets.filter(w=>w.type==='scanner').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderScanner(b);});showToast('🌅 5 Pillars Scanner reset for new trading day');playPing();scheduleDailyReset();},reset-et);
+}
+
+// ═══ FULL UNIVERSE BACKGROUND SCANNER ═══
+// Step 1: Load ALL US stock symbols from Finnhub (1 API call, ~8000 tickers)
+// Step 2: Filter to small/mid caps — symbols ≤5 chars, no dots, Common Stock
+// Step 3: Rotate through with quote calls at 3/3s = 60/min (exactly at free limit)
+// Step 4: Anything passing P1+P2 auto-appears in 5 Pillars scanner instantly
+// Full cycle time: ~500 symbols ÷ 3 per batch × 3s = ~8 minutes per complete sweep
+
+let _universe=[];       // full filtered symbol list loaded from Finnhub
+let _uniIdx=0;          // current position in rotation
+let _uniRunning=false;  // prevent overlapping runs
+let _uniLoaded=false;   // has the universe been loaded yet
+let _uniStarted=false;  // has the scan loop started
+
+// Fallback seed list used IMMEDIATELY while the full list loads
+// Covers the most common Ross Cameron-style momentum names
+const SEED_UNIVERSE=[
+  'MARA','RIOT','CLSK','HUT','BTBT','CIFR','IREN','WULF','CORZ','BITF',
+  'PLUG','FCEL','BLNK','CHPT','EVGO','PTRA','GOEV','NKLA','MULN','WKHS',
+  'NIO','XPEV','LI','SOFI','HOOD','AFRM','UPST','DKNG','PENN','RBLX',
+  'GME','AMC','BBBY','EXPR','NAKD','SNDL','CLOV','AGEN','SAVA','AXSM',
+  'AVXL','ARDX','LQDA','ADTX','SNGX','PHVS','CXAI','AIXI','MLGO','GFAI',
+  'NKGN','BTAI','BBAI','BURU','AEYE','SENS','TBLT','QBTS','RGTI','IONQ',
+  'ARQQ','QUBT','ABSI','CENN','FFIE','IMTX','CJET','BKKT','SOLO','XELA',
+  'SPHL','BNAI','CMND','ACMR','BTCS','MIGI','SRM','BFRI','GREE','HIVE',
+  'PRTY','LIZI','TPST','RAPT','VVOS','IQST','KTTA','RCAT','MGOL','CRKN',
+  'VRME','NXGL','HOLO','FFAI','AIFU','RELI','SINT','NVNI','HITI','MDAI',
+  'HYMC','MEGL','AGMH','KPLT','IINN','OTRK','PRME','EDSA','MITI','NRGV',
+  'SOXL','TQQQ','UVXY','LABU','SQQQ','TNA','NUGT','SOXS','FNGU','TECL',
+  'IWM','SPXU','SDOW','TECS','DPST','HIBL','HIBS','FNGD','DUST','NAIL',
+  'CUPR','VSME','DSY','AZI','TTG','NOK','BB','ACB','CGC','TLRY',
+  'HEXO','AUVI','DRUG','FAZE','IDEX','AEHR','BTBT','CLSK','MARA','RIOT',
+];
+
+async function loadUniverse(){
+  // Load full symbol list from Finnhub — ONE call, free tier supports this
+  try{
+    const r=await fetch('https://finnhub.io/api/v1/stock/symbol?exchange=US&token='+FHK);
+    if(!r.ok)throw new Error('status '+r.status);
+    const data=await r.json();
+    if(!Array.isArray(data)||data.length<100)throw new Error('bad data');
+    // Filter: Common Stock only, symbol ≤5 chars, no dots (no warrants/preferred)
+    // This gives ~2000-3000 real tradeable names
+    const filtered=data
+      .filter(s=>
+        s.symbol &&
+        s.symbol.length<=5 &&
+        !s.symbol.includes('.') &&
+        !s.symbol.includes('-') &&
+        (s.type==='Common Stock'||s.type==='ETP')
+      )
+      .map(s=>s.symbol);
+    // Dedupe and shuffle so we don't always start at same place
+    const unique=[...new Set(filtered)];
+    // Shuffle using Fisher-Yates
+    for(let i=unique.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [unique[i],unique[j]]=[unique[j],unique[i]];
+    }
+    _universe=unique;
+    _uniLoaded=true;
+    // Update scanner status
+    document.querySelectorAll('[id$="-status"]').forEach(el=>{
+      if(el.closest?.('.widget'))
+        el.textContent='⚡ Loaded '+_universe.length+' symbols · scanning every 3s';
+    });
+    console.log('[Universe] Loaded '+_universe.length+' symbols from Finnhub');
+  }catch(e){
+    // Fall back to seed list silently
+    _universe=SEED_UNIVERSE;
+    _uniLoaded=true;
+    console.log('[Universe] Fallback to seed list ('+_universe.length+' symbols): '+e.message);
+  }
+}
+
+async function runUniverseScan(){
+  if(!appReady||_uniRunning||!_uniLoaded)return;
+  // Only scan 4AM–8PM ET (pre-market through after-hours)
+  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const mins=et.getHours()*60+et.getMinutes();
+  if(mins<240||mins>1200)return;
+
+  _uniRunning=true;
+  const sess=getSession();
+  const minC=sess==='pre'||sess==='aft'?5:10;
+  const list=_universe.length?_universe:SEED_UNIVERSE;
+
+  // 3 symbols per tick, 3s interval = 60 calls/min exactly at free tier limit
+  // WS + deep scan share the limit, so we stay a bit under by skipping cached syms
+  for(let i=0;i<3;i++){
+    const sym=list[_uniIdx%list.length];
+    _uniIdx=(_uniIdx+1)%list.length;
+
+    // Skip: already watching, already has fresh data, or obviously wrong
+    if(getScanSyms().includes(sym))continue;
+    if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<60000)continue; // cached < 1min
+
+    try{
+      await fetchQDirect(sym);
+      const q=Q[sym];
+      if(!q?.price)continue;
+
+      // P1: price $1–$20  P2: % change above session threshold
+      if(q.price>=1&&q.price<=20&&(q.changePct||0)>=minC){
+        if(!scanSyms.includes(sym)){
+          scanSyms.push(sym);
+          saveScanSyms();
+          newSyms.add(sym);
+          if(fhWS?.readyState===1)
+            fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
+          showToast('🔥 Auto-found: '+sym+' +'+(q.changePct||0).toFixed(1)+'% $'+fmtP(q.price));
+          playPing();
+          liveScanUpdate();
+        }
+      }
+    }catch(e){}
+
+    await new Promise(r=>setTimeout(r,1000)); // 1s between each call
+  }
+  _uniRunning=false;
+}
+
+function startUniverseScan(){
+  if(_uniStarted)return;
+  _uniStarted=true;
+  // Start immediately with seed list, load full universe in background
+  _universe=SEED_UNIVERSE;
+  _uniLoaded=true;
+  // Load full Finnhub symbol list after 20s (after page is stable)
+  setTimeout(loadUniverse,20000);
+  // Start scan loop after 12s (after initial quote fetches complete)
+  setTimeout(()=>{
+    runUniverseScan();
+    setInterval(runUniverseScan,3000); // every 3 seconds
+  },12000);
 }
 
 // ═══ ALERTS ═══
@@ -1078,7 +1214,9 @@ async function init(){
   const histToFetch=histSyms.slice(0,8).filter(s=>!Q[s]?.price);
   for(const sym of histToFetch){await fetchQDirect(sym);await new Promise(r=>setTimeout(r,1100));}
   appReady=true;renderHistBar();refreshHistWidgets();restoreClaudeKey();scheduleDailyReset();
-  setTimeout(startDeepScan,10000);if(window.innerWidth<=480)switchView('mobile');
+  setTimeout(startDeepScan,10000);
+  startUniverseScan();
+  if(window.innerWidth<=480)switchView('mobile');
 }
 if(checkAuth())init();
 </script>
