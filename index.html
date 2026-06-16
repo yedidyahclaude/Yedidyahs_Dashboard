@@ -847,7 +847,7 @@ function renderScanner(body){
     +'<div id="'+bid+'-filters" style="display:none;padding:6px 8px;border-bottom:1px solid var(--b1);background:var(--s3);flex-shrink:0"><div class="scan-filters"><div class="flt-g"><span class="flt-l">Min Price $</span><input class="flt-i" type="number" value="1" step="0.5" id="'+bid+'-minp"/></div><div class="flt-g"><span class="flt-l">Max Price $</span><input class="flt-i" type="number" value="20" id="'+bid+'-maxp"/></div><div class="flt-g"><span class="flt-l">Min % Change</span><input class="flt-i" type="number" value="10" id="'+bid+'-chg"/></div><div class="flt-g"><span class="flt-l">Min RVol</span><input class="flt-i" type="number" value="5" step="0.5" id="'+bid+'-rv"/></div></div>'
     +'<div style="margin-top:5px"><div style="font-size:7px;color:var(--dim);letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px">Symbols to scan</div><div id="'+bid+'-tags" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px">'+getScanSyms().map(s=>'<span style="display:inline-flex;align-items:center;gap:2px;background:'+(histSyms.includes(s)?'#7c6aff12':'var(--s2)')+';border:1px solid '+(histSyms.includes(s)?'#7c6aff28':'var(--b2)')+';border-radius:10px;padding:2px 6px;font-size:9px;color:'+(histSyms.includes(s)?'var(--ac2)':'var(--mu)')+'">'+s+(!histSyms.includes(s)?'<button onclick="rmScanSym(\''+s+'\')" style="background:none;border:none;color:var(--rd);cursor:pointer;font-size:9px;opacity:.5;line-height:1">×</button>':'')+'</span>').join('')+'</div>'
     +'<div style="display:flex;gap:4px"><input type="text" placeholder="Add symbol…" id="'+bid+'-inp" onkeydown="if(event.key===\'Enter\')addScanSym(\''+bid+'\')" style="flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:4px;color:var(--tx);font-family:\'DM Mono\',monospace;font-size:10px;padding:4px 6px;outline:none"/><button onclick="addScanSym(\''+bid+'\')" style="background:var(--ac);border:none;border-radius:4px;color:#fff;font-size:13px;width:24px;cursor:pointer;line-height:1">+</button></div></div></div>'
-    +'<div id="'+bid+'-res" style="flex:1;overflow-y:auto;min-height:0"><div class="scan-empty"><div style="font-size:20px;margin-bottom:8px">👆</div><div style="font-weight:600;color:var(--tx);margin-bottom:4px">See a stock moving?</div><div>Type it in any screener below → appears here automatically</div><div style="margin-top:8px;font-size:9px;color:var(--dim)">Watching '+getScanSyms().length+' symbols · Scans every 30s</div></div></div>';
+    +'<div id="'+bid+'-res" style="flex:1;overflow-y:auto;min-height:0"><div class="scan-empty"><div style="font-size:20px;margin-bottom:8px">👆</div><div style="font-weight:600;color:var(--tx);margin-bottom:4px">See a stock moving?</div><div>Type it in any screener below → appears here automatically</div><div style="margin-top:8px;font-size:9px;color:var(--dim)">Auto-scanning '+(_universe.length||SEED_UNIVERSE.length)+' symbols in background · '+getScanSyms().length+' on your watchlist</div></div></div>';
   setTimeout(startDeepScan,400);
 }
 function toggleScanFilters(bid){const f=document.getElementById(bid+'-filters');if(f)f.style.display=f.style.display==='none'?'block':'none';}
@@ -1015,21 +1015,27 @@ async function runUniverseScan(){
   const minC=sess==='pre'||sess==='aft'?5:10;
   const list=_universe.length?_universe:SEED_UNIVERSE;
 
-  // 3 symbols per tick, 3s interval = 60 calls/min exactly at free tier limit
-  // WS + deep scan share the limit, so we stay a bit under by skipping cached syms
-  for(let i=0;i<3;i++){
+  // Fire off a batch of checks without awaiting each one sequentially —
+  // the shared apiQueue (drainQueue) is what actually enforces the rate
+  // limit now, at ~1 call every 1.2s app-wide. Awaiting each call here
+  // one-by-one on TOP of that queue pacing was double-throttling and
+  // starving the scanner of its fair share of the queue. Queuing them
+  // all at once lets the queue itself decide the order/pace, while we
+  // just wait for the whole batch to finish before the next tick.
+  const batch=[];
+  for(let i=0;i<8;i++){
     const sym=list[_uniIdx%list.length];
     _uniIdx=(_uniIdx+1)%list.length;
-
-    // Skip: already watching, already has fresh data, or obviously wrong
     if(getScanSyms().includes(sym))continue;
     if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<60000)continue; // cached < 1min
+    batch.push(sym);
+  }
 
+  await Promise.all(batch.map(async sym=>{
     try{
       await fetchQDirect(sym);
       const q=Q[sym];
-      if(!q?.price)continue;
-
+      if(!q?.price)return;
       // P1: price $1–$20  P2: % change above session threshold
       if(q.price>=1&&q.price<=20&&(q.changePct||0)>=minC){
         if(!scanSyms.includes(sym)){
@@ -1044,7 +1050,7 @@ async function runUniverseScan(){
         }
       }
     }catch(e){}
-  }
+  }));
   _uniRunning=false;
 }
 
