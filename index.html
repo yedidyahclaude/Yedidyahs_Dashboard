@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%237c6aff'/><polyline points='3,24 9,14 14,19 21,8 27,12' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='none'/></svg>">
 <title>Yedidyah's Dashboard</title>
@@ -1252,6 +1254,15 @@ async function init(){
   startUniverseScan();
   if(window.innerWidth<=480)switchView('mobile');
 }
+// Defeats the iOS/mobile "back-forward cache" (bfcache) issue where tapping a
+// home-screen-saved web app icon can restore a frozen snapshot of a PREVIOUS
+// session (old code, old DOM) instead of running the page fresh. The
+// 'pageshow' event with event.persisted===true is the browser's own signal
+// that this restoration just happened — when it fires, force a real reload
+// straight from the network so the current code always wins.
+window.addEventListener('pageshow',e=>{
+  if(e.persisted)location.reload();
+});
 if(checkAuth())init();
 </script>
 </body>
