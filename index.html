@@ -860,12 +860,17 @@ function addScanSym(bid){const inp=document.getElementById(bid+'-inp');if(!inp)r
 function rmScanSym(sym){scanSyms=scanSyms.filter(s=>s!==sym);saveScanSyms();delete scanCache[sym];widgets.filter(w=>w.type==='scanner').forEach(w=>{const b=document.getElementById('wb-'+w.id);if(b)renderScanner(b);});}
 
 function liveScanUpdate(){
-  widgets.filter(w=>w.type==='scanner').forEach(w=>{
-    const bid='wb-'+w.id;const res=document.getElementById(bid+'-res');if(!res)return;
+  const scannerWidgets=widgets.filter(w=>w.type==='scanner');
+  console.log('[liveScanUpdate] called, scanner widgets:',scannerWidgets.length,'scanSyms:',getScanSyms().length);
+  scannerWidgets.forEach(w=>{
+    const bid='wb-'+w.id;const res=document.getElementById(bid+'-res');
+    if(!res){console.log('[liveScanUpdate] NO -res element found for bid:',bid);return;}
     const minP=parseFloat(document.getElementById(bid+'-minp')?.value)||1;const maxP=parseFloat(document.getElementById(bid+'-maxp')?.value)||20;
     const baseC=parseFloat(document.getElementById(bid+'-chg')?.value)||10;const sess=getSession();const minC=sess==='pre'||sess==='aft'?baseC*.5:baseC;
     const results=[];
-    getScanSyms().forEach(sym=>{const q=Q[sym];if(!q?.price)return;const p1=q.price>=minP&&q.price<=maxP,p2=(q.changePct||0)>=minC;if(!p1||!p2)return;const c=scanCache[sym]||{};const score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;const deepScanned=c.ts!=null;if(score<3&&deepScanned)return;results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false});});
+    let noPrice=0,failP1=0,failP2=0;
+    getScanSyms().forEach(sym=>{const q=Q[sym];if(!q?.price){noPrice++;return;}const p1=q.price>=minP&&q.price<=maxP,p2=(q.changePct||0)>=minC;if(!p1){failP1++;return;}if(!p2){failP2++;return;}const c=scanCache[sym]||{};const score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;const deepScanned=c.ts!=null;if(score<3&&deepScanned)return;results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false});});
+    console.log('[liveScanUpdate] minP:',minP,'maxP:',maxP,'minC:',minC,'noPrice:',noPrice,'failP1:',failP1,'failP2:',failP2,'results:',results.length);
     if(!results.length){res.innerHTML='<div class="scan-empty"><div style="font-size:20px;margin-bottom:8px">🎯</div><div style="font-weight:600;color:var(--tx);margin-bottom:4px">Watching '+getScanSyms().length+' symbols</div><div style="font-size:10px">Stocks scoring 3/5+ pillars appear here (P1 $'+minP+'-$'+maxP+' + P2 ≥'+minC+'% required)</div><div style="font-size:9px;color:var(--dim);margin-top:6px">Type a ticker in any screener bar to add it</div></div>';return;}
     // Sort: newest finds first (by actual add timestamp), then by score, then by % change
     results.sort((a,b)=>{
