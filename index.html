@@ -954,55 +954,19 @@ const SEED_UNIVERSE=[
 ];
 
 async function loadUniverse(){
-  // SEC EDGAR company_tickers.json — US government API, CORS: *, no auth, ~10k companies
-  // Fallback: Finnhub search-based universe
-  const sources=[
-    'https://www.sec.gov/files/company_tickers.json',
-    'https://www.sec.gov/files/company_tickers_exchange.json',
-  ];
-  for(const url of sources){
-    try{
-      const r=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0 research/1.0'}});
-      if(!r.ok)continue;
-      const data=await r.json();
-      // Format: {"0":{"cik_str":320193,"ticker":"AAPL","title":"Apple Inc."},...}
-      const raw=Object.values(data);
-      // Filter: ticker ≤5 chars, no dots/dashes (removes warrants, preferred)
-      // Exclude mega caps by title keywords to prioritize small caps
-      const megaCap=new Set(['AAPL','MSFT','GOOGL','GOOG','AMZN','NVDA','META','TSLA','BRK','JPM','JNJ','V','UNH','XOM','WMT','MA','PG','HD','CVX','MRK','LLY','ABBV','PEP','KO','AVGO','COST','TMO','MCD','CSCO','ACN','ABT','DHR','WFC','NKE','CRM','MS','TXN','NEE','PM','RTX','HON','LOW','UPS','INTU','SPGI','CAT','GS','ELV','BMY','AMD','AMGN','MDT','ISRG','NOW','QCOM','BKNG','T','BLK','DE','SBUX','GE','MMM','AXP','CB','SYK','VRTX','ZTS','ADI','TJX','C','CI','REGN','SO','MO','BSX','MDLZ','PLD','GILD','AON','DUK','USB','ITW','ETN','PNC','TGT','EMR','NSC','FDX','MMC','COF','CL','EW','APD','HCA','ICE','D','AIG','MCO']);
-      const filtered=raw
-        .filter(s=>
-          s.ticker &&
-          s.ticker.length>=1 &&
-          s.ticker.length<=5 &&
-          !s.ticker.includes('.') &&
-          !s.ticker.includes('-') &&
-          /^[A-Z]+$/.test(s.ticker) &&
-          !megaCap.has(s.ticker)
-        )
-        .map(s=>s.ticker);
-      const unique=[...new Set(filtered)];
-      // Shuffle so every session starts at a different point
-      for(let i=unique.length-1;i>0;i--){
-        const j=Math.floor(Math.random()*(i+1));
-        [unique[i],unique[j]]=[unique[j],unique[i]];
-      }
-      _universe=unique;
-      _uniLoaded=true;
-      document.querySelectorAll('[id$="-status"]').forEach(el=>{
-        if(el.closest?.('.widget'))
-          el.textContent='⚡ Loaded '+_universe.length+' symbols · auto-scanning every 3s';
-      });
-      console.log('[Universe] Loaded '+_universe.length+' symbols from SEC EDGAR');
-      return; // success — stop trying sources
-    }catch(e){
-      console.log('[Universe] Source failed: '+url+' — '+e.message);
-    }
-  }
-  // Both sources failed — stay on seed list
+  // SEC EDGAR's company_tickers.json does NOT send CORS headers, confirmed
+  // repeatedly via real browser testing — it is hard-blocked from any
+  // client-side fetch with no possible workaround, so we no longer attempt
+  // it (that attempt only produced console errors and wasted a few seconds
+  // every load with a guaranteed-to-fail request). The 150-symbol seed list
+  // is the real, working universe for this app — it's what actually finds
+  // stocks like RGNT, CUPR, VSME, ARQQ, etc. every session.
   _universe=SEED_UNIVERSE;
   _uniLoaded=true;
-  console.log('[Universe] Using seed list ('+SEED_UNIVERSE.length+' symbols)');
+  document.querySelectorAll('[id$="-status"]').forEach(el=>{
+    if(el.closest?.('.widget'))
+      el.textContent='⚡ Auto-scanning '+_universe.length+' symbols · live';
+  });
 }
 
 async function runUniverseScan(){
@@ -1109,17 +1073,29 @@ function openChartPanel(sym){let tvSym=sym;if(sym==='BTC/USD')tvSym='BINANCE:BTC
 }
 function toggleChartPanel(){if(curChartSym)openTVPopup();}
 function updateCPPrice(){if(!curChartSym)return;const q=Q[curChartSym];if(!q)return;const u=(q.changePct||0)>=0;const px=document.getElementById('cpPx'),chg=document.getElementById('cpChg');if(px){px.textContent='$'+fmtP(q.price);px.className=u?'up':'dn';}if(chg){chg.textContent=(u?'+':'')+q.changePct.toFixed(2)+'%';chg.className=u?'up':'dn';}}
+// The user's own saved TradingView layout — a 3-pane chart with each pane
+// set to a different interval (10s/1m/5m). We navigate TO this exact chart
+// ID every time instead of generating a fresh throwaway chart, so the saved
+// layout and its per-pane intervals are preserved across every POP OUT click.
+const SAVED_LAYOUT_ID='7ghMFdhC';
+
 function openTVPopup(){
   if(!curChartSym){showToast('Select a stock first');return;}
   let tvSym=curChartSym;if(curChartSym==='BTC/USD')tvSym='BINANCE:BTCUSDT';else if(curChartSym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
-  const base='https://www.tradingview.com/chart/?symbol='+encodeURIComponent(tvSym)+'&theme=dark&extended_hours=1&session=extended&interval='+curInterval+'&clear=1&_='+Date.now();
+  const base='https://www.tradingview.com/chart/'+SAVED_LAYOUT_ID+'/?symbol='+encodeURIComponent(tvSym);
   const sw=screen.availWidth,sh=screen.availHeight;const cw=Math.floor(sw*0.9),ch=Math.floor(sh*0.9);const ol=Math.floor((sw-cw)/2),ot=Math.floor((sh-ch)/2);
   const feat='width='+cw+',height='+ch+',left='+ol+',top='+ot+',resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no';
-  // Always open a fresh window with a unique name per symbol — reusing one window and
-  // navigating via location.href is async and TradingView restores its last-viewed symbol
-  // from its own localStorage before our URL param applies, causing the wrong chart to show.
-  try{if(tvWinRef&&!tvWinRef.closed)tvWinRef.close();}catch(e){}
-  tvWinRef=window.open(base,'StockViewTV_'+tvSym.replace(/[^A-Z0-9]/g,''),feat);
+  // Reuse the SAME window every time — only change its symbol via location.href.
+  // Never close/recreate the window and never use &clear=1, since that wipes
+  // the saved 3-pane layout and its individually-set intervals.
+  try{
+    if(tvWinRef&&!tvWinRef.closed){
+      tvWinRef.location.href=base;
+      tvWinRef.focus();
+      return;
+    }
+  }catch(e){}
+  tvWinRef=window.open(base,'StockViewTV_savedLayout',feat);
   if(!tvWinRef||tvWinRef.closed)showToast('⚠ Allow popups for this site in your browser');
   else tvWinRef.focus();
 }
