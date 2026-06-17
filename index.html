@@ -230,6 +230,8 @@ header{display:flex;align-items:center;gap:10px;padding:0 14px;height:48px;flex-
 #cpToggle{font-size:9px;color:var(--dim);transition:transform .22s;flex-shrink:0;font-weight:700}
 #chartPanel.open #cpToggle{transform:rotate(180deg)}
 .mtab{flex:1;background:none;border:none;border-bottom:2px solid transparent;color:var(--mu);font-family:'DM Mono',monospace;font-size:10px;padding:10px 4px;cursor:pointer;transition:all .15s;white-space:nowrap}
+.mtab-sm{background:var(--s2);border:1px solid var(--b2);border-radius:14px;color:var(--mu);font-family:'DM Mono',monospace;font-size:10px;padding:5px 11px;cursor:pointer;white-space:nowrap;transition:all .12s;flex-shrink:0}
+.mtab-sm.active{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:700}
 .mtab.active{color:#fff;border-bottom-color:var(--ac);background:#7c6aff0a}
 .mtab:hover{color:var(--tx)}
 .mpanel{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
@@ -364,12 +366,17 @@ header{display:flex;align-items:center;gap:10px;padding:0 14px;height:48px;flex-
       </div>
       <span class="sess cls" id="msess" style="font-size:10px"></span>
     </div>
-    <div style="display:flex;background:var(--s2);border-bottom:1px solid var(--b1);flex-shrink:0">
-      <button class="mtab" id="mt0" onclick="showMobileTab(0)">🚀 Movers</button>
-      <button class="mtab active" id="mt1" onclick="showMobileTab(1)">🎯 Scanner</button>
-      <button class="mtab" id="mt2" onclick="showMobileTab(2)">📋 History</button>
-      <button class="mtab" id="mt3" onclick="showMobileTab(3)">📰 News</button>
-      <button class="mtab" id="mt4" onclick="showMobileTab(4)">📈 Chart</button>
+    <!-- Compact secondary tab row: Scanner is the default full-screen panel (handled by
+         showMobileTab/switchView below), these small pill tabs jump to the other views.
+         All panels still render via the exact same functions and data (getScanSyms(),
+         scanCache, Q, histSyms) as before — this is a layout/priority change only,
+         nothing about the underlying data or desktop sync was touched. -->
+    <div style="display:flex;gap:6px;padding:8px 12px;background:var(--s2);border-bottom:1px solid var(--b1);flex-shrink:0;overflow-x:auto;scrollbar-width:none">
+      <button class="mtab-sm active" id="mt1" onclick="showMobileTab(1)">🎯 Scanner</button>
+      <button class="mtab-sm" id="mt0" onclick="showMobileTab(0)">🚀 Movers</button>
+      <button class="mtab-sm" id="mt2" onclick="showMobileTab(2)">📋 History</button>
+      <button class="mtab-sm" id="mt3" onclick="showMobileTab(3)">📰 News</button>
+      <button class="mtab-sm" id="mt4" onclick="showMobileTab(4)">📈 Chart</button>
     </div>
     <div class="mpanel" id="mp0">
       <div style="display:flex;gap:6px;padding:10px 12px;overflow-x:auto;flex-shrink:0;scrollbar-width:none">
@@ -388,7 +395,7 @@ header{display:flex;align-items:center;gap:10px;padding:0 14px;height:48px;flex-
         </div>
       </div>
     </div>
-    <div class="mpanel" id="mp1" style="padding:10px;overflow:auto"><div id="m-scanner-content"></div></div>
+    <div class="mpanel" id="mp1" style="padding:8px;overflow:auto"><div id="m-scanner-content"></div></div>
     <div class="mpanel" id="mp2" style="padding:10px;overflow:auto"><div id="m-history-content"></div></div>
     <div class="mpanel" id="mp3" style="padding:10px;overflow:auto"><div id="m-news-content"></div></div>
     <div class="mpanel" id="mp4">
