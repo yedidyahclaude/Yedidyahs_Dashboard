@@ -593,11 +593,21 @@ async function askClaude(question){
 
 // ═══ INIT ═══
 async function init(){
+  // One-time migration: wipe the old dashboard's sv_scan key so leftover
+  // test symbols from previous sessions never silently appear. Run once
+  // and stamp a flag so this never fires again.
+  if(!localStorage.getItem('sv_v1_migrated')){
+    localStorage.removeItem('sv_scan');    // old dashboard's key
+    localStorage.removeItem('sv_scan_v1'); // reset our own key too, truly fresh start
+    scanSyms=[];
+    // Also clear the Supabase watchlist column so cloud sync doesn't restore old data
+    const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
+    if(token&&uid)sf('/rest/v1/profiles?id=eq.'+uid,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},body:JSON.stringify({watchlist:[]})}).catch(()=>{});
+    localStorage.setItem('sv_v1_migrated','1');
+  }
   // One-time cleanup: remove any non-US-exchange tickers (.V, .TO, .HK, etc.)
-  // left over in localStorage from before this filter existed.
-  const beforeCount=scanSyms.length;
   scanSyms=scanSyms.filter(s=>!s.includes('.')||s==='BTC/USD'||s==='ETH/USD');
-  if(scanSyms.length!==beforeCount){saveScanSyms();showToast('🧹 Removed non-US listings from watchlist');}
+  saveScanSyms();
   renderScanTags();liveScanUpdate();
   connectFinnhubWS();
   const toFetch=scanSyms.filter(s=>!Q[s]?.price);
@@ -606,7 +616,7 @@ async function init(){
     const sym=toFetch[i];
     if(statusEl)statusEl.textContent='⚡ Loading prices… '+(i+1)+'/'+toFetch.length+' ('+sym+')';
     await fetchQDirect(sym);
-    liveScanUpdate(); // render as each price lands instead of waiting for the whole batch
+    liveScanUpdate();
     await new Promise(r=>setTimeout(r,1100));
   }
   appReady=true;liveScanUpdate();
