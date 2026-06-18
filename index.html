@@ -292,7 +292,43 @@ async function selectSym(sym){
   openChartPanel(sym);
   setTimeout(startDeepScan,200);
 }
-function saveScanSyms(){localStorage.setItem('sv_scan',JSON.stringify(scanSyms));}
+function saveScanSyms(){
+  localStorage.setItem('sv_scan',JSON.stringify(scanSyms));
+  syncWatchlistToCloud();
+}
+// ═══ CROSS-DEVICE WATCHLIST SYNC (Supabase) ═══
+// localStorage remains the instant, always-available source of truth for
+// rendering — nothing in the scanner engine reads from Supabase directly.
+// This only reconciles scanSyms in the background so other devices catch up.
+let _syncInFlight=false;
+function syncWatchlistToCloud(){
+  const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
+  if(!token||!uid)return; // not signed in yet — nothing to sync to
+  sf('/rest/v1/profiles?id=eq.'+uid,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},body:JSON.stringify({watchlist:scanSyms})}).catch(()=>{});
+}
+async function pullWatchlistFromCloud(){
+  const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
+  if(!token||!uid)return;
+  try{
+    const r=await sf('/rest/v1/profiles?select=watchlist&id=eq.'+uid,{headers:{'Authorization':'Bearer '+token}});
+    const d=await r.json();
+    const cloudList=d?.[0]?.watchlist;
+    if(!Array.isArray(cloudList))return; // column empty/missing — nothing to merge yet
+    // Merge rather than overwrite: union of whatever's local + whatever's in
+    // the cloud, so a symbol added on one device never silently disappears
+    // from the other on next load.
+    const merged=[...new Set([...scanSyms,...cloudList])];
+    if(merged.length!==scanSyms.length||!merged.every(s=>scanSyms.includes(s))){
+      scanSyms=merged;
+      localStorage.setItem('sv_scan',JSON.stringify(scanSyms));
+      renderScanTags();liveScanUpdate();
+      const toFetch=scanSyms.filter(s=>!Q[s]?.price);
+      for(const sym of toFetch){await fetchQDirect(sym);await new Promise(r=>setTimeout(r,1100));}
+      liveScanUpdate();
+    }
+    syncWatchlistToCloud(); // push merged result back so cloud matches too
+  }catch(e){} // any failure here is silent — local list keeps working regardless
+}
 function addScanSym(){
   const inp=document.getElementById('addSymInp');const sym=inp.value.toUpperCase().trim();if(!sym)return;
   inp.value='';selectSym(sym);
@@ -445,6 +481,7 @@ async function init(){
   const toFetch=scanSyms.filter(s=>!Q[s]?.price);
   for(const sym of toFetch){await fetchQDirect(sym);await new Promise(r=>setTimeout(r,1100));}
   appReady=true;liveScanUpdate();
+  pullWatchlistFromCloud(); // background — doesn't block local rendering above
   setTimeout(startDeepScan,3000);
   setInterval(()=>{if(appReady)liveScanUpdate();},15000);
 }
