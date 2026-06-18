@@ -250,7 +250,8 @@ const debouncedScanUpdate=debounce(()=>liveScanUpdate(),300);
 const apiQueue=[];let apiRunning=false;
 function queueCall(fn){return new Promise((resolve,reject)=>{apiQueue.push({fn,resolve,reject});if(!apiRunning)drainQueue();});}
 async function drainQueue(){if(apiRunning)return;apiRunning=true;while(apiQueue.length){const{fn,resolve,reject}=apiQueue.shift();try{resolve(await fn());}catch(e){reject(e);}if(apiQueue.length)await new Promise(r=>setTimeout(r,1200));}apiRunning=false;}
-const _badSyms={}; // sym -> timestamp of last 403/429, backs off retrying for 5min
+const _badSyms={}; // sym -> timestamp of last 403/429 on /quote, backs off retrying for 5min
+const _deepBadSyms={}; // sym -> timestamp of last 403/429 on news/metrics, backs off 5min
 async function fetchQDirect(sym){
   if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<25000)return;
   if(_badSyms[sym]&&Date.now()-_badSyms[sym]<300000)return;
@@ -274,7 +275,11 @@ async function selectSym(sym){
   sym=sym.toUpperCase().trim();if(!sym)return;
   curChartSym=sym;
   if(!Q[sym])await fetchQDirect(sym);
-  if(!scanSyms.includes(sym)){scanSyms.push(sym);saveScanSyms();newSyms.set(sym,Date.now());playPing();showToast('📈 '+sym+' added to 5 Pillars Scanner');if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));}
+  if(!scanSyms.includes(sym)){scanSyms.push(sym);saveScanSyms();newSyms.set(sym,Date.now());playPing();if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));}
+  const q=Q[sym];const minP=parseFloat(document.getElementById('f-minp').value)||1;const maxP=parseFloat(document.getElementById('f-maxp').value)||20;const minC=parseFloat(document.getElementById('f-chg').value)||10;
+  if(q?.price&&(q.price<minP||q.price>maxP)){showToast('📊 '+sym+' opened in chart — outside $'+minP+'-$'+maxP+' range, won\'t appear in scanner list');}
+  else if(q?.price&&(q.changePct||0)<minC){showToast('📊 '+sym+' opened in chart — under '+minC+'% change, won\'t appear in scanner list');}
+  else{showToast('📈 '+sym+' added to 5 Pillars Scanner');}
   liveScanUpdate();
   openChartPanel(sym);
   setTimeout(startDeepScan,200);
@@ -302,6 +307,7 @@ function liveScanUpdate(){
   scanSyms.forEach(sym=>{
     const q=Q[sym];if(!q?.price)return;
     const p1=q.price>=minP&&q.price<=maxP,p2=(q.changePct||0)>=minC;
+    if(!p1||!p2)return; // doesn't meet the two basic pillars — not a real candidate, don't show
     const c=scanCache[sym]||{};
     const score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
     results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false});
@@ -344,11 +350,16 @@ async function startDeepScan(){
       if(!Q[sym])await fetchQ(sym);const q=Q[sym];if(!q?.price)continue;
       const p1=q.price>=1&&q.price<=20,p2=(q.changePct||0)>=minC;if(!p1||!p2)continue;
       const cached=scanCache[sym]||{};if(Date.now()-(cached.ts||0)<120000)continue;
+      // Symbols that recently 403/429'd on news/metrics specifically get a
+      // longer 5-minute cooldown on top of the normal 2-minute re-scan gap,
+      // so one rate-limited symbol doesn't keep eating queue slots.
+      if(_deepBadSyms[sym]&&Date.now()-_deepBadSyms[sym]<300000)continue;
       let hasNews=cached.hasNews??false,p3=cached.p3??null,p4=cached.p4??null,p5=cached.p5??null;
-      await queueCall(async()=>{try{const today=new Date().toISOString().split('T')[0];const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];const r=await fetch('https://finnhub.io/api/v1/company-news?symbol='+sym+'&from='+from+'&to='+today+'&token='+FHK);if(r.status===403||r.status===429){p3=null;return;}const news=await r.json();hasNews=Array.isArray(news)&&news.length>0;p3=hasNews;}catch(e){p3=null;}});
+      let hitLimit=false;
+      await queueCall(async()=>{try{const today=new Date().toISOString().split('T')[0];const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];const r=await fetch('https://finnhub.io/api/v1/company-news?symbol='+sym+'&from='+from+'&to='+today+'&token='+FHK);if(r.status===403||r.status===429){p3=null;hitLimit=true;return;}const news=await r.json();hasNews=Array.isArray(news)&&news.length>0;p3=hasNews;}catch(e){p3=null;}});
       await queueCall(async()=>{try{
         const r=await fetch('https://finnhub.io/api/v1/stock/metric?symbol='+sym+'&metric=all&token='+FHK);
-        if(r.status===403||r.status===429){p4=null;p5=null;return;}
+        if(r.status===403||r.status===429){p4=null;p5=null;hitLimit=true;return;}
         const d=await r.json();const m=d.metric||{};
         // Finnhub's 10DayAverageTradingVolume is in MILLIONS of shares — must
         // multiply by 1e6 before dividing into raw quote.volume.
@@ -359,6 +370,7 @@ async function startDeepScan(){
         if(trueFloat!==null){const floatM=trueFloat>1000?trueFloat/1e6:trueFloat;p5=floatM<10;scanCache[sym]={...scanCache[sym],floatValue:floatM.toFixed(1)+'M'};}
         else{p5=null;scanCache[sym]={...scanCache[sym],floatValue:'—'};}
       }catch(e){p4=null;p5=null;}});
+      if(hitLimit)_deepBadSyms[sym]=Date.now();
       scanCache[sym]={...scanCache[sym],p3,p4,p5,hasNews,ts:Date.now()};
     }catch(e){}
   }
