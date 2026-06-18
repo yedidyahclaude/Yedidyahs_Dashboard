@@ -142,7 +142,10 @@ input,button{font-family:inherit}
     <div class="scanner-wrap">
       <div class="scan-hdr">
         <h2>🎯 5 Pillars Scanner</h2>
-        <span class="scan-status" id="scanStatus">⚡ Starting…</span>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="scan-status" id="scanStatus">⚡ Starting…</span>
+          <button class="tb-btn" id="claudeToggleBtn" onclick="toggleClaude()">🤖 Ask Claude</button>
+        </div>
       </div>
       <div class="scan-filters">
         <div class="flt-g"><span class="flt-l">Min Price $</span><input class="flt-i" type="number" value="1" step="0.5" id="f-minp"/></div>
@@ -154,6 +157,21 @@ input,button{font-family:inherit}
         <button onclick="addScanSym()">Check</button>
       </div>
       <div class="scan-tags" id="scanTags"></div>
+      <div id="claudePanel" style="display:none;flex-direction:column;background:var(--s2);border:1px solid var(--ac);border-radius:10px;margin-bottom:10px;max-height:360px">
+        <div id="claudeKeyRow" style="display:none;padding:10px 12px;border-bottom:1px solid var(--b1);gap:6px;flex-direction:column">
+          <span style="font-size:10px;color:var(--mu)">Paste your Anthropic API key (starts with sk-ant-) — stored only in this browser, never sent anywhere except Anthropic's API</span>
+          <div style="display:flex;gap:6px">
+            <input id="claudeKeyInp" type="password" placeholder="sk-ant-…" style="flex:1;background:var(--s1);border:1px solid var(--b2);border-radius:7px;color:var(--tx);padding:8px 10px;font-size:12px;outline:none;font-family:'DM Mono',monospace" onkeydown="if(event.key==='Enter')saveClaudeKey()"/>
+            <button onclick="saveClaudeKey()" style="background:var(--ac);border:none;border-radius:7px;color:#fff;font-weight:700;font-size:12px;padding:8px 14px;cursor:pointer">Save Key</button>
+          </div>
+        </div>
+        <div id="claudeMsgs" style="flex:1;overflow-y:auto;padding:12px 14px;font-size:13px;line-height:1.55;max-height:240px"></div>
+        <div style="display:flex;gap:6px;padding:10px;border-top:1px solid var(--b1)">
+          <button class="tb-btn" style="white-space:nowrap" onclick="askClaude('Run a deep scan summary — tell me what looks good, what looks bad, and why, based on the live data.')">⚡ Deep Scan Summary</button>
+          <input id="claudeInp" type="text" placeholder="Ask about your scanner…" style="flex:1;background:var(--s1);border:1px solid var(--b2);border-radius:7px;color:var(--tx);padding:8px 10px;font-size:13px;outline:none" onkeydown="if(event.key==='Enter'){const v=this.value.trim();if(v){this.value='';askClaude(v);}}"/>
+          <button onclick="const i=document.getElementById('claudeInp');const v=i.value.trim();if(v){i.value='';askClaude(v);}" style="background:var(--ac);border:none;border-radius:7px;color:#fff;font-weight:700;font-size:12px;padding:8px 14px;cursor:pointer">Send</button>
+        </div>
+      </div>
       <div class="scan-list" id="scanList"></div>
     </div>
 
@@ -474,6 +492,98 @@ function openTVPopup(){
   const feat='width='+cw+',height='+ch+',left='+ol+',top='+ot+',resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no';
   if(_tvWin&&!_tvWin.closed){_tvWin.location.href=base;_tvWin.focus();}
   else{_tvWin=window.open(base,'tvChartWin',feat);}
+}
+
+// ═══ CLAUDE ASSISTANT ═══
+// Read-only: this only reads scanSyms/Q/scanCache, already in memory from
+// the scanner engine above. It never writes to any of that state, so it
+// cannot affect scanning, scoring, or live prices in any way.
+let claudeOpen=false;
+let claudeHistory=[]; // {role,content} pairs for this session only — resets on reload
+let claudeKey=localStorage.getItem('sv_claude_key')||'';
+function toggleClaude(){
+  claudeOpen=!claudeOpen;
+  document.getElementById('claudePanel').style.display=claudeOpen?'flex':'none';
+  const keyRow=document.getElementById('claudeKeyRow');
+  if(keyRow)keyRow.style.display=claudeKey?'none':'flex';
+  if(claudeOpen&&!claudeHistory.length){
+    addClaudeMsg('assistant',claudeKey?'Hi! I can see your live scanner data. Ask me things like "what looks good right now" or hit Deep Scan Summary below.':'Hi! Paste your Anthropic API key above to get started, then ask me anything about your live scanner data.');
+  }
+}
+function saveClaudeKey(){
+  const inp=document.getElementById('claudeKeyInp');
+  const key=inp?.value.trim();
+  if(!key){showToast('Please paste a key first');return;}
+  if(!key.startsWith('sk-ant')){showToast('Key should start with sk-ant-');return;}
+  claudeKey=key;localStorage.setItem('sv_claude_key',key);
+  document.getElementById('claudeKeyRow').style.display='none';
+  inp.value='';
+  addClaudeMsg('assistant','Key saved! Ask me things like "what looks good right now" or hit Deep Scan Summary below.');
+}
+function addClaudeMsg(role,text){
+  claudeHistory.push({role,content:text});
+  const el=document.getElementById('claudeMsgs');
+  const bubble=document.createElement('div');
+  bubble.style.marginBottom='10px';
+  bubble.style.color=role==='user'?'var(--ac2)':'var(--tx)';
+  bubble.innerHTML='<b>'+(role==='user'?'You':'Claude')+':</b> '+text.replace(/\n/g,'<br>');
+  el.appendChild(bubble);
+  el.scrollTop=el.scrollHeight;
+}
+function buildScannerSnapshot(){
+  // Every symbol currently tracked, including ones that haven't passed
+  // P1/P2 yet — Claude needs to see the failures too, not just winners.
+  const minP=parseFloat(document.getElementById('f-minp').value)||1;
+  const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
+  const minC=parseFloat(document.getElementById('f-chg').value)||10;
+  const lines=scanSyms.map(sym=>{
+    const q=Q[sym];
+    if(!q?.price)return sym+': no price data loaded yet';
+    const c=scanCache[sym]||{};
+    const p1=q.price>=minP&&q.price<=maxP,p2=(q.changePct||0)>=minC;
+    const pillarStr=(v,label)=>label+'='+(v===true?'PASS':v===false?'FAIL':'pending');
+    return sym+': $'+fmtP(q.price)+', '+(q.changePct>=0?'+':'')+(q.changePct||0).toFixed(1)+'%, '
+      +pillarStr(p1,'P1-price')+', '+pillarStr(p2,'P2-change')+', '+pillarStr(c.p3,'P3-news')+', '
+      +pillarStr(c.p4,'P4-RVOL')+(c.rvolValue?'('+c.rvolValue+'x)':'')+', '
+      +pillarStr(c.p5,'P5-float')+(c.floatValue?'('+c.floatValue+')':'')+', score='
+      +[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length+'/5';
+  });
+  return lines.length?lines.join('\n'):'No symbols currently tracked in the scanner.';
+}
+async function askClaude(question){
+  if(!claudeKey){
+    document.getElementById('claudeKeyRow').style.display='flex';
+    showToast('Paste your Anthropic API key first');
+    return;
+  }
+  addClaudeMsg('user',question);
+  addClaudeMsg('assistant','…thinking…');
+  const thinkingEl=document.getElementById('claudeMsgs').lastChild;
+  try{
+    const snapshot=buildScannerSnapshot();
+    const sysPrompt='You are a trading assistant embedded in a live 5 Pillars momentum scanner (Ross Cameron strategy: P1 price $1-$20, P2 %change, P3 news catalyst, P4 relative volume, P5 float<10M). '
+      +'Current live scanner data:\n'+snapshot+'\n\n'
+      +'Answer the user\'s question using ONLY this real data. Be direct and specific — name actual tickers and numbers. '
+      +'If something is pending/unscored, say so plainly rather than guessing. Keep it concise.';
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:sysPrompt,messages:[{role:'user',content:question}]})
+    });
+    const data=await r.json();
+    if(data.error){
+      thinkingEl.innerHTML='<b>Claude:</b> API error: '+(data.error.message||data.error.type)+'. Check your key is correct and has credits.';
+      claudeHistory[claudeHistory.length-1].content=thinkingEl.textContent;
+      document.getElementById('claudeMsgs').scrollTop=document.getElementById('claudeMsgs').scrollHeight;
+      return;
+    }
+    const text=data?.content?.map(b=>b.text||'').join('\n').trim()||'No response received.';
+    thinkingEl.innerHTML='<b>Claude:</b> '+text.replace(/\n/g,'<br>');
+    claudeHistory[claudeHistory.length-1].content=text;
+  }catch(e){
+    thinkingEl.innerHTML='<b>Claude:</b> Something went wrong reaching the assistant. Try again in a moment.';
+  }
+  document.getElementById('claudeMsgs').scrollTop=document.getElementById('claudeMsgs').scrollHeight;
 }
 
 // ═══ INIT ═══
