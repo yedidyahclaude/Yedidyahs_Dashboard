@@ -260,14 +260,21 @@ async function fetchQDirect(sym){
   });
 }
 async function fetchQ(sym){if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<25000)return;await fetchQDirect(sym);}
+// Finnhub's live WebSocket trade stream is a paid-tier feature — on a free
+// key this will always fail. Try once; if it fails, stop retrying forever
+// and rely fully on the REST /quote polling in fetchQDirect() instead,
+// which works fine on free tier and is already running independently.
+let _wsGaveUp=false;
 function connectFinnhubWS(){
+  if(_wsGaveUp)return;
   const syms=[...new Set(scanSyms)];
   try{
     fhWS=new WebSocket('wss://ws.finnhub.io?token='+FHK);
     fhWS.onopen=()=>syms.forEach(s=>fhWS.send(JSON.stringify({type:'subscribe',symbol:s})));
     fhWS.onmessage=e=>{const msg=JSON.parse(e.data);if(msg.type==='trade'&&msg.data){msg.data.forEach(t=>{const sym=t.s,px=t.p;if(!Q[sym])return;const prev=Q[sym].prevClose||px;Q[sym]={...Q[sym],price:px,change:px-prev,changePct:prev?(px-prev)/prev*100:0,high:Math.max(Q[sym].high||px,px),low:Math.min(Q[sym].low||px,px)};});debouncedScanUpdate();updateCPPrice();}};
-    fhWS.onclose=()=>setTimeout(connectFinnhubWS,5000);fhWS.onerror=()=>fhWS.close();
-  }catch(e){}
+    fhWS.onclose=()=>{if(!_wsGaveUp){_wsGaveUp=true;}}; // one failure is enough to know this key can't use it
+    fhWS.onerror=()=>fhWS.close();
+  }catch(e){_wsGaveUp=true;}
 }
 
 // ═══ SYMBOL SELECTION (search bar + scanner click + quick-check) ═══
@@ -479,7 +486,14 @@ async function init(){
   renderScanTags();liveScanUpdate();
   connectFinnhubWS();
   const toFetch=scanSyms.filter(s=>!Q[s]?.price);
-  for(const sym of toFetch){await fetchQDirect(sym);await new Promise(r=>setTimeout(r,1100));}
+  const statusEl=document.getElementById('scanStatus');
+  for(let i=0;i<toFetch.length;i++){
+    const sym=toFetch[i];
+    if(statusEl)statusEl.textContent='⚡ Loading prices… '+(i+1)+'/'+toFetch.length+' ('+sym+')';
+    await fetchQDirect(sym);
+    liveScanUpdate(); // render as each price lands instead of waiting for the whole batch
+    await new Promise(r=>setTimeout(r,1100));
+  }
   appReady=true;liveScanUpdate();
   pullWatchlistFromCloud(); // background — doesn't block local rendering above
   setTimeout(startDeepScan,3000);
