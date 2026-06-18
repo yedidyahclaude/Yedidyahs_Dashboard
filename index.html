@@ -144,10 +144,11 @@ input,button{font-family:inherit}
         <h2>🎯 5 Pillars Scanner</h2>
         <div style="display:flex;align-items:center;gap:10px">
           <span class="scan-status" id="scanStatus">⚡ Starting…</span>
+          <button class="tb-btn" onclick="toggleFilters()">⚙ Filters</button>
           <button class="tb-btn" id="claudeToggleBtn" onclick="toggleClaude()">🤖 Ask Claude</button>
         </div>
       </div>
-      <div class="scan-filters">
+      <div class="scan-filters" id="scanFilters" style="display:none">
         <div class="flt-g"><span class="flt-l">Min Price $</span><input class="flt-i" type="number" value="1" step="0.5" id="f-minp"/></div>
         <div class="flt-g"><span class="flt-l">Max Price $</span><input class="flt-i" type="number" value="20" id="f-maxp"/></div>
         <div class="flt-g"><span class="flt-l">Min % Change</span><input class="flt-i" type="number" value="10" id="f-chg"/></div>
@@ -233,7 +234,10 @@ const FHK='d8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
 
 // ═══ STATE ═══
 let Q={};                 // symbol -> live quote data
-let scanSyms=JSON.parse(localStorage.getItem('sv_scan')||'[]');
+// Dedicated key for this clean v1 build — deliberately NOT 'sv_scan', which
+// was used by the old multi-widget dashboard. Reusing that key would silently
+// inherit leftover test symbols from past sessions into a "fresh" v1.
+let scanSyms=JSON.parse(localStorage.getItem('sv_scan_v1')||'[]');
 let scanCache={};         // symbol -> {p3,p4,p5,hasNews,ts,rvolValue,floatValue}
 let newSyms=new Map();    // symbol -> timestamp added (for "NEW" flash)
 let appReady=false;
@@ -318,7 +322,7 @@ async function selectSym(sym){
   setTimeout(startDeepScan,200);
 }
 function saveScanSyms(){
-  localStorage.setItem('sv_scan',JSON.stringify(scanSyms));
+  localStorage.setItem('sv_scan_v1',JSON.stringify(scanSyms));
   syncWatchlistToCloud();
 }
 // ═══ CROSS-DEVICE WATCHLIST SYNC (Supabase) ═══
@@ -345,7 +349,7 @@ async function pullWatchlistFromCloud(){
     const merged=[...new Set([...scanSyms,...cloudList])];
     if(merged.length!==scanSyms.length||!merged.every(s=>scanSyms.includes(s))){
       scanSyms=merged;
-      localStorage.setItem('sv_scan',JSON.stringify(scanSyms));
+      localStorage.setItem('sv_scan_v1',JSON.stringify(scanSyms));
       renderScanTags();liveScanUpdate();
       const toFetch=scanSyms.filter(s=>!Q[s]?.price);
       for(const sym of toFetch){await fetchQDirect(sym);await new Promise(r=>setTimeout(r,1100));}
@@ -359,6 +363,7 @@ function addScanSym(){
   inp.value='';selectSym(sym);
 }
 function rmScanSym(sym){scanSyms=scanSyms.filter(s=>s!==sym);saveScanSyms();delete scanCache[sym];liveScanUpdate();}
+function toggleFilters(){const f=document.getElementById('scanFilters');if(f)f.style.display=f.style.display==='none'?'flex':'none';}
 
 // ═══ 5 PILLARS SCANNER RENDER ═══
 function renderScanTags(){
