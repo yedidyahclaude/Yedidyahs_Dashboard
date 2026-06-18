@@ -273,6 +273,14 @@ function connectFinnhubWS(){
 // ═══ SYMBOL SELECTION (search bar + scanner click + quick-check) ═══
 async function selectSym(sym){
   sym=sym.toUpperCase().trim();if(!sym)return;
+  // Tickers with a dot suffix (.V, .TO, .HK, etc.) are non-US exchange
+  // listings — Canadian TSX Venture, Hong Kong, etc. Finnhub's free tier
+  // only covers US exchanges, and these generally aren't tradeable through
+  // a typical US broker either, so block them before wasting an API call.
+  if(sym.includes('.')&&sym!=='BTC/USD'&&sym!=='ETH/USD'){
+    showToast('🚫 '+sym+' is a non-US exchange listing — not supported here');
+    return;
+  }
   curChartSym=sym;
   if(!Q[sym])await fetchQDirect(sym);
   if(!scanSyms.includes(sym)){scanSyms.push(sym);saveScanSyms();newSyms.set(sym,Date.now());playPing();if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));}
@@ -427,6 +435,11 @@ function openTVPopup(){
 
 // ═══ INIT ═══
 async function init(){
+  // One-time cleanup: remove any non-US-exchange tickers (.V, .TO, .HK, etc.)
+  // left over in localStorage from before this filter existed.
+  const beforeCount=scanSyms.length;
+  scanSyms=scanSyms.filter(s=>!s.includes('.')||s==='BTC/USD'||s==='ETH/USD');
+  if(scanSyms.length!==beforeCount){saveScanSyms();showToast('🧹 Removed non-US listings from watchlist');}
   renderScanTags();liveScanUpdate();
   connectFinnhubWS();
   const toFetch=scanSyms.filter(s=>!Q[s]?.price);
