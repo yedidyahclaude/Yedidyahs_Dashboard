@@ -305,12 +305,16 @@ input,button,textarea{font-family:inherit}
 
 <!-- NOTES MODAL -->
 <div id="notesModal">
-  <div class="notes-box">
-    <h3 id="notesModalTitle">Notes — SYMBOL</h3>
-    <textarea id="notesInp" placeholder="Type your notes here… e.g. watching breakout above $3.55, strong catalyst…"></textarea>
+  <div class="notes-box" style="width:420px;max-height:80vh;display:flex;flex-direction:column">
+    <h3 id="notesModalTitle">📝 Notes — SYMBOL</h3>
+    <textarea id="notesInp" placeholder="Add a new note… e.g. watching breakout above $3.55, strong catalyst, entry plan…"></textarea>
     <div class="notes-btns">
       <button class="tb-btn" onclick="closeNotes()">Cancel</button>
       <button onclick="saveNotes()" style="background:var(--ac);border:none;border-radius:7px;color:#fff;font-weight:700;font-size:12px;padding:8px 16px;cursor:pointer">Save Note</button>
+    </div>
+    <div style="margin-top:14px;border-top:1px solid var(--b1);padding-top:10px;flex:1;overflow-y:auto;max-height:260px">
+      <div style="font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">History</div>
+      <div id="notesHistory"></div>
     </div>
   </div>
 </div>
@@ -319,7 +323,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v2.4</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v2.5</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -345,7 +349,7 @@ input,button,textarea{font-family:inherit}
           </div>
           <div class="scan-hdr-right">
             <div id="sectorAlert" style="display:none" class="sector-alert"></div>
-            <button class="copy-syms-btn" onclick="copySymbols()" title="Copy all passing symbols">📋 Copy</button>
+            <button class="copy-syms-btn" onclick="copySymbols()" title="Copy all passing symbols to clipboard">📋 Copy All</button>
             <span class="scan-status" id="scanStatus">Starting…</span>
           </div>
         </div>
@@ -513,6 +517,17 @@ let failTimer={};
 let pmHigh={};
 let symNotes=JSON.parse(localStorage.getItem('sv_notes_v1')||'{}');
 let starredSyms=new Set(JSON.parse(localStorage.getItem('sv_starred_v1')||'[]'));
+// Migrate old flat string notes to new array format
+(()=>{
+  let migrated=false;
+  Object.keys(symNotes).forEach(sym=>{
+    if(typeof symNotes[sym]==='string'){
+      symNotes[sym]=[{text:symNotes[sym],ts:new Date(0).toISOString()}];
+      migrated=true;
+    }
+  });
+  if(migrated)localStorage.setItem('sv_notes_v1',JSON.stringify(symNotes));
+})();
 let appReady=false;
 let curChartSym=null;
 let scanDeepRunning=false;
@@ -524,7 +539,7 @@ let fhWS=null;
 let _wsGaveUp=false;
 let sortCol='score';
 let sortDir=-1;
-let pulseOpen=false;
+let pulseOpen=true;
 
 // ═══ SESSION / CLOCK ═══
 function getSession(){
@@ -676,23 +691,91 @@ function connectFinnhubWS(){
   }catch(e){_wsGaveUp=true;}
 }
 
-// ═══ NOTES ═══
+// ═══ NOTES — timestamped, Supabase-synced, permanent history ═══
+// Structure: symNotes = { AAPL: [{text, ts}], LNKS: [{text, ts}] }
+// Latest entry = symNotes[sym][symNotes[sym].length-1].text (for display)
 let _notesSym=null;
+
+function getLatestNote(sym){
+  const entries=symNotes[sym];
+  return entries&&entries.length?entries[entries.length-1].text:'';
+}
+
 function openNotes(sym){
   _notesSym=sym||curChartSym;if(!_notesSym)return;
-  document.getElementById('notesModalTitle').textContent='Notes — '+_notesSym;
-  document.getElementById('notesInp').value=symNotes[_notesSym]||'';
+  document.getElementById('notesModalTitle').textContent='📝 Notes — '+_notesSym;
+  // Show current note in textarea
+  document.getElementById('notesInp').value=getLatestNote(_notesSym);
+  // Render history below textarea
+  renderNoteHistory(_notesSym);
   document.getElementById('notesModal').style.display='flex';
   setTimeout(()=>document.getElementById('notesInp').focus(),50);
 }
+
+function renderNoteHistory(sym){
+  const hist=document.getElementById('notesHistory');
+  if(!hist)return;
+  const entries=symNotes[sym]||[];
+  if(!entries.length){hist.innerHTML='<div style="color:var(--dim);font-size:11px;padding:6px 0">No previous notes for '+sym+'</div>';return;}
+  // Show newest first
+  hist.innerHTML=[...entries].reverse().map((e,i)=>{
+    const d=new Date(e.ts);
+    const dateStr=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    const timeStr=d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});
+    return '<div style="padding:6px 0;border-bottom:1px solid var(--b1);'+(i===0?'':'opacity:.7')+'">'
+      +'<div style="font-size:9px;color:var(--dim);font-family:\'DM Mono\',monospace;margin-bottom:3px">'+dateStr+' · '+timeStr+(i===0?' · <span style="color:var(--ac2)">Latest</span>':'')+'</div>'
+      +'<div style="font-size:12px;color:var(--tx);line-height:1.5">'+e.text+'</div>'
+      +'</div>';
+  }).join('');
+}
+
 function closeNotes(){document.getElementById('notesModal').style.display='none';}
+
 function saveNotes(){
   const val=document.getElementById('notesInp').value.trim();
-  if(val)symNotes[_notesSym]=val;else delete symNotes[_notesSym];
+  if(!val){showToast('Note is empty — nothing saved');return;}
+  if(!symNotes[_notesSym])symNotes[_notesSym]=[];
+  // Append new timestamped entry
+  symNotes[_notesSym].push({text:val,ts:new Date().toISOString()});
   localStorage.setItem('sv_notes_v1',JSON.stringify(symNotes));
+  syncNotesToCloud();
   closeNotes();updatePulse();updateCPPrice();
-  showToast('📝 Note saved for '+_notesSym);
+  showToast('📝 Note saved for '+_notesSym+' ('+symNotes[_notesSym].length+' total)');
 }
+
+function syncNotesToCloud(){
+  const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
+  if(!token||!uid)return;
+  sf('/rest/v1/profiles?id=eq.'+uid,{method:'PATCH',
+    headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},
+    body:JSON.stringify({watchlist:scanSyms,notes:symNotes})
+  }).catch(()=>{});
+}
+
+async function pullNotesFromCloud(){
+  const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
+  if(!token||!uid)return;
+  try{
+    const r=await sf('/rest/v1/profiles?select=notes&id=eq.'+uid,{headers:{'Authorization':'Bearer '+token}});
+    const d=await r.json();
+    const cloudNotes=d?.[0]?.notes;
+    if(!cloudNotes||typeof cloudNotes!=='object')return;
+    // Merge cloud + local — union all entries by timestamp
+    let changed=false;
+    Object.keys(cloudNotes).forEach(sym=>{
+      const cloudEntries=cloudNotes[sym]||[];
+      if(!symNotes[sym]){symNotes[sym]=cloudEntries;changed=true;return;}
+      const localTs=new Set(symNotes[sym].map(e=>e.ts));
+      const toAdd=cloudEntries.filter(e=>!localTs.has(e.ts));
+      if(toAdd.length){symNotes[sym]=[...symNotes[sym],...toAdd].sort((a,b)=>a.ts.localeCompare(b.ts));changed=true;}
+    });
+    if(changed){
+      localStorage.setItem('sv_notes_v1',JSON.stringify(symNotes));
+      updatePulse();
+    }
+  }catch(e){}
+}
+
 // Close notes modal on backdrop click
 document.getElementById('notesModal').addEventListener('click',e=>{if(e.target===document.getElementById('notesModal'))closeNotes();});
 
@@ -737,10 +820,19 @@ function updatePulse(){
       +'<span class="pulse-sym-chg">+'+b.chg.toFixed(1)+'%</span>'
     +'</div>'
   ).join('')||'<div style="font-size:10px;color:var(--dim);padding:4px 0">No 4+/5 setups yet</div>';
-  // Notes list
+  // Notes list — show latest note per symbol with timestamp
   const nl=document.getElementById('ps-notes-list');
   const noteKeys=Object.keys(symNotes);
-  nl.innerHTML=noteKeys.length?noteKeys.map(k=>'<div style="margin-bottom:6px"><span style="color:var(--ac2);font-weight:700">'+k+'</span> — '+symNotes[k].substring(0,60)+(symNotes[k].length>60?'…':'')+'</div>').join(''):'<div>No notes yet. Click 📝 Note in the chart panel.</div>';
+  nl.innerHTML=noteKeys.length?noteKeys.map(k=>{
+    const entries=symNotes[k]||[];
+    if(!entries.length)return'';
+    const latest=entries[entries.length-1];
+    const d=new Date(latest.ts);
+    const dateStr=d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    return '<div style="margin-bottom:8px"><span style="color:var(--ac2);font-weight:700;cursor:pointer" onclick="selectSym(\''+k+'\')">'+k+'</span>'
+      +' <span style="font-size:8px;color:var(--dim);font-family:\'DM Mono\',monospace">'+dateStr+' ('+entries.length+')</span>'
+      +'<div style="font-size:10px;color:var(--mu);line-height:1.4;margin-top:2px">'+latest.text.substring(0,60)+(latest.text.length>60?'…':'')+'</div></div>';
+  }).join(''):'<div style="font-size:10px;color:var(--dim)">No notes yet. Click 📝 Note in the chart panel.</div>';
 }
 setInterval(()=>{if(pulseOpen)updatePulse();},10000);
 
@@ -933,7 +1025,7 @@ function liveScanUpdate(){
     const floatLabel=r.floatValue||'';
     const pmhStr=r.pmh>0?'H:$'+r.pmh.toFixed(2):'';
     const p3label=r.hasNews?'P3 🔥':'P3';
-    const hasNote=!!symNotes[r.sym];
+    const hasNote=symNotes[r.sym]&&symNotes[r.sym].length>0;
     // Since open gain: how much has price moved since market open (9:30 ET)
     const openPx=r.q.open||0;
     const sinceOpen=openPx>0?((r.q.price-openPx)/openPx*100):0;
@@ -953,6 +1045,7 @@ function liveScanUpdate(){
           +(r.hasNews?'<span class="news-dot">🔥</span>':'')
           +(pmhStr?'<span class="pmh-badge">'+pmhStr+'</span>':'')
           +(hasNote?'<span style="font-size:9px;opacity:.6">📝</span>':'')
+          +'<button onclick="event.stopPropagation();copySym(\''+r.sym+'\')" title="Copy '+r.sym+'" style="background:none;border:none;cursor:pointer;font-size:9px;opacity:.3;padding:0 2px;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.3">📋</button>'
         +'</div>'
         +'<div class="range-bar-wrap">'
           +'<div class="range-bar"><div class="range-bar-fill" style="width:'+rangePctClamped+'%"></div></div>'
@@ -1307,7 +1400,7 @@ function buildScannerSnapshot(){
     const src=symMeta.get(sym)?.source||'manual';
     const pv=v=>v===true?'✓':v===false?'✗':'?';
     const pmhStr=pmHigh[sym]?'PMH=$'+pmHigh[sym].toFixed(2):'';
-    const noteStr=symNotes[sym]?'note="'+symNotes[sym].substring(0,60)+'"':'';
+    const noteStr=symNotes[sym]&&symNotes[sym].length?'note="'+symNotes[sym][symNotes[sym].length-1].text.substring(0,60)+'"':'';
     return sym+'['+src+'] $'+fmtP(q.price)+' '+(q.changePct>=0?'+':'')+(q.changePct||0).toFixed(1)+'% '
       +'P1='+pv(p1)+' P2='+pv(p2)+' P3='+pv(c.p3)+' P4='+pv(c.p4)+'('+((c.rvolValue||'?'))+'x) P5='+pv(c.p5)+'('+((c.floatValue||'?'))+')'
       +' score='+[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length+'/5'
@@ -1343,6 +1436,11 @@ function toggleStar(sym){
 }
 
 // ═══ COPY SYMBOLS ═══
+function copySym(sym){
+  navigator.clipboard.writeText(sym).then(()=>{
+    showToast('📋 Copied '+sym);
+  }).catch(()=>showToast(sym));
+}
 function copySymbols(){
   const minP=parseFloat(document.getElementById('f-minp').value)||1;
   const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
@@ -1404,6 +1502,9 @@ async function init(){
   }
   scanSyms=scanSyms.filter(s=>!s.includes('.')||s==='BTC/USD'||s==='ETH/USD');
   saveScanSyms();liveScanUpdate();updateSortArrows();
+  // Pulse panel open by default
+  document.getElementById('pulsePanel').style.display='flex';
+  document.getElementById('pulseToggleBtn').classList.add('active');
   connectFinnhubWS();
   const toFetch=scanSyms.filter(s=>!Q[s]?.price);
   const statusEl=document.getElementById('scanStatus');
@@ -1415,6 +1516,7 @@ async function init(){
   }
   appReady=true;liveScanUpdate();
   pullWatchlistFromCloud();
+  pullNotesFromCloud();
   setTimeout(startDeepScan,3000);
   startUniverseScan();
   setInterval(()=>{if(appReady)liveScanUpdate();},15000);
