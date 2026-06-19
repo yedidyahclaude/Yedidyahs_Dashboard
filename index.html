@@ -237,6 +237,41 @@ input,button,textarea{font-family:inherit}
 
 /* ── TOAST ── */
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--s3);border:1px solid var(--b2);border-radius:8px;padding:9px 16px;font-size:12px;font-weight:500;opacity:0;transition:opacity .25s;pointer-events:none;z-index:200;white-space:nowrap;box-shadow:0 8px 24px #0006}
+
+/* ── STAR / PIN ── */
+.star-btn{background:none;border:none;cursor:pointer;font-size:12px;padding:0 2px;opacity:.4;transition:opacity .15s;flex-shrink:0}
+.star-btn:hover,.star-btn.starred{opacity:1}
+.scan-row.pinned{background:linear-gradient(90deg,#f0b94f08,transparent)}
+
+/* ── SECTOR BADGE ── */
+.sector-alert{display:flex;align-items:center;gap:6px;padding:6px 12px;background:#f0b94f12;border:1px solid #f0b94f30;border-radius:8px;font-size:11px;font-weight:700;color:var(--gold)}
+
+/* ── COPY SYMBOLS ── */
+.copy-syms-btn{background:none;border:1px solid var(--b2);border-radius:6px;color:var(--dim);font-size:10px;font-weight:600;padding:3px 9px;cursor:pointer;transition:all .15s}
+.copy-syms-btn:hover{color:var(--ac2);border-color:var(--ac)}
+
+/* ── SINCE OPEN badge ── */
+.since-open{font-size:9px;font-family:'DM Mono',monospace;font-weight:700;flex-shrink:0}
+.since-open.pos{color:var(--gr)}.since-open.neg{color:var(--rd)}
+
+/* ── MOBILE LAYOUT ── */
+@media(max-width:600px){
+  .topbar{height:auto;padding:8px 10px;flex-wrap:wrap;gap:6px}
+  .clock-center{position:static;transform:none;order:3;width:100%;text-align:center;padding:2px 0}
+  #htime{font-size:16px}
+  .brand-sub{display:none}
+  .topbar-right{gap:4px}
+  .tb-btn{font-size:10px;padding:5px 8px}
+  #si{order:2;width:100%}
+  .scan-row{grid-template-columns:130px 60px 60px 1fr 80px 36px;padding:7px 10px}
+  .scan-sym{font-size:12px}
+  .sort-bar{grid-template-columns:130px 60px 60px 1fr 80px 36px;padding:0 10px}
+  .scanner-wrap{padding:8px 10px;gap:6px}
+  #pulsePanel{display:none!important}
+  .cp-spread,.cp-pmh{display:none}
+  .row-headline{display:none}
+  .range-bar-wrap{display:none}
+}
 </style>
 </head>
 <body>
@@ -305,6 +340,8 @@ input,button,textarea{font-family:inherit}
             <span class="scan-count" id="scanCount">0</span>
           </div>
           <div class="scan-hdr-right">
+            <div id="sectorAlert" style="display:none" class="sector-alert"></div>
+            <button class="copy-syms-btn" onclick="copySymbols()" title="Copy all passing symbols">📋 Copy</button>
             <span class="scan-status" id="scanStatus">Starting…</span>
           </div>
         </div>
@@ -383,7 +420,7 @@ input,button,textarea{font-family:inherit}
         <span class="cp-pmh" id="cpPmh"></span>
         <span class="cp-spread" id="cpSpread"></span>
         <span class="cp-meta" id="cpMeta">Click to pop out full chart →</span>
-        <button class="cp-note-btn" id="cpNoteBtn" onclick="event.stopPropagation();openNotes()" style="display:none">📝 Note</button>
+        <button class="cp-note-btn" id="cpNoteBtn" onclick="event.stopPropagation();showNoteBtn()" style="display:none">📝 Note</button>
         <button class="cp-pop" onclick="event.stopPropagation();openTVPopup()">Pop Out ↗</button>
       </div>
     </div>
@@ -470,6 +507,7 @@ let symMeta=new Map();
 let failTimer={};
 let pmHigh={};
 let symNotes=JSON.parse(localStorage.getItem('sv_notes_v1')||'{}');
+let starredSyms=new Set(JSON.parse(localStorage.getItem('sv_starred_v1')||'[]'));
 let appReady=false;
 let curChartSym=null;
 let scanDeepRunning=false;
@@ -519,8 +557,14 @@ function playPing(type='new'){
   try{
     const ctx=new(window.AudioContext||window.webkitAudioContext)();
     const g=ctx.createGain();g.connect(ctx.destination);
-    if(type==='score5'){
-      [880,1100,1320].forEach((freq,i)=>{
+    if(type==='halt'){
+      // Halt: rapid low-pitched descending alarm
+      [440,380,320].forEach((freq,i)=>{
+        const o=ctx.createOscillator();o.type='square';o.connect(g);o.frequency.value=freq;
+        g.gain.setValueAtTime(0,ctx.currentTime+i*0.08);g.gain.linearRampToValueAtTime(0.15,ctx.currentTime+i*0.08+0.01);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.08+0.1);
+        o.start(ctx.currentTime+i*0.08);o.stop(ctx.currentTime+i*0.08+0.1);
+      });
+    } else if(type==='score5'){      [880,1100,1320].forEach((freq,i)=>{
         const o=ctx.createOscillator();o.connect(g);o.frequency.value=freq;
         g.gain.setValueAtTime(0,ctx.currentTime+i*0.12);g.gain.linearRampToValueAtTime(0.3,ctx.currentTime+i*0.12+0.02);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.12+0.15);
         o.start(ctx.currentTime+i*0.12);o.stop(ctx.currentTime+i*0.12+0.15);
@@ -813,6 +857,9 @@ function liveScanUpdate(){
   if(empty)empty.style.display='none';if(sortBar)sortBar.style.display='grid';
   const FRESH_MS=90000;
   results.sort((a,b)=>{
+    // Pinned/starred always float to absolute top
+    const aStar=starredSyms.has(a.sym),bStar=starredSyms.has(b.sym);
+    if(aStar!==bStar)return aStar?-1:1;
     const aFresh=now-a.addedTs<FRESH_MS,bFresh=now-b.addedTs<FRESH_MS;
     if(aFresh!==bFresh)return aFresh?-1:1;
     let av,bv;
@@ -832,6 +879,7 @@ function liveScanUpdate(){
     const u=(r.q.changePct||0)>=0;
     const sc=r.halted?'halted':r.score>=5?'score5':r.score>=4?'score4':'score3';
     const isFresh=now-r.addedTs<FRESH_MS;
+    const isPinned=starredSyms.has(r.sym);
     const pending=r.p3===null&&r.p4===null&&r.p5===null;
     const srcBadge=r.src==='wb'?'<span class="src-badge src-wb">WB</span>':r.src==='seed'?'<span class="src-badge src-sd">SD</span>':'';
     const rvNum=r.rv||0;
@@ -841,15 +889,19 @@ function liveScanUpdate(){
     const pmhStr=r.pmh>0?'H:$'+r.pmh.toFixed(2):'';
     const p3label=r.hasNews?'P3 🔥':'P3';
     const hasNote=!!symNotes[r.sym];
-    // Day range bar: where is current price between day low and day high
+    // Since open gain: how much has price moved since market open (9:30 ET)
+    const openPx=r.q.open||0;
+    const sinceOpen=openPx>0?((r.q.price-openPx)/openPx*100):0;
+    const sinceOpenStr=openPx>0?((sinceOpen>=0?'+':'')+sinceOpen.toFixed(1)+'% open'):'';
+    // Day range bar
     const dLow=r.q.low||0,dHigh=r.q.high||0,dPx=r.q.price||0;
     const rangePct=dHigh>dLow?Math.round(((dPx-dLow)/(dHigh-dLow))*100):50;
     const rangePctClamped=Math.max(3,Math.min(97,rangePct));
-    // Volume bar vs estimated average (rough: compare to RVOL * expected)
     const volPct=rvNum>0?Math.min(100,Math.round((rvNum/10)*100)):30;
-    return '<div class="scan-row '+sc+(isFresh?' scan-row-new':'')+'" onclick="selectSym(\''+r.sym+'\')">'
+    return '<div class="scan-row '+sc+(isFresh?' scan-row-new':'')+(isPinned?' pinned':'')+'" onclick="selectSym(\''+r.sym+'\')">'
       +'<div class="scan-sym-cell">'
         +'<div class="scan-sym-row">'
+          +'<button class="star-btn'+(isPinned?' starred':'')+'" onclick="event.stopPropagation();toggleStar(\''+r.sym+'\')" title="Pin symbol">'+(isPinned?'⭐':'☆')+'</button>'
           +'<span class="scan-sym '+(u?'up':'dn')+'">'+r.sym+'</span>'
           +srcBadge
           +(r.halted?'<span class="halt-badge">HALT</span>':'')
@@ -857,7 +909,6 @@ function liveScanUpdate(){
           +(pmhStr?'<span class="pmh-badge">'+pmhStr+'</span>':'')
           +(hasNote?'<span style="font-size:9px;opacity:.6">📝</span>':'')
         +'</div>'
-        +(r.newsHeadline?'<div class="row-headline">'+r.newsHeadline.substring(0,55)+(r.newsHeadline.length>55?'…':'')+'</div>':'')
         +'<div class="range-bar-wrap">'
           +'<div class="range-bar"><div class="range-bar-fill" style="width:'+rangePctClamped+'%"></div></div>'
           +'<span class="range-label">L:$'+(dLow?dLow.toFixed(2):'—')+' H:$'+(dHigh?dHigh.toFixed(2):'—')+'</span>'
@@ -867,7 +918,9 @@ function liveScanUpdate(){
       +'<span class="scan-chg '+(u?'up':'dn')+'">'+(u?'+':'')+((r.q.changePct||0).toFixed(1))+'%</span>'
       +'<div class="scan-rvol-cell">'
         +'<span class="scan-rvol '+rvClass+'">'+rvLabel+(floatLabel?' · '+floatLabel:'')+'</span>'
-        +'<div class="vol-bar"><div class="vol-bar-fill" style="width:'+volPct+'%"></div></div>'
+        +(r.newsHeadline
+          ?'<span style="font-size:9px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;display:block;line-height:1.3">'+r.newsHeadline.substring(0,60)+(r.newsHeadline.length>60?'…':'')+'</span>'
+          :(sinceOpenStr?'<span class="since-open '+(sinceOpen>=0?'pos':'neg')+'">'+sinceOpenStr+'</span>':'<div class="vol-bar"><div class="vol-bar-fill" style="width:'+volPct+'%"></div></div>'))
       +'</div>'
       +'<div class="scan-pills">'
         +'<span class="pill '+(pending?'na':pd(r.p1))+'">P1</span>'
@@ -881,6 +934,7 @@ function liveScanUpdate(){
   }).join('');
   updateCPPrice();
   if(pulseOpen)updatePulse();
+  checkSectors(results);
 }
 
 // ═══ WEBULL LIVE SCAN — 100 symbols ═══
@@ -915,7 +969,11 @@ async function runWebullScan(){
         if(!px)continue;
         // Detect halt: if volume=0 and price unchanged flag it
         const isHalt=(vol===0&&Math.abs(chgPct)<0.01&&scanSyms.includes(sym));
-        if(isHalt&&scanCache[sym])scanCache[sym]={...scanCache[sym],halted:true};
+        if(isHalt&&scanCache[sym]){
+          const wasHalted=scanCache[sym].halted;
+          scanCache[sym]={...scanCache[sym],halted:true};
+          if(!wasHalted){playPing('halt');showToast('🛑 '+sym+' — TRADING HALT DETECTED');}
+        }
         if(!Q[sym]||Date.now()-(Q[sym]._ts||0)>20000){
           Q[sym]={symbol:sym,price:px,changePct:chgPct,volume:vol,prevClose:item.pre_close?parseFloat(item.pre_close):px,_ts:Date.now(),_fromWebull:true};
         }
@@ -1155,7 +1213,7 @@ function openTVPopup(){
   if(_tvWin&&!_tvWin.closed){_tvWin.location.href=base;_tvWin.focus();}
   else{_tvWin=window.open(base,'tvChartWin',feat);}
 }
-function openNotes(){openNotes(curChartSym);}
+function showNoteBtn(){openNotes(curChartSym);}
 
 // ═══ CLAUDE ═══
 let claudeOpen=false;let claudeHistory=[];
@@ -1222,6 +1280,67 @@ async function askClaude(question){
     claudeHistory[claudeHistory.length-1].content=text;
   }catch(e){thinkingEl.innerHTML='<span style="font-weight:700;font-size:11px;opacity:.6">CLAUDE</span><br>Something went wrong. Try again.';}
   document.getElementById('claudeMsgs').scrollTop=document.getElementById('claudeMsgs').scrollHeight;
+}
+
+// ═══ STAR / PIN ═══
+function toggleStar(sym){
+  if(starredSyms.has(sym))starredSyms.delete(sym);
+  else starredSyms.add(sym);
+  localStorage.setItem('sv_starred_v1',JSON.stringify([...starredSyms]));
+  liveScanUpdate();
+  showToast(starredSyms.has(sym)?'⭐ '+sym+' pinned to top':'☆ '+sym+' unpinned');
+}
+
+// ═══ COPY SYMBOLS ═══
+function copySymbols(){
+  const minP=parseFloat(document.getElementById('f-minp').value)||1;
+  const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
+  const minC=parseFloat(document.getElementById('f-chg').value)||10;
+  const passing=scanSyms.filter(sym=>{
+    const q=Q[sym];if(!q?.price)return false;
+    return q.price>=minP&&q.price<=maxP&&(q.changePct||0)>=minC;
+  });
+  if(!passing.length){showToast('No passing symbols to copy');return;}
+  navigator.clipboard.writeText(passing.join(', ')).then(()=>{
+    showToast('📋 Copied '+passing.length+' symbols to clipboard');
+  }).catch(()=>{
+    showToast(passing.join(', '));
+  });
+}
+
+// ═══ SECTOR DETECTION ═══
+// Basic sector mapping for common momentum tickers
+const SECTOR_MAP={
+  // Biotech/Pharma
+  SAVA:'BIO',AXSM:'BIO',AVXL:'BIO',ARDX:'BIO',LQDA:'BIO',ADTX:'BIO',SNGX:'BIO',PHVS:'BIO',RAPT:'BIO',TPST:'BIO',EDSA:'BIO',PRME:'BIO',
+  // Crypto miners
+  MARA:'CRYPTO',RIOT:'CRYPTO',CLSK:'CRYPTO',HUT:'CRYPTO',BTBT:'CRYPTO',CIFR:'CRYPTO',IREN:'CRYPTO',WULF:'CRYPTO',CORZ:'CRYPTO',BITF:'CRYPTO',GREE:'CRYPTO',HIVE:'CRYPTO',
+  // EV/Clean Energy
+  PLUG:'EV',FCEL:'EV',BLNK:'EV',CHPT:'EV',EVGO:'EV',PTRA:'EV',GOEV:'EV',NKLA:'EV',MULN:'EV',WKHS:'EV',
+  // Chinese EV
+  NIO:'CN',XPEV:'CN',LI:'CN',
+  // Fintech
+  SOFI:'FINTECH',HOOD:'FINTECH',AFRM:'FINTECH',UPST:'FINTECH',
+  // Quantum/AI
+  QBTS:'QUANT',RGTI:'QUANT',IONQ:'QUANT',ARQQ:'QUANT',QUBT:'QUANT',BBAI:'AI',CXAI:'AI',AIXI:'AI',
+};
+const SECTOR_LABELS={BIO:'🧬 Biotech Running',CRYPTO:'₿ Crypto Running',EV:'⚡ EV Running',CN:'🇨🇳 China ADRs',FINTECH:'💳 Fintech Running',QUANT:'⚛️ Quantum Running',AI:'🤖 AI Running'};
+function checkSectors(results){
+  const sectorCount={};
+  results.forEach(r=>{
+    const s=SECTOR_MAP[r.sym];
+    if(s)sectorCount[s]=(sectorCount[s]||0)+1;
+  });
+  const hotSectors=Object.entries(sectorCount).filter(([,c])=>c>=3).sort((a,b)=>b[1]-a[1]);
+  const alertEl=document.getElementById('sectorAlert');
+  if(!alertEl)return;
+  if(hotSectors.length){
+    const [sector,count]=hotSectors[0];
+    alertEl.style.display='flex';
+    alertEl.textContent=(SECTOR_LABELS[sector]||sector)+' ('+count+')';
+  } else {
+    alertEl.style.display='none';
+  }
 }
 
 // ═══ INIT ═══
