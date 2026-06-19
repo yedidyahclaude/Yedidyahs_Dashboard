@@ -137,7 +137,7 @@ input,button,textarea{font-family:inherit}
 .scan-empty .d{font-size:12px;line-height:1.6;text-align:center;max-width:300px}
 
 /* ── SCAN ROW ── */
-.scan-row{display:grid;grid-template-columns:200px 80px 80px 1fr 120px 52px;align-items:center;gap:0;padding:9px 14px;border-bottom:1px solid var(--b1);cursor:pointer;transition:background .12s;position:relative}
+.scan-row{display:grid;grid-template-columns:200px 80px 80px 1fr 120px 52px;grid-template-rows:auto auto;align-items:center;gap:0;padding:6px 14px 0 14px;border-bottom:1px solid var(--b1);cursor:pointer;transition:background .12s;position:relative}
 .scan-row:hover{background:var(--s3)}
 .scan-row:last-child{border-bottom:none}
 .scan-row.score5{border-left:2px solid var(--gr)}
@@ -157,7 +157,8 @@ input,button,textarea{font-family:inherit}
 .pmh-badge{font-size:9px;font-weight:700;color:var(--sky);font-family:'DM Mono',monospace;flex-shrink:0;opacity:.8}
 .halt-badge{font-size:7px;font-weight:800;padding:1px 4px;border-radius:3px;background:#f0506e22;color:var(--rd);border:1px solid #f0506e40;flex-shrink:0;animation:haltPulse 1.2s ease-in-out infinite}
 @keyframes haltPulse{0%,100%{opacity:1}50%{opacity:.4}}
-.row-headline{font-size:9px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;line-height:1.3}
+/* News headline — full-width centered subtitle under the main row data */
+.row-headline-bar{grid-column:1/-1;padding:0 14px 5px 14px;font-size:10px;color:var(--mu);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;border-bottom:1px solid var(--b1);margin-top:-4px}
 /* Day range bar */
 .range-bar-wrap{display:flex;align-items:center;gap:4px;margin-top:2px}
 .range-bar{height:3px;width:90px;background:var(--b2);border-radius:2px;position:relative;flex-shrink:0}
@@ -263,7 +264,8 @@ input,button,textarea{font-family:inherit}
   .topbar-right{gap:4px}
   .tb-btn{font-size:10px;padding:5px 8px}
   #si{order:2;width:100%}
-  .scan-row{grid-template-columns:130px 60px 60px 1fr 80px 36px;padding:7px 10px}
+  .scan-row{grid-template-columns:130px 60px 60px 1fr 80px 36px;padding:5px 10px 0 10px}
+  .row-headline-bar{font-size:9px;padding:0 10px 4px 10px}
   .scan-sym{font-size:12px}
   .sort-bar{grid-template-columns:130px 60px 60px 1fr 80px 36px;padding:0 10px}
   .scanner-wrap{padding:8px 10px;gap:6px}
@@ -315,7 +317,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live</div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v2.4</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -525,7 +527,40 @@ let pulseOpen=false;
 function getSession(){
   const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
   const m=et.getHours()*60+et.getMinutes(),d=et.getDay();
+  const y=et.getFullYear(),mo=et.getMonth()+1,day=et.getDate();
+  // Weekends always closed
   if(d===0||d===6)return'cls';
+  // US Market Holidays (fixed + observed rules)
+  const holidays=[
+    `${y}-01-01`, // New Year's Day
+    `${y}-01-20`, // MLK Day (3rd Monday Jan — approximate, good enough)
+    `${y}-02-17`, // Presidents Day (3rd Monday Feb)
+    `${y}-04-18`, // Good Friday 2025 — update yearly or compute
+    `${y}-05-26`, // Memorial Day (last Monday May)
+    `${y}-06-19`, // Juneteenth
+    `${y}-07-04`, // Independence Day
+    `${y}-09-01`, // Labor Day (1st Monday Sep)
+    `${y}-11-27`, // Thanksgiving (4th Thursday Nov)
+    `${y}-12-25`, // Christmas
+  ];
+  // Observed: if holiday falls on Saturday, Friday before is off; Sunday -> Monday
+  const pad=n=>String(n).padStart(2,'0');
+  const todayStr=`${y}-${pad(mo)}-${pad(day)}`;
+  // Check if today is a holiday or observed holiday
+  const isHoliday=holidays.some(h=>{
+    const hd=new Date(h+'T12:00:00');
+    const hw=hd.getDay();
+    if(hw===6){// Saturday holiday -> Friday off
+      const fri=new Date(hd);fri.setDate(fri.getDate()-1);
+      return todayStr===`${fri.getFullYear()}-${pad(fri.getMonth()+1)}-${pad(fri.getDate())}`;
+    }
+    if(hw===0){// Sunday holiday -> Monday off
+      const mon=new Date(hd);mon.setDate(mon.getDate()+1);
+      return todayStr===`${mon.getFullYear()}-${pad(mon.getMonth()+1)}-${pad(mon.getDate())}`;
+    }
+    return todayStr===h;
+  });
+  if(isHoliday)return'cls';
   if(m>=240&&m<570)return'pre';if(m>=570&&m<960)return'mkt';if(m>=960&&m<1200)return'aft';return'cls';
 }
 function tick(){
@@ -918,9 +953,7 @@ function liveScanUpdate(){
       +'<span class="scan-chg '+(u?'up':'dn')+'">'+(u?'+':'')+((r.q.changePct||0).toFixed(1))+'%</span>'
       +'<div class="scan-rvol-cell">'
         +'<span class="scan-rvol '+rvClass+'">'+rvLabel+(floatLabel?' · '+floatLabel:'')+'</span>'
-        +(r.newsHeadline
-          ?'<span style="font-size:9px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;display:block;line-height:1.3">'+r.newsHeadline.substring(0,60)+(r.newsHeadline.length>60?'…':'')+'</span>'
-          :(sinceOpenStr?'<span class="since-open '+(sinceOpen>=0?'pos':'neg')+'">'+sinceOpenStr+'</span>':'<div class="vol-bar"><div class="vol-bar-fill" style="width:'+volPct+'%"></div></div>'))
+      +(sinceOpenStr&&!r.newsHeadline?'<span class="since-open '+(sinceOpen>=0?'pos':'neg')+'">'+sinceOpenStr+'</span>':'<div class="vol-bar"><div class="vol-bar-fill" style="width:'+volPct+'%"></div></div>')
       +'</div>'
       +'<div class="scan-pills">'
         +'<span class="pill '+(pending?'na':pd(r.p1))+'">P1</span>'
@@ -930,6 +963,8 @@ function liveScanUpdate(){
         +'<span class="pill '+(pending?'na':pd(r.p5))+'">P5</span>'
       +'</div>'
       +'<span class="scan-score">'+r.score+'/5</span>'
+      // Full-width headline row spanning all 6 columns
+      +(r.newsHeadline?'<div class="row-headline-bar" style="grid-column:1/-1">🔥 '+r.newsHeadline.substring(0,110)+(r.newsHeadline.length>110?'…':'')+'</div>':'<div style="grid-column:1/-1;height:6px"></div>')
       +'</div>';
   }).join('');
   updateCPPrice();
