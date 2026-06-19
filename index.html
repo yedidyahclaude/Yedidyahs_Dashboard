@@ -891,6 +891,8 @@ setInterval(()=>{if(pulseOpen)updatePulse();},10000);
 // ═══ SYMBOL MANAGEMENT ═══
 async function selectSym(sym){
   sym=sym.toUpperCase().trim();if(!sym)return;
+  // Copy to clipboard silently on every click
+  navigator.clipboard.writeText(sym).catch(()=>{});
   if(sym.includes('.')&&sym!=='BTC/USD'&&sym!=='ETH/USD'){showToast('🚫 Non-US ticker — not supported');return;}
   curChartSym=sym;
   if(!Q[sym])await fetchQDirect(sym);
@@ -1104,30 +1106,31 @@ function liveScanUpdate(){
           +(hasNote?'<span style="font-size:9px;opacity:.6">📝</span>':'')
           +'<button onclick="event.stopPropagation();copySym(\''+r.sym+'\')" title="Copy '+r.sym+'" style="background:none;border:none;cursor:pointer;font-size:9px;opacity:.3;padding:0 2px;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.3">📋</button>'
         +'</div>'
-        // VWAP context + off-highs
-        +(()=>{
-          const q=r.q;
-          const vwap=q.high&&q.low&&q.price?(q.high+q.low+q.price)/3:0;
-          const aboveVwap=vwap>0&&q.price>vwap;
-          const offHighs=q.high>0?((q.high-q.price)/q.high*100):0;
-          let ctx='';
-          if(vwap>0)ctx+='<span class="vwap-badge '+(aboveVwap?'vwap-above':'vwap-below')+'">'+(aboveVwap?'▲VWAP':'▼VWAP')+'</span> ';
-          if(offHighs>0&&offHighs<50)ctx+='<span class="off-highs">-'+offHighs.toFixed(0)+'% hi</span>';
-          return ctx?'<div style="display:flex;align-items:center;gap:4px;margin-top:2px">'+ctx+'</div>':'';
-        })()
-        +'</div>'
-        +'<div class="range-bar-wrap">'
-          +'<div class="range-bar"><div class="range-bar-fill" style="width:'+rangePctClamped+'%"></div></div>'
-          +'<span class="range-label">L:$'+(dLow?dLow.toFixed(2):'—')+' H:$'+(dHigh?dHigh.toFixed(2):'—')+'</span>'
+        +'<div style="display:flex;align-items:center;gap:5px;margin-top:2px">'
+          // VWAP badge inline under sym name
+          +(()=>{
+            const q=r.q;
+            const vwap=q.high&&q.low&&q.price?(q.high+q.low+q.price)/3:0;
+            const aboveVwap=vwap>0&&q.price>vwap;
+            const offHighs=q.high>0?((q.high-q.price)/q.high*100):0;
+            let out='';
+            if(vwap>0)out+='<span class="vwap-badge '+(aboveVwap?'vwap-above':'vwap-below')+'">'+(aboveVwap?'▲VWAP':'▼VWAP')+'</span>';
+            if(offHighs>1&&offHighs<50)out+='<span class="off-highs">-'+offHighs.toFixed(0)+'%hi</span>';
+            return out;
+          })()
+          // Day range bar inline next to VWAP
+          +'<div class="range-bar" style="flex-shrink:0"><div class="range-bar-fill" style="width:'+rangePctClamped+'%"></div></div>'
+          +'<span class="range-label">'+( dLow?'$'+dLow.toFixed(2):'—' )+'–'+( dHigh?'$'+dHigh.toFixed(2):'—' )+'</span>'
         +'</div>'
       +'</div>'
       +'<span class="scan-px">$'+fmtP(r.q.price)+'</span>'
       +'<span class="scan-chg '+(u?'up':'dn')+'">'+(u?'+':'')+((r.q.changePct||0).toFixed(1))+'%</span>'
       +'<div class="scan-rvol-cell">'
         +'<span class="scan-rvol '+rvClass+'">'+rvLabel+(floatLabel?' · '+floatLabel:'')+'</span>'
-      +(sinceOpenStr&&!r.newsHeadline?'<span class="since-open '+(sinceOpen>=0?'pos':'neg')+'">'+sinceOpenStr+'</span>':'<div class="vol-bar"><div class="vol-bar-fill" style="width:'+volPct+'%"></div></div>')
+        +(sinceOpenStr&&!r.newsHeadline
+          ?'<span class="since-open '+(sinceOpen>=0?'pos':'neg')+'">'+sinceOpenStr+'</span>'
+          :'<div class="vol-bar"><div class="vol-bar-fill" style="width:'+volPct+'%"></div></div>')
       +'</div>'
-      // Headline column — inline in the middle where all the space is
       +'<div style="padding:0 8px;overflow:hidden;min-width:0">'
         +(r.newsHeadline
           ?'<span style="font-size:10px;color:var(--mu);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;line-height:1.4">🔥 '+r.newsHeadline.substring(0,90)+(r.newsHeadline.length>90?'…':'')+'</span>'
