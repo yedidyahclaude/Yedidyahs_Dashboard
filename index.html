@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
 <title>Yedidyah's Dashboard</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%237c6aff'/><text x='50%' y='54%' dominant-baseline='middle' text-anchor='middle' font-size='18' font-family='Arial' font-weight='bold' fill='white'>Y</text></svg>"/>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <style>
@@ -82,6 +83,14 @@ input,button{font-family:inherit}
 .flt-i{width:68px;background:var(--s1);border:1px solid var(--b2);border-radius:7px;color:var(--tx);padding:6px 8px;font-size:12px;outline:none;transition:border-color .15s}
 .flt-i:focus{border-color:var(--ac)}
 .flt-divider{width:1px;height:32px;background:var(--b1);margin:0 4px}
+/* Session threshold badge in filter bar */
+.sess-threshold{display:flex;flex-direction:column;gap:3px;margin-left:auto}
+.sess-threshold .flt-l{letter-spacing:.06em}
+.thresh-val{font-size:13px;font-weight:800;font-family:'DM Mono',monospace;padding:4px 10px;border-radius:6px;border:1px solid}
+.thresh-val.pre{color:var(--gold);background:#f0b94f12;border-color:#f0b94f30}
+.thresh-val.mkt{color:var(--gr);background:#19c48a12;border-color:#19c48a30}
+.thresh-val.aft{color:var(--ac2);background:#7c6aff12;border-color:#7c6aff30}
+.thresh-val.cls{color:var(--dim);background:#5a5f7a12;border-color:#5a5f7a30}
 
 /* ── SORT BAR ── */
 .sort-bar{display:grid;grid-template-columns:200px 80px 80px 1fr 120px 52px;gap:0;padding:0 14px;border-bottom:1px solid var(--b1)}
@@ -133,6 +142,8 @@ input,button{font-family:inherit}
 .news-dot{font-size:10px;flex-shrink:0}
 /* Pre-market high badge */
 .pmh-badge{font-size:9px;font-weight:700;color:var(--sky);font-family:'DM Mono',monospace;flex-shrink:0;opacity:.8}
+/* News headline shown inline under symbol */
+.row-headline{font-size:9px;color:var(--dim);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px;line-height:1.3}
 
 /* Price / change cells */
 .scan-px{font-family:'DM Mono',monospace;font-size:12px;color:var(--tx);font-weight:500}
@@ -263,6 +274,10 @@ input,button{font-family:inherit}
         <div class="flt-g"><span class="flt-l">Min RVOL</span><input class="flt-i" type="number" value="2" step="0.5" id="f-rvol"/></div>
         <div class="flt-divider"></div>
         <div class="flt-g"><span class="flt-l">Auto-remove (min)</span><input class="flt-i" type="number" value="5" min="1" max="60" id="f-autorm"/></div>
+        <div class="sess-threshold">
+          <span class="flt-l">Active Threshold</span>
+          <span class="thresh-val cls" id="sessThreshold">—</span>
+        </div>
       </div>
 
       <!-- NEWS PANEL -->
@@ -419,6 +434,13 @@ function tick(){
   if(htEl){htEl.className=colorMap[sess]||'cls-color';}
   const labels={pre:'PRE-MARKET',mkt:'MKT OPEN',aft:'AFTER HRS',cls:'CLOSED'};
   const el=document.getElementById('sessbdg');if(el){el.textContent=labels[sess];el.className='sess '+sess;}
+  // Update session threshold badge in filter bar
+  const threshEl=document.getElementById('sessThreshold');
+  if(threshEl){
+    const threshMap={pre:'≥5% (Pre)',mkt:'≥10% (Mkt)',aft:'≥5% (Aft)',cls:'≥10% (Cls)'};
+    threshEl.textContent=threshMap[sess]||'≥10%';
+    threshEl.className='thresh-val '+sess;
+  }
   // Reset PM highs at 4:00 AM ET each day
   const mins=et.getHours()*60+et.getMinutes();
   if(mins===240&&et.getSeconds()===0)pmHigh={};
@@ -718,11 +740,14 @@ function liveScanUpdate(){
     // Pre-market high badge — show if we have it and it's above current price
     const pmhStr=r.pmh>0?'H:$'+r.pmh.toFixed(2):'';
     return '<div class="scan-row '+sc+(isFresh?' scan-row-new':'')+'" onclick="selectSym(\''+r.sym+'\')">'
-      +'<div class="scan-sym-cell">'
-        +'<span class="scan-sym '+(u?'up':'dn')+'">'+r.sym+'</span>'
-        +srcBadge
-        +(r.hasNews?'<span class="news-dot">🔥</span>':'')
-        +(pmhStr?'<span class="pmh-badge">'+pmhStr+'</span>':'')
+      +'<div class="scan-sym-cell" style="flex-direction:column;align-items:flex-start;gap:1px">'
+        +'<div style="display:flex;align-items:center;gap:5px">'
+          +'<span class="scan-sym '+(u?'up':'dn')+'">'+r.sym+'</span>'
+          +srcBadge
+          +(r.hasNews?'<span class="news-dot">🔥</span>':'')
+          +(pmhStr?'<span class="pmh-badge">'+pmhStr+'</span>':'')
+        +'</div>'
+        +(r.newsHeadline?'<div class="row-headline">'+r.newsHeadline.substring(0,55)+(r.newsHeadline.length>55?'…':'')+'</div>':'')
       +'</div>'
       +'<span class="scan-px">$'+fmtP(r.q.price)+'</span>'
       +'<span class="scan-chg '+(u?'up':'dn')+'">'+(u?'+':'')+((r.q.changePct||0).toFixed(1))+'%</span>'
@@ -946,8 +971,9 @@ async function startDeepScan(){
       // Fire smart alert if score just jumped to 4 or 5
       const newScore=[p1,p2,p3===true,p4===true,p5===true].filter(Boolean).length;
       if(newScore>prevScore){
-        if(newScore>=5)playPing('score5');
-        else if(newScore>=4)playPing('score4');
+        if(newScore>=5){playPing('score5');showToast('🚀 '+sym+' just hit 5/5 — all pillars confirmed!');}
+        else if(newScore>=4){playPing('score4');showToast('⚡ '+sym+' upgraded to '+newScore+'/5 — priority setup');}
+        else if(newScore===3&&prevScore<3){showToast('📈 '+sym+' now 3/5 — deep scan progressing');}
       }
     }catch(e){}
   }
