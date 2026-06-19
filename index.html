@@ -240,6 +240,41 @@ input,button,textarea{font-family:inherit}
 /* ── TOAST ── */
 .toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--s3);border:1px solid var(--b2);border-radius:8px;padding:9px 16px;font-size:12px;font-weight:500;opacity:0;transition:opacity .25s;pointer-events:none;z-index:200;white-space:nowrap;box-shadow:0 8px 24px #0006}
 
+/* ── TRADE JOURNAL MODAL ── */
+#journalModal{display:none;position:fixed;inset:0;background:#0009;z-index:400;align-items:flex-start;justify-content:center;padding-top:40px;overflow-y:auto}
+.journal-box{background:var(--s2);border:1px solid var(--b2);border-radius:16px;padding:24px;width:640px;max-width:95vw;box-shadow:0 24px 64px #0008}
+.journal-box h3{font-size:16px;font-weight:800;margin-bottom:16px;color:var(--ac2)}
+.journal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.journal-field{display:flex;flex-direction:column;gap:4px}
+.journal-field label{font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
+.journal-field input,.journal-field select,.journal-field textarea{background:var(--s1);border:1px solid var(--b2);border-radius:8px;color:var(--tx);padding:8px 10px;font-size:13px;outline:none;font-family:'DM Mono',monospace}
+.journal-field input:focus,.journal-field select:focus,.journal-field textarea:focus{border-color:var(--ac)}
+.journal-field select option{background:var(--s2)}
+.journal-pnl{font-size:20px;font-weight:900;font-family:'DM Mono',monospace;padding:10px 16px;border-radius:10px;text-align:center;margin-bottom:14px}
+.journal-pnl.pos{color:var(--gr);background:#19c48a12;border:1px solid #19c48a30}
+.journal-pnl.neg{color:var(--rd);background:#f0506e12;border:1px solid #f0506e30}
+.journal-pnl.zero{color:var(--mu);background:var(--s1);border:1px solid var(--b1)}
+.journal-trades{max-height:300px;overflow-y:auto;margin-top:14px;border-top:1px solid var(--b1);padding-top:14px}
+.journal-trade-row{display:grid;grid-template-columns:60px 1fr 80px 80px 80px 70px;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--b1);font-size:11px}
+.journal-trade-row:last-child{border-bottom:none}
+.journal-trade-hdr{font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
+
+/* ── SESSION LOG PANEL ── */
+#logPanel{display:none;flex-direction:column;width:220px;flex-shrink:0;background:var(--s1);border-left:1px solid var(--b1);overflow-y:auto}
+.log-hdr{padding:10px 12px;border-bottom:1px solid var(--b1);font-size:11px;font-weight:700;color:var(--ac2);display:flex;align-items:center;justify-content:space-between}
+.log-item{padding:7px 12px;border-bottom:1px solid var(--b1);font-size:10px;line-height:1.5}
+.log-item:last-child{border-bottom:none}
+.log-time{font-size:8px;color:var(--dim);font-family:'DM Mono',monospace}
+.log-sym{font-weight:800;color:var(--gr)}
+.log-detail{color:var(--mu)}
+.log-score5{color:var(--gr)}.log-score4{color:var(--gold)}.log-rm{color:var(--rd);opacity:.7}
+
+/* ── VWAP / OFF-HIGHS CONTEXT ── */
+.vwap-badge{font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;flex-shrink:0}
+.vwap-above{background:#19c48a18;color:var(--gr);border:1px solid #19c48a35}
+.vwap-below{background:#f0506e18;color:var(--rd);border:1px solid #f0506e35}
+.off-highs{font-size:8px;color:var(--dim);font-family:'DM Mono',monospace;flex-shrink:0}
+
 /* ── STAR / PIN ── */
 .star-btn{background:none;border:none;cursor:pointer;font-size:12px;padding:0 2px;opacity:.4;transition:opacity .15s;flex-shrink:0}
 .star-btn:hover,.star-btn.starred{opacity:1}
@@ -319,11 +354,47 @@ input,button,textarea{font-family:inherit}
   </div>
 </div>
 
+<!-- TRADE JOURNAL MODAL -->
+<div id="journalModal">
+  <div class="journal-box">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <h3>📒 Trade Journal</h3>
+      <button class="tb-btn" onclick="closeJournal()">✕ Close</button>
+    </div>
+    <!-- New trade entry form -->
+    <div style="background:var(--s3);border:1px solid var(--b1);border-radius:10px;padding:14px;margin-bottom:16px">
+      <div style="font-size:10px;font-weight:700;color:var(--ac2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Log a Trade</div>
+      <div class="journal-grid">
+        <div class="journal-field"><label>Symbol</label><input id="jSym" type="text" placeholder="LNKS" style="text-transform:uppercase"/></div>
+        <div class="journal-field"><label>Side</label><select id="jSide"><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select></div>
+        <div class="journal-field"><label>Entry Price</label><input id="jEntry" type="number" step="0.01" placeholder="2.50"/></div>
+        <div class="journal-field"><label>Exit Price</label><input id="jExit" type="number" step="0.01" placeholder="3.10"/></div>
+        <div class="journal-field"><label>Shares</label><input id="jShares" type="number" placeholder="1000"/></div>
+        <div class="journal-field"><label>Setup Score at Entry</label><select id="jScore"><option>5/5</option><option>4/5</option><option>3/5</option><option>2/5</option><option>manual</option></select></div>
+      </div>
+      <div class="journal-field" style="margin-bottom:10px"><label>Notes / Reason</label><textarea id="jNote" rows="2" placeholder="Why you took the trade, what the catalyst was, how it played out…" style="width:100%;resize:vertical"></textarea></div>
+      <div id="jPnlPreview" class="journal-pnl zero">Enter prices + shares to see P&L</div>
+      <button onclick="saveTradeEntry()" style="width:100%;background:var(--ac);border:none;border-radius:8px;color:#fff;font-weight:700;font-size:13px;padding:10px;cursor:pointer">Save Trade →</button>
+    </div>
+    <!-- Trade history -->
+    <div style="font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
+      History
+      <span id="jTotalPnl" style="margin-left:10px;font-size:11px;font-family:'DM Mono',monospace"></span>
+    </div>
+    <div class="journal-trades">
+      <div class="journal-trade-row journal-trade-hdr">
+        <span>Date</span><span>Symbol</span><span>Side</span><span>P&L $</span><span>P&L %</span><span>Score</span>
+      </div>
+      <div id="journalList"></div>
+    </div>
+  </div>
+</div>
+
 <div id="mainApp">
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v2.7</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v2.8</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -333,6 +404,8 @@ input,button,textarea{font-family:inherit}
     <div class="topbar-right">
       <button class="tb-btn" onclick="toggleFilters()">⚙ Filters</button>
       <button class="tb-btn" id="pulseToggleBtn" onclick="togglePulse()">📊 Pulse</button>
+      <button class="tb-btn" id="logToggleBtn" onclick="toggleLog()">📋 Log</button>
+      <button class="tb-btn" onclick="openJournal()">📒 Journal</button>
       <button class="tb-btn" id="claudeToggleBtn" onclick="toggleClaude()">🤖 Claude</button>
       <button class="tb-btn" onclick="logout()">Sign Out</button>
     </div>
@@ -458,6 +531,17 @@ input,button,textarea{font-family:inherit}
         <div id="ps-notes-list" style="font-size:10px;color:var(--mu);line-height:1.6"></div>
       </div>
     </div>
+
+    <!-- SESSION LOG PANEL -->
+    <div id="logPanel">
+      <div class="log-hdr">
+        <span>📋 Session Log</span>
+        <button class="tb-btn" style="padding:2px 7px;font-size:10px" onclick="toggleLog()">✕</button>
+      </div>
+      <div id="logList" style="flex:1;overflow-y:auto">
+        <div style="padding:16px 12px;font-size:10px;color:var(--dim)">Session events will appear here as they happen.</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -517,6 +601,9 @@ let failTimer={};
 let pmHigh={};
 let symNotes=JSON.parse(localStorage.getItem('sv_notes_v1')||'{}');
 let starredSyms=new Set(JSON.parse(localStorage.getItem('sv_starred_v1')||'[]'));
+let tradeJournal=JSON.parse(localStorage.getItem('sv_journal_v1')||'[]'); // [{id,sym,side,entry,exit,shares,score,note,ts}]
+let sessionLog=[]; // [{ts, type, sym, detail}] — in-memory only, resets each session
+let logOpen=false;
 // Migrate old flat string notes to new array format
 (()=>{
   let migrated=false;
@@ -820,6 +907,7 @@ async function selectSym(sym){
   if(q?.price&&(q.price<minP||q.price>maxP))showToast('📊 '+sym+' — outside price range');
   else if(q?.price&&(q.changePct||0)<minC)showToast('📊 '+sym+' — under min % change');
   else showToast('📈 Added '+sym+' to scanner');
+  addLog('new',sym,'Manually added');
   liveScanUpdate();openChartPanel(sym);
   loadNews(sym);
   setTimeout(startDeepScan,200);
@@ -937,7 +1025,11 @@ function liveScanUpdate(){
     const rv=parseFloat(c.rvolValue)||0;
     if(!p1||!p2){
       if(!failTimer[sym])failTimer[sym]=now;
-      if(now-failTimer[sym]>autoRmMs){scanSyms=scanSyms.filter(s=>s!==sym);saveScanSyms();delete scanCache[sym];symMeta.delete(sym);}
+      if(now-failTimer[sym]>autoRmMs){
+        addLog('rm',sym,'Auto-removed after '+autoRmMins+'min below threshold');
+        scanSyms=scanSyms.filter(s=>s!==sym);
+        saveScanSyms();delete scanCache[sym];symMeta.delete(sym);
+      }
       return;
     } else {delete failTimer[sym];}
     if(minRV>0&&rv>0&&rv<minRV)return;
@@ -1011,6 +1103,18 @@ function liveScanUpdate(){
           +(pmhStr?'<span class="pmh-badge">'+pmhStr+'</span>':'')
           +(hasNote?'<span style="font-size:9px;opacity:.6">📝</span>':'')
           +'<button onclick="event.stopPropagation();copySym(\''+r.sym+'\')" title="Copy '+r.sym+'" style="background:none;border:none;cursor:pointer;font-size:9px;opacity:.3;padding:0 2px;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.3">📋</button>'
+        +'</div>'
+        // VWAP context + off-highs
+        +(()=>{
+          const q=r.q;
+          const vwap=q.high&&q.low&&q.price?(q.high+q.low+q.price)/3:0;
+          const aboveVwap=vwap>0&&q.price>vwap;
+          const offHighs=q.high>0?((q.high-q.price)/q.high*100):0;
+          let ctx='';
+          if(vwap>0)ctx+='<span class="vwap-badge '+(aboveVwap?'vwap-above':'vwap-below')+'">'+(aboveVwap?'▲VWAP':'▼VWAP')+'</span> ';
+          if(offHighs>0&&offHighs<50)ctx+='<span class="off-highs">-'+offHighs.toFixed(0)+'% hi</span>';
+          return ctx?'<div style="display:flex;align-items:center;gap:4px;margin-top:2px">'+ctx+'</div>':'';
+        })()
         +'</div>'
         +'<div class="range-bar-wrap">'
           +'<div class="range-bar"><div class="range-bar-fill" style="width:'+rangePctClamped+'%"></div></div>'
@@ -1097,6 +1201,7 @@ async function runWebullScan(){
           const estScore=2+(chgPct>=20?1:0);
           playPing(estScore>=4?'score4':'new');
           showToast('🔥 '+sym+' +'+chgPct.toFixed(1)+'% · $'+fmtP(px)+' · Webull');
+          addLog('new',sym,'+'+chgPct.toFixed(1)+'% $'+fmtP(px)+' — Webull');
           liveScanUpdate();setTimeout(startDeepScan,500);
         }
       }
@@ -1139,7 +1244,9 @@ async function runWebullScan(){
         }
       }
     }
-    document.getElementById('scanStatus').textContent='WB live · '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const sess2=getSession();
+    const interval=sess2==='pre'?'10s':sess2==='mkt'?'30s':'60s';
+    document.getElementById('scanStatus').textContent='WB live · '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+' · every '+interval;
     liveScanUpdate();
   }catch(e){console.warn('Worker error:',e);}
   finally{_webullScanRunning=false;}
@@ -1197,7 +1304,15 @@ async function runSeedScan(){
 }
 function startUniverseScan(){
   if(_uniStarted)return;_uniStarted=true;
-  setTimeout(()=>{runWebullScan();setInterval(runWebullScan,30000);},12000);
+  // Adaptive scan speed: 10s pre-market, 30s market hours, 60s after hours/closed
+  function getWebullInterval(){
+    const sess=getSession();
+    return sess==='pre'?10000:sess==='mkt'?30000:60000;
+  }
+  function scheduleNextWebull(){
+    setTimeout(()=>{runWebullScan();scheduleNextWebull();},getWebullInterval());
+  }
+  setTimeout(()=>{runWebullScan();scheduleNextWebull();},12000);
   setTimeout(()=>{runSeedScan();setInterval(runSeedScan,3000);},15000);
 }
 
@@ -1255,9 +1370,9 @@ async function startDeepScan(){
       scanCache[sym]={...scanCache[sym],p3,p4,p5,hasNews,latestHeadline,ts:Date.now()};
       const newScore=[p1,p2,p3===true,p4===true,p5===true].filter(Boolean).length;
       if(newScore>prevScore){
-        if(newScore>=5){playPing('score5');showToast('🚀 '+sym+' just hit 5/5 — all pillars confirmed!');}
-        else if(newScore>=4){playPing('score4');showToast('⚡ '+sym+' upgraded to '+newScore+'/5 — priority setup');}
-        else if(newScore===3&&prevScore<3){showToast('📈 '+sym+' now 3/5 — progressing');}
+        if(newScore>=5){playPing('score5');showToast('🚀 '+sym+' just hit 5/5 — all pillars confirmed!');addLog('score5',sym,'Hit 5/5 — all pillars confirmed');}
+        else if(newScore>=4){playPing('score4');showToast('⚡ '+sym+' upgraded to '+newScore+'/5 — priority setup');addLog('score4',sym,'Upgraded to '+newScore+'/5');}
+        else if(newScore===3&&prevScore<3){showToast('📈 '+sym+' now 3/5 — progressing');addLog('score3',sym,'Now 3/5');}
       }
     }catch(e){}
   }
@@ -1456,6 +1571,119 @@ function checkSectors(results){
     alertEl.style.display='none';
   }
 }
+
+// ═══ SESSION LOG ═══
+function addLog(type,sym,detail){
+  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const p=n=>String(n).padStart(2,'0');
+  const ts=`${p(et.getHours())}:${p(et.getMinutes())}:${p(et.getSeconds())}`;
+  sessionLog.unshift({ts,type,sym,detail}); // newest first
+  if(sessionLog.length>200)sessionLog.pop(); // cap at 200 entries
+  renderLog();
+}
+function renderLog(){
+  if(!logOpen)return;
+  const list=document.getElementById('logList');
+  if(!list)return;
+  if(!sessionLog.length){list.innerHTML='<div style="padding:16px 12px;font-size:10px;color:var(--dim)">No events yet this session.</div>';return;}
+  const typeConfig={
+    new:{cls:'log-sym',icon:'🔥'},
+    score5:{cls:'log-score5',icon:'🚀'},
+    score4:{cls:'log-score4',icon:'⚡'},
+    score3:{cls:'',icon:'📈'},
+    rm:{cls:'log-rm',icon:'❌'},
+    halt:{cls:'',icon:'🛑'},
+  };
+  list.innerHTML=sessionLog.map(e=>{
+    const cfg=typeConfig[e.type]||{cls:'',icon:'•'};
+    return '<div class="log-item">'
+      +'<div class="log-time">'+e.ts+' ET</div>'
+      +'<div><span class="'+cfg.cls+'" style="font-weight:700">'+cfg.icon+' '+e.sym+'</span> <span class="log-detail">'+e.detail+'</span></div>'
+      +'</div>';
+  }).join('');
+}
+function toggleLog(){
+  logOpen=!logOpen;
+  document.getElementById('logPanel').style.display=logOpen?'flex':'none';
+  document.getElementById('logToggleBtn').classList.toggle('active',logOpen);
+  if(logOpen)renderLog();
+}
+
+// ═══ TRADE JOURNAL ═══
+function openJournal(sym){
+  const inp=document.getElementById('jSym');
+  if(inp&&sym)inp.value=sym.toUpperCase();
+  else if(inp&&curChartSym)inp.value=curChartSym;
+  renderJournalList();
+  document.getElementById('journalModal').style.display='flex';
+  // Wire up live P&L preview
+  ['jEntry','jExit','jShares','jSide'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.addEventListener('input',updateJournalPnl);
+  });
+}
+function closeJournal(){
+  document.getElementById('journalModal').style.display='none';
+}
+function updateJournalPnl(){
+  const entry=parseFloat(document.getElementById('jEntry')?.value)||0;
+  const exit=parseFloat(document.getElementById('jExit')?.value)||0;
+  const shares=parseFloat(document.getElementById('jShares')?.value)||0;
+  const side=document.getElementById('jSide')?.value||'LONG';
+  const el=document.getElementById('jPnlPreview');
+  if(!el)return;
+  if(!entry||!exit||!shares){el.textContent='Enter prices + shares to see P&L';el.className='journal-pnl zero';return;}
+  const raw=(side==='LONG')?(exit-entry)*shares:(entry-exit)*shares;
+  const pct=((exit-entry)/entry*100*(side==='LONG'?1:-1));
+  const sign=raw>=0?'+':'';
+  el.textContent=sign+'$'+(raw.toFixed(2))+' ('+sign+pct.toFixed(2)+'%)';
+  el.className='journal-pnl '+(raw>0?'pos':raw<0?'neg':'zero');
+}
+function saveTradeEntry(){
+  const sym=(document.getElementById('jSym')?.value||'').toUpperCase().trim();
+  const entry=parseFloat(document.getElementById('jEntry')?.value)||0;
+  const exit=parseFloat(document.getElementById('jExit')?.value)||0;
+  const shares=parseFloat(document.getElementById('jShares')?.value)||0;
+  const side=document.getElementById('jSide')?.value||'LONG';
+  const score=document.getElementById('jScore')?.value||'';
+  const note=(document.getElementById('jNote')?.value||'').trim();
+  if(!sym||!entry||!exit||!shares){showToast('Fill in Symbol, Entry, Exit and Shares');return;}
+  const pnl=(side==='LONG')?(exit-entry)*shares:(entry-exit)*shares;
+  const pnlPct=((exit-entry)/entry*100*(side==='LONG'?1:-1));
+  const id=Date.now().toString(36);
+  const trade={id,sym,side,entry,exit,shares,pnl:parseFloat(pnl.toFixed(2)),pnlPct:parseFloat(pnlPct.toFixed(2)),score,note,ts:new Date().toISOString()};
+  tradeJournal.unshift(trade);
+  localStorage.setItem('sv_journal_v1',JSON.stringify(tradeJournal));
+  // Clear form
+  ['jSym','jEntry','jExit','jShares','jNote'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('jPnlPreview').textContent='Enter prices + shares to see P&L';
+  document.getElementById('jPnlPreview').className='journal-pnl zero';
+  renderJournalList();
+  showToast('📒 Trade logged: '+sym+' '+(pnl>=0?'+':'')+'$'+pnl.toFixed(2));
+}
+function renderJournalList(){
+  const list=document.getElementById('journalList');
+  if(!list)return;
+  if(!tradeJournal.length){list.innerHTML='<div style="padding:16px 0;font-size:11px;color:var(--dim);text-align:center">No trades logged yet.</div>';document.getElementById('jTotalPnl').textContent='';return;}
+  const totalPnl=tradeJournal.reduce((s,t)=>s+t.pnl,0);
+  const totEl=document.getElementById('jTotalPnl');
+  if(totEl){totEl.textContent='Total P&L: '+(totalPnl>=0?'+':'')+'$'+totalPnl.toFixed(2);totEl.style.color=totalPnl>=0?'var(--gr)':'var(--rd)';}
+  list.innerHTML=tradeJournal.slice(0,50).map(t=>{
+    const d=new Date(t.ts);
+    const dateStr=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
+    const pnlColor=t.pnl>0?'var(--gr)':t.pnl<0?'var(--rd)':'var(--mu)';
+    return '<div class="journal-trade-row" title="'+t.note+'">'
+      +'<span style="font-size:9px;color:var(--dim);font-family:\'DM Mono\',monospace">'+dateStr+'</span>'
+      +'<span style="font-weight:800;color:'+(t.side==='LONG'?'var(--gr)':'var(--rd)')+'">'+t.sym+'</span>'
+      +'<span style="font-size:10px;color:var(--mu)">'+t.side+'</span>'
+      +'<span style="font-weight:700;color:'+pnlColor+';font-family:\'DM Mono\',monospace">'+(t.pnl>=0?'+':'')+'$'+t.pnl.toFixed(2)+'</span>'
+      +'<span style="font-size:10px;color:'+pnlColor+';font-family:\'DM Mono\',monospace">'+(t.pnlPct>=0?'+':'')+t.pnlPct.toFixed(1)+'%</span>'
+      +'<span style="font-size:9px;color:var(--mu)">'+t.score+'</span>'
+      +'</div>';
+  }).join('');
+}
+// Close journal on backdrop click
+document.getElementById('journalModal').addEventListener('click',e=>{if(e.target===document.getElementById('journalModal'))closeJournal();});
 
 // ═══ INIT ═══
 async function init(){
