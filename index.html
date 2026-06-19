@@ -323,7 +323,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v2.5</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v2.7</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -606,42 +606,28 @@ setInterval(tick,1000);tick();
 // ═══ UTILITIES ═══
 function fmtP(p){return p?parseFloat(p).toFixed(2):'—';}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',3500);}
-// Shared AudioContext — one instance reused across all pings
-let _audioCtx=null;
-function getAudioCtx(){
-  if(!_audioCtx||_audioCtx.state==='closed'){try{_audioCtx=new(window.AudioContext||window.webkitAudioContext)();}catch(e){return null;}}
-  if(_audioCtx.state==='suspended')_audioCtx.resume();
-  return _audioCtx;
-}
+// ── VISUAL ALERT SYSTEM — replaces Web Audio API (which was causing bugs) ──
+// Uses CSS animations on the scan header to signal different alert types.
+// No AudioContext, no browser limits, works on all devices including iPhone.
 function playPing(type='new'){
-  try{
-    const ctx=getAudioCtx();if(!ctx)return;
-    const g=ctx.createGain();g.connect(ctx.destination);
-    if(type==='halt'){
-      [440,380,320].forEach((freq,i)=>{
-        const o=ctx.createOscillator();o.type='square';o.connect(g);o.frequency.value=freq;
-        g.gain.setValueAtTime(0,ctx.currentTime+i*0.08);g.gain.linearRampToValueAtTime(0.15,ctx.currentTime+i*0.08+0.01);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.08+0.1);
-        o.start(ctx.currentTime+i*0.08);o.stop(ctx.currentTime+i*0.08+0.1);
-      });
-    } else if(type==='score5'){
-      [880,1100,1320].forEach((freq,i)=>{
-        const o=ctx.createOscillator();o.connect(g);o.frequency.value=freq;
-        g.gain.setValueAtTime(0,ctx.currentTime+i*0.12);g.gain.linearRampToValueAtTime(0.3,ctx.currentTime+i*0.12+0.02);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.12+0.15);
-        o.start(ctx.currentTime+i*0.12);o.stop(ctx.currentTime+i*0.12+0.15);
-      });
-    } else if(type==='score4'){
-      [880,1100].forEach((freq,i)=>{
-        const o=ctx.createOscillator();o.connect(g);o.frequency.value=freq;
-        g.gain.setValueAtTime(0,ctx.currentTime+i*0.1);g.gain.linearRampToValueAtTime(0.25,ctx.currentTime+i*0.1+0.02);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.1+0.14);
-        o.start(ctx.currentTime+i*0.1);o.stop(ctx.currentTime+i*0.1+0.14);
-      });
-    } else {
-      const o=ctx.createOscillator();o.connect(g);
-      o.frequency.setValueAtTime(880,ctx.currentTime);o.frequency.setValueAtTime(1100,ctx.currentTime+0.08);
-      g.gain.setValueAtTime(0.2,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.25);
-      o.start(ctx.currentTime);o.stop(ctx.currentTime+0.25);
-    }
-  }catch(e){}
+  const el=document.getElementById('scanCount');
+  if(!el)return;
+  // Different colors for different alert types
+  const colors={
+    score5:'#19c48a', // green — 5/5 confirmed
+    score4:'#f0b94f', // gold — 4/5 priority
+    halt:'#f0506e',   // red — trading halt
+    new:'#7c6aff',    // purple — new symbol
+  };
+  const col=colors[type]||colors.new;
+  el.style.transition='none';
+  el.style.background=col;
+  el.style.transform='scale(1.4)';
+  setTimeout(()=>{
+    el.style.transition='all 0.6s ease';
+    el.style.background='var(--ac)';
+    el.style.transform='scale(1)';
+  },300);
 }
 function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
 const debouncedScanUpdate=debounce(()=>liveScanUpdate(),250);
@@ -744,36 +730,15 @@ function saveNotes(){
 }
 
 function syncNotesToCloud(){
-  const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
-  if(!token||!uid)return;
-  sf('/rest/v1/profiles?id=eq.'+uid,{method:'PATCH',
-    headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},
-    body:JSON.stringify({watchlist:scanSyms,notes:symNotes})
-  }).catch(()=>{});
+  // Notes are stored locally in localStorage (permanent, survives sessions)
+  // Supabase sync requires adding a 'notes' jsonb column to the profiles table
+  // For now: localStorage is the source of truth — notes persist forever locally
+  localStorage.setItem('sv_notes_v1',JSON.stringify(symNotes));
 }
 
 async function pullNotesFromCloud(){
-  const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
-  if(!token||!uid)return;
-  try{
-    const r=await sf('/rest/v1/profiles?select=notes&id=eq.'+uid,{headers:{'Authorization':'Bearer '+token}});
-    const d=await r.json();
-    const cloudNotes=d?.[0]?.notes;
-    if(!cloudNotes||typeof cloudNotes!=='object')return;
-    // Merge cloud + local — union all entries by timestamp
-    let changed=false;
-    Object.keys(cloudNotes).forEach(sym=>{
-      const cloudEntries=cloudNotes[sym]||[];
-      if(!symNotes[sym]){symNotes[sym]=cloudEntries;changed=true;return;}
-      const localTs=new Set(symNotes[sym].map(e=>e.ts));
-      const toAdd=cloudEntries.filter(e=>!localTs.has(e.ts));
-      if(toAdd.length){symNotes[sym]=[...symNotes[sym],...toAdd].sort((a,b)=>a.ts.localeCompare(b.ts));changed=true;}
-    });
-    if(changed){
-      localStorage.setItem('sv_notes_v1',JSON.stringify(symNotes));
-      updatePulse();
-    }
-  }catch(e){}
+  // Notes live in localStorage — no cloud column yet
+  // They persist across sessions automatically via localStorage
 }
 
 // Close notes modal on backdrop click
