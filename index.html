@@ -39,20 +39,26 @@ input,button{font-family:inherit}
 
 /* ── TOPBAR ── */
 #mainApp{display:none;flex-direction:column;height:100vh}
-.topbar{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0}
-.brand{font-size:15px;font-weight:900;white-space:nowrap;letter-spacing:-.3px}
+.topbar{display:flex;align-items:center;gap:10px;padding:0 16px;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0;height:52px}
+.brand{font-size:15px;font-weight:900;white-space:nowrap;letter-spacing:-.3px;flex-shrink:0}
 .brand span{color:var(--ac2)}
 .brand-sub{font-size:9px;color:var(--dim);font-weight:500;letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
-#si{flex:1;max-width:380px;background:var(--s2);border:1px solid var(--b2);border-radius:8px;color:var(--tx);padding:7px 12px;font-size:13px;outline:none;transition:border-color .15s}
+#si{flex:1;min-width:0;background:var(--s2);border:1px solid var(--b2);border-radius:8px;color:var(--tx);padding:7px 12px;font-size:13px;outline:none;transition:border-color .15s}
 #si:focus{border-color:var(--ac)}
-.sess{font-size:9px;font-weight:800;padding:3px 8px;border-radius:5px;letter-spacing:.06em;text-transform:uppercase}
+/* Clock — centered absolutely so it's always dead-center regardless of other elements */
+.clock-center{position:absolute;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;pointer-events:none}
+#htime{font-size:20px;font-weight:900;font-family:'DM Mono',monospace;letter-spacing:.04em;line-height:1}
+#htime.pre-color{color:var(--gold)}
+#htime.mkt-color{color:var(--gr)}
+#htime.aft-color{color:var(--ac2)}
+#htime.cls-color{color:var(--mu)}
+.sess{font-size:8px;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
 .sess.pre{background:#f0b94f18;color:var(--gold);border:1px solid #f0b94f30}
 .sess.mkt{background:#19c48a18;color:var(--gr);border:1px solid #19c48a30}
 .sess.aft{background:#7c6aff18;color:var(--ac2);border:1px solid #7c6aff30}
 .sess.cls{background:#5a5f7a18;color:var(--dim);border:1px solid #5a5f7a30}
-/* Clock block — pinned right, always visible */
-.clock-block{display:flex;align-items:center;gap:8px;margin-left:auto;background:var(--s2);border:1px solid var(--b2);border-radius:8px;padding:5px 12px;flex-shrink:0}
-#htime{font-size:14px;font-weight:700;color:var(--tx);font-family:'DM Mono',monospace;min-width:88px;letter-spacing:.02em}
+/* Right cluster: Filters, Claude, Sign Out */
+.topbar-right{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}
 .tb-btn{background:none;border:1px solid var(--b2);border-radius:7px;color:var(--mu);font-size:11px;font-weight:600;padding:6px 11px;cursor:pointer;transition:all .15s;white-space:nowrap}
 .tb-btn:hover{color:var(--tx);border-color:var(--ac);background:var(--s2)}
 .tb-btn.active{color:var(--ac2);border-color:var(--ac);background:#7c6aff12}
@@ -78,7 +84,7 @@ input,button{font-family:inherit}
 .flt-divider{width:1px;height:32px;background:var(--b1);margin:0 4px}
 
 /* ── SORT BAR ── */
-.sort-bar{display:grid;grid-template-columns:180px 80px 80px 1fr 90px 52px;gap:0;padding:0 14px;border-bottom:1px solid var(--b1)}
+.sort-bar{display:grid;grid-template-columns:200px 80px 80px 1fr 120px 52px;gap:0;padding:0 14px;border-bottom:1px solid var(--b1)}
 .sort-col{font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;padding:7px 0;cursor:pointer;user-select:none;display:flex;align-items:center;gap:3px;transition:color .15s}
 .sort-col:hover{color:var(--mu)}
 .sort-col.active{color:var(--ac2)}
@@ -110,7 +116,7 @@ input,button{font-family:inherit}
 .scan-empty .d{font-size:12px;line-height:1.6;text-align:center;max-width:300px}
 
 /* ── SCAN ROW ── */
-.scan-row{display:grid;grid-template-columns:180px 80px 80px 1fr 90px 52px;align-items:center;gap:0;padding:9px 14px;border-bottom:1px solid var(--b1);cursor:pointer;transition:background .12s;position:relative}
+.scan-row{display:grid;grid-template-columns:200px 80px 80px 1fr 120px 52px;align-items:center;gap:0;padding:9px 14px;border-bottom:1px solid var(--b1);cursor:pointer;transition:background .12s;position:relative}
 .scan-row:hover{background:var(--s3)}
 .scan-row:last-child{border-bottom:none}
 .scan-row.score5{border-left:2px solid var(--gr)}
@@ -125,14 +131,16 @@ input,button{font-family:inherit}
 .src-wb{background:#3b82f620;color:#60a5fa;border:1px solid #3b82f640}
 .src-sd{background:#8b5cf620;color:#a78bfa;border:1px solid #8b5cf640}
 .news-dot{font-size:10px;flex-shrink:0}
+/* Pre-market high badge */
+.pmh-badge{font-size:9px;font-weight:700;color:var(--sky);font-family:'DM Mono',monospace;flex-shrink:0;opacity:.8}
 
 /* Price / change cells */
 .scan-px{font-family:'DM Mono',monospace;font-size:12px;color:var(--tx);font-weight:500}
 .scan-chg{font-family:'DM Mono',monospace;font-size:12px;font-weight:700}
 .scan-chg.up{color:var(--gr)}.scan-chg.dn{color:var(--rd)}
 
-/* RVOL cell */
-.scan-rvol{font-family:'DM Mono',monospace;font-size:11px;color:var(--mu);padding:0 6px}
+/* RVOL + float cell */
+.scan-rvol{font-family:'DM Mono',monospace;font-size:11px;color:var(--mu);padding:0 4px}
 .scan-rvol.hot{color:var(--gold);font-weight:700}
 .scan-rvol.fire{color:var(--gr);font-weight:700}
 
@@ -153,10 +161,23 @@ input,button{font-family:inherit}
 .scan-row-new{animation:flashNew 2s ease-out}
 @keyframes flashNew{0%{background:#7c6aff28}100%{background:transparent}}
 
+/* ── NEWS PANEL ── */
+#newsPanel{display:none;flex-direction:column;background:var(--s2);border:1px solid var(--b1);border-radius:10px;max-height:160px;overflow:hidden}
+.news-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--b1);flex-shrink:0}
+.news-hdr span{font-size:11px;font-weight:700;color:var(--ac2)}
+.news-sym-label{font-size:10px;color:var(--mu)}
+.news-list{overflow-y:auto;flex:1}
+.news-item{padding:7px 12px;border-bottom:1px solid var(--b1);cursor:pointer;transition:background .12s}
+.news-item:hover{background:var(--s3)}
+.news-item:last-child{border-bottom:none}
+.news-headline{font-size:11px;color:var(--tx);line-height:1.4;font-weight:500}
+.news-meta{font-size:9px;color:var(--dim);margin-top:2px;font-family:'DM Mono',monospace}
+.news-empty{padding:16px 12px;font-size:11px;color:var(--dim);text-align:center}
+
 /* ── CLAUDE PANEL ── */
-#claudePanel{display:none;flex-direction:column;background:var(--s2);border:1px solid var(--ac);border-radius:10px;margin-bottom:2px;max-height:340px}
+#claudePanel{display:none;flex-direction:column;background:var(--s2);border:1px solid var(--ac);border-radius:10px;margin-bottom:2px;max-height:300px}
 .claude-key-row{display:none;padding:10px 12px;border-bottom:1px solid var(--b1);flex-direction:column;gap:6px}
-.claude-msgs{flex:1;overflow-y:auto;padding:12px 14px;font-size:13px;line-height:1.6;max-height:220px}
+.claude-msgs{flex:1;overflow-y:auto;padding:12px 14px;font-size:13px;line-height:1.6;max-height:200px}
 .claude-inp-row{display:flex;gap:6px;padding:10px;border-top:1px solid var(--b1)}
 
 /* ── CHART PANEL ── */
@@ -164,6 +185,7 @@ input,button{font-family:inherit}
 .cp-sym{font-size:16px;font-weight:900;min-width:64px;letter-spacing:-.3px}
 .cp-px{font-family:'DM Mono',monospace;font-size:13px;font-weight:500}
 .cp-chg{font-family:'DM Mono',monospace;font-size:13px;font-weight:700}
+.cp-pmh{font-size:10px;color:var(--sky);font-family:'DM Mono',monospace;font-weight:600}
 .cp-meta{flex:1;font-size:10px;color:var(--dim);font-weight:500}
 .cp-pop{background:linear-gradient(135deg,var(--ac),#5b4dcc);border:none;border-radius:7px;color:#fff;font-weight:700;font-size:12px;padding:7px 14px;cursor:pointer;transition:opacity .15s}
 .cp-pop:hover{opacity:.85}
@@ -199,18 +221,23 @@ input,button{font-family:inherit}
 </div>
 
 <div id="mainApp">
-  <div class="topbar">
-    <div>
+  <!-- TOPBAR: Brand left | Search | Clock CENTER | Filters+Claude+SignOut RIGHT -->
+  <div class="topbar" style="position:relative">
+    <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
       <div class="brand-sub">5 Pillars · Live</div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
-    <button class="tb-btn" onclick="toggleFilters()">⚙ Filters</button>
-    <button class="tb-btn" id="claudeToggleBtn" onclick="toggleClaude()">🤖 Claude</button>
-    <button class="tb-btn" onclick="logout()">Sign Out</button>
-    <div class="clock-block">
+    <!-- Clock pinned to dead center -->
+    <div class="clock-center">
+      <span id="htime" class="cls-color">—</span>
       <span class="sess cls" id="sessbdg">—</span>
-      <span id="htime">—</span>
+    </div>
+    <!-- Right cluster -->
+    <div class="topbar-right">
+      <button class="tb-btn" onclick="toggleFilters()">⚙ Filters</button>
+      <button class="tb-btn" id="claudeToggleBtn" onclick="toggleClaude()">🤖 Claude</button>
+      <button class="tb-btn" onclick="logout()">Sign Out</button>
     </div>
   </div>
 
@@ -227,14 +254,27 @@ input,button{font-family:inherit}
         </div>
       </div>
 
+      <!-- FILTERS -->
       <div class="scan-filters" id="scanFilters" style="display:none">
         <div class="flt-g"><span class="flt-l">Min Price</span><input class="flt-i" type="number" value="1" step="0.5" id="f-minp"/></div>
         <div class="flt-g"><span class="flt-l">Max Price</span><input class="flt-i" type="number" value="20" id="f-maxp"/></div>
         <div class="flt-divider"></div>
         <div class="flt-g"><span class="flt-l">Min % Change</span><input class="flt-i" type="number" value="10" id="f-chg"/></div>
         <div class="flt-g"><span class="flt-l">Min RVOL</span><input class="flt-i" type="number" value="2" step="0.5" id="f-rvol"/></div>
+        <div class="flt-divider"></div>
+        <div class="flt-g"><span class="flt-l">Auto-remove (min)</span><input class="flt-i" type="number" value="5" min="1" max="60" id="f-autorm"/></div>
       </div>
 
+      <!-- NEWS PANEL -->
+      <div id="newsPanel">
+        <div class="news-hdr">
+          <span>📰 News — <span id="newsPanelSym" class="news-sym-label">select a row</span></span>
+          <button class="tb-btn" style="padding:3px 8px;font-size:10px" onclick="closeNewsPanel()">✕</button>
+        </div>
+        <div class="news-list" id="newsList"><div class="news-empty">Click a row to load headlines</div></div>
+      </div>
+
+      <!-- CLAUDE PANEL -->
       <div id="claudePanel">
         <div class="claude-key-row" id="claudeKeyRow">
           <span style="font-size:10px;color:var(--mu)">Paste your Anthropic API key (sk-ant-…) — stored only in this browser</span>
@@ -251,22 +291,25 @@ input,button{font-family:inherit}
         </div>
       </div>
 
+      <!-- QUICK ADD -->
       <div class="scan-add">
         <input id="addSymInp" type="text" placeholder="Saw it on Webull? Type ticker to instant-check all 5 pillars…" onkeydown="if(event.key==='Enter')addScanSym()"/>
         <button onclick="addScanSym()">Check →</button>
       </div>
 
+      <!-- TAGS -->
       <div class="scan-tags-wrap" id="scanTagsWrap" style="display:none">
         <div class="scan-tags" id="scanTags"></div>
         <button class="tags-clear" onclick="clearAllSyms()">Clear all</button>
       </div>
 
+      <!-- SCANNER TABLE -->
       <div class="scan-list" id="scanList">
         <div class="sort-bar" id="sortBar" style="display:none">
           <span class="sort-col" onclick="setSort('sym')">Symbol <span class="arr" id="arr-sym"></span></span>
           <span class="sort-col right" onclick="setSort('px')">Price <span class="arr" id="arr-px"></span></span>
           <span class="sort-col right" onclick="setSort('chg')">Change <span class="arr" id="arr-chg"></span></span>
-          <span class="sort-col" onclick="setSort('rvol')" style="padding-left:6px">RVOL <span class="arr" id="arr-rvol"></span></span>
+          <span class="sort-col" onclick="setSort('rvol')" style="padding-left:6px">RVOL · Float <span class="arr" id="arr-rvol"></span></span>
           <span class="sort-col" onclick="setSort('score')" style="padding-left:6px">Pillars <span class="arr" id="arr-score"></span></span>
           <span class="sort-col right" onclick="setSort('score')">Score <span class="arr" id="arr-score2"></span></span>
         </div>
@@ -274,16 +317,18 @@ input,button{font-family:inherit}
         <div class="scan-empty" id="scanEmpty">
           <div class="ic">🎯</div>
           <div class="t">Scanning the market…</div>
-          <div class="d">Webull live scan is running. Any stock passing P1+P2 appears here automatically with real-time RVOL data.</div>
+          <div class="d">Webull live scan is running. Any stock passing P1+P2 appears here automatically.</div>
         </div>
       </div>
 
     </div>
 
+    <!-- CHART PANEL -->
     <div class="chart-panel" id="chartPanel" style="display:none" onclick="openTVPopup()">
       <span class="cp-sym" id="cpSym">—</span>
       <span class="cp-px" id="cpPx">—</span>
       <span class="cp-chg" id="cpChg">—</span>
+      <span class="cp-pmh" id="cpPmh"></span>
       <span class="cp-meta" id="cpMeta">Click row to select · Pop Out opens TradingView</span>
       <button class="cp-pop" onclick="event.stopPropagation();openTVPopup()">Pop Out ↗</button>
     </div>
@@ -341,8 +386,9 @@ const WORKER_URL='https://webull-proxy.yedidyah-claude.workers.dev';
 let Q={};
 let scanSyms=JSON.parse(localStorage.getItem('sv_scan_v1')||'[]');
 let scanCache={};
-let symMeta=new Map();   // sym -> {ts, source:'wb'|'seed'|'manual', addedTs}
-let failTimer={};        // sym -> timestamp when it first failed P1/P2 (for auto-remove)
+let symMeta=new Map();
+let failTimer={};
+let pmHigh={};   // sym -> pre-market high price
 let appReady=false;
 let curChartSym=null;
 let scanDeepRunning=false;
@@ -352,9 +398,8 @@ let _uniStarted=false;
 let _webullScanRunning=false;
 let fhWS=null;
 let _wsGaveUp=false;
-// Sort state: score desc by default
 let sortCol='score';
-let sortDir=-1; // -1 = desc, 1 = asc
+let sortDir=-1;
 
 // ═══ SESSION / CLOCK ═══
 function getSession(){
@@ -366,17 +411,62 @@ function getSession(){
 function tick(){
   const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
   const p=n=>String(n).padStart(2,'0');
-  document.getElementById('htime').textContent=`${p(et.getHours())}:${p(et.getMinutes())}:${p(et.getSeconds())} ET`;
+  const timeStr=`${p(et.getHours())}:${p(et.getMinutes())}:${p(et.getSeconds())}`;
+  const htEl=document.getElementById('htime');
+  if(htEl)htEl.textContent=timeStr;
   const sess=getSession();
-  const labels={pre:'PRE-MKT',mkt:'MKT OPEN',aft:'AFTER HRS',cls:'CLOSED'};
+  const colorMap={pre:'pre-color',mkt:'mkt-color',aft:'aft-color',cls:'cls-color'};
+  if(htEl){htEl.className=colorMap[sess]||'cls-color';}
+  const labels={pre:'PRE-MARKET',mkt:'MKT OPEN',aft:'AFTER HRS',cls:'CLOSED'};
   const el=document.getElementById('sessbdg');if(el){el.textContent=labels[sess];el.className='sess '+sess;}
+  // Reset PM highs at 4:00 AM ET each day
+  const mins=et.getHours()*60+et.getMinutes();
+  if(mins===240&&et.getSeconds()===0)pmHigh={};
 }
 setInterval(tick,1000);tick();
 
 // ═══ UTILITIES ═══
 function fmtP(p){return p?parseFloat(p).toFixed(2):'—';}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',3200);}
-function playPing(){try{const ctx=new(window.AudioContext||window.webkitAudioContext)();const o=ctx.createOscillator();const g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.frequency.setValueAtTime(880,ctx.currentTime);o.frequency.setValueAtTime(1100,ctx.currentTime+0.08);g.gain.setValueAtTime(0.28,ctx.currentTime);g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.28);o.start(ctx.currentTime);o.stop(ctx.currentTime+0.28);}catch(e){}}
+
+// ── SMART ALERT SOUNDS ──
+// Different tones for different events so you can hear priority without looking
+function playPing(type='new'){
+  try{
+    const ctx=new(window.AudioContext||window.webkitAudioContext)();
+    const g=ctx.createGain();g.connect(ctx.destination);
+    if(type==='score5'){
+      // 5/5: triple ascending tone — urgent
+      [880,1100,1320].forEach((freq,i)=>{
+        const o=ctx.createOscillator();o.connect(g);
+        o.frequency.value=freq;
+        g.gain.setValueAtTime(0,ctx.currentTime+i*0.12);
+        g.gain.linearRampToValueAtTime(0.3,ctx.currentTime+i*0.12+0.02);
+        g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.12+0.15);
+        o.start(ctx.currentTime+i*0.12);o.stop(ctx.currentTime+i*0.12+0.15);
+      });
+    } else if(type==='score4'){
+      // 4/5: double tone — notable
+      [880,1100].forEach((freq,i)=>{
+        const o=ctx.createOscillator();o.connect(g);
+        o.frequency.value=freq;
+        g.gain.setValueAtTime(0,ctx.currentTime+i*0.1);
+        g.gain.linearRampToValueAtTime(0.25,ctx.currentTime+i*0.1+0.02);
+        g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+i*0.1+0.14);
+        o.start(ctx.currentTime+i*0.1);o.stop(ctx.currentTime+i*0.1+0.14);
+      });
+    } else {
+      // new/manual: single soft ping
+      const o=ctx.createOscillator();o.connect(g);
+      o.frequency.setValueAtTime(880,ctx.currentTime);
+      o.frequency.setValueAtTime(1100,ctx.currentTime+0.08);
+      g.gain.setValueAtTime(0.2,ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+0.25);
+      o.start(ctx.currentTime);o.stop(ctx.currentTime+0.25);
+    }
+  }catch(e){}
+}
+
 function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
 const debouncedScanUpdate=debounce(()=>liveScanUpdate(),250);
 
@@ -404,7 +494,19 @@ async function fetchQDirect(sym){
   if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<25000)return;
   if(_badSyms[sym]&&Date.now()-_badSyms[sym]<300000)return;
   return queueCall(async()=>{
-    try{const r=await fetch('https://finnhub.io/api/v1/quote?symbol='+sym+'&token='+FHK);if(r.status===429||r.status===403){_badSyms[sym]=Date.now();return;}const q=await r.json();if(q.c)Q[sym]={symbol:sym,price:q.c,open:q.o,high:q.h,low:q.l,prevClose:q.pc,change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,volume:q.v||0,_ts:Date.now()};}catch(e){}
+    try{
+      const r=await fetch('https://finnhub.io/api/v1/quote?symbol='+sym+'&token='+FHK);
+      if(r.status===429||r.status===403){_badSyms[sym]=Date.now();return;}
+      const q=await r.json();
+      if(q.c){
+        Q[sym]={symbol:sym,price:q.c,open:q.o,high:q.h,low:q.l,prevClose:q.pc,change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,volume:q.v||0,_ts:Date.now()};
+        // Track pre-market high
+        const sess=getSession();
+        if(sess==='pre'||sess==='mkt'){
+          if(!pmHigh[sym]||q.h>pmHigh[sym])pmHigh[sym]=q.h;
+        }
+      }
+    }catch(e){}
   });
 }
 async function fetchQ(sym){if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<25000)return;await fetchQDirect(sym);}
@@ -414,7 +516,7 @@ function connectFinnhubWS(){
   try{
     fhWS=new WebSocket('wss://ws.finnhub.io?token='+FHK);
     fhWS.onopen=()=>[...new Set(scanSyms)].forEach(s=>fhWS.send(JSON.stringify({type:'subscribe',symbol:s})));
-    fhWS.onmessage=e=>{const msg=JSON.parse(e.data);if(msg.type==='trade'&&msg.data){msg.data.forEach(t=>{const sym=t.s,px=t.p;if(!Q[sym])return;const prev=Q[sym].prevClose||px;Q[sym]={...Q[sym],price:px,change:px-prev,changePct:prev?(px-prev)/prev*100:0,high:Math.max(Q[sym].high||px,px),low:Math.min(Q[sym].low||px,px)};});debouncedScanUpdate();updateCPPrice();}};
+    fhWS.onmessage=e=>{const msg=JSON.parse(e.data);if(msg.type==='trade'&&msg.data){msg.data.forEach(t=>{const sym=t.s,px=t.p;if(!Q[sym])return;const prev=Q[sym].prevClose||px;Q[sym]={...Q[sym],price:px,change:px-prev,changePct:prev?(px-prev)/prev*100:0,high:Math.max(Q[sym].high||px,px),low:Math.min(Q[sym].low||px,px)};if(!pmHigh[sym]||px>pmHigh[sym])pmHigh[sym]=px;});debouncedScanUpdate();updateCPPrice();}};
     fhWS.onclose=()=>{if(!_wsGaveUp)_wsGaveUp=true;};
     fhWS.onerror=()=>fhWS.close();
   }catch(e){_wsGaveUp=true;}
@@ -429,17 +531,18 @@ async function selectSym(sym){
   if(!scanSyms.includes(sym)){
     scanSyms.push(sym);saveScanSyms();
     if(!symMeta.has(sym))symMeta.set(sym,{ts:Date.now(),source:'manual',addedTs:Date.now()});
-    playPing();
+    playPing('new');
     if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
   }
   const q=Q[sym];
   const minP=parseFloat(document.getElementById('f-minp').value)||1;
   const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
   const minC=parseFloat(document.getElementById('f-chg').value)||10;
-  if(q?.price&&(q.price<minP||q.price>maxP))showToast('📊 '+sym+' — outside price range, won\'t show in list');
-  else if(q?.price&&(q.changePct||0)<minC)showToast('📊 '+sym+' — under min % change, won\'t show in list');
+  if(q?.price&&(q.price<minP||q.price>maxP))showToast('📊 '+sym+' — outside price range');
+  else if(q?.price&&(q.changePct||0)<minC)showToast('📊 '+sym+' — under min % change');
   else showToast('📈 Added '+sym+' to scanner');
   liveScanUpdate();openChartPanel(sym);
+  loadNews(sym);
   setTimeout(startDeepScan,200);
 }
 function saveScanSyms(){localStorage.setItem('sv_scan_v1',JSON.stringify(scanSyms));syncWatchlistToCloud();}
@@ -453,6 +556,42 @@ function toggleFilters(){
   f.style.display=open?'flex':'none';
   if(btn)btn.classList.toggle('active',open);
 }
+
+// ═══ NEWS PANEL ═══
+const _newsCache={};  // sym -> [{headline, source, url, datetime}]
+async function loadNews(sym){
+  const panel=document.getElementById('newsPanel');
+  const list=document.getElementById('newsList');
+  const label=document.getElementById('newsPanelSym');
+  panel.style.display='flex';
+  if(label)label.textContent=sym;
+  if(_newsCache[sym]){renderNews(sym);return;}
+  list.innerHTML='<div class="news-empty">Loading…</div>';
+  try{
+    const today=new Date().toISOString().split('T')[0];
+    const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];
+    const r=await fetch('https://finnhub.io/api/v1/company-news?symbol='+sym+'&from='+from+'&to='+today+'&token='+FHK);
+    if(!r.ok){list.innerHTML='<div class="news-empty">No news available</div>';return;}
+    const items=await r.json();
+    _newsCache[sym]=(Array.isArray(items)?items:[]).slice(0,8);
+    renderNews(sym);
+  }catch(e){list.innerHTML='<div class="news-empty">Could not load news</div>';}
+}
+function renderNews(sym){
+  const list=document.getElementById('newsList');
+  const items=_newsCache[sym]||[];
+  if(!items.length){list.innerHTML='<div class="news-empty">No recent news for '+sym+'</div>';return;}
+  list.innerHTML=items.map(n=>{
+    const d=new Date(n.datetime*1000);
+    const timeStr=d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'})+' ET';
+    const src=n.source||'';
+    return '<div class="news-item" onclick="window.open(\''+n.url+'\',\'_blank\')">'
+      +'<div class="news-headline">'+n.headline+'</div>'
+      +'<div class="news-meta">'+src+(src?' · ':'')+timeStr+'</div>'
+      +'</div>';
+  }).join('');
+}
+function closeNewsPanel(){document.getElementById('newsPanel').style.display='none';}
 
 // ═══ CROSS-DEVICE SYNC ═══
 function syncWatchlistToCloud(){
@@ -496,6 +635,8 @@ function liveScanUpdate(){
   const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
   const minC=parseFloat(document.getElementById('f-chg').value)||10;
   const minRV=parseFloat(document.getElementById('f-rvol')?.value)||0;
+  const autoRmMins=parseFloat(document.getElementById('f-autorm')?.value)||5;
+  const autoRmMs=autoRmMins*60000;
 
   const results=[];
   const now=Date.now();
@@ -507,10 +648,9 @@ function liveScanUpdate(){
     const c=scanCache[sym]||{};
     const rv=parseFloat(c.rvolValue)||0;
 
-    // Auto-remove logic: if fails P1+P2 for >5 min, drop it
     if(!p1||!p2){
       if(!failTimer[sym])failTimer[sym]=now;
-      if(now-failTimer[sym]>300000){
+      if(now-failTimer[sym]>autoRmMs){
         scanSyms=scanSyms.filter(s=>s!==sym);
         saveScanSyms();delete scanCache[sym];symMeta.delete(sym);
       }
@@ -519,16 +659,15 @@ function liveScanUpdate(){
       delete failTimer[sym];
     }
 
-    // Apply RVOL filter if set above 0
     if(minRV>0&&rv>0&&rv<minRV)return;
 
     const score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
     const meta=symMeta.get(sym)||{source:'manual',addedTs:0,ts:0};
     results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false,
-      src:meta.source,rv,addedTs:meta.addedTs||meta.ts||0,floatValue:c.floatValue});
+      src:meta.source,rv,addedTs:meta.addedTs||meta.ts||0,floatValue:c.floatValue,
+      pmh:pmHigh[sym]||0,newsHeadline:c.latestHeadline||''});
   });
 
-  // Update count badge
   const countEl=document.getElementById('scanCount');
   if(countEl)countEl.textContent=results.length;
 
@@ -545,11 +684,10 @@ function liveScanUpdate(){
   if(empty)empty.style.display='none';
   if(sortBar)sortBar.style.display='grid';
 
-  // Sort — stable: new symbols within last 90s always float to top regardless of sort
   const FRESH_MS=90000;
   results.sort((a,b)=>{
     const aFresh=now-a.addedTs<FRESH_MS,bFresh=now-b.addedTs<FRESH_MS;
-    if(aFresh!==bFresh)return aFresh?-1:1; // fresh items rise to top
+    if(aFresh!==bFresh)return aFresh?-1:1;
     let av,bv;
     switch(sortCol){
       case'sym': av=a.sym;bv=b.sym;return sortDir*(av<bv?-1:av>bv?1:0);
@@ -557,7 +695,6 @@ function liveScanUpdate(){
       case'chg': av=a.q.changePct||0;bv=b.q.changePct||0;break;
       case'rvol':av=a.rv||0;bv=b.rv||0;break;
       case'score':default:
-        // Primary: score, Secondary: RVOL (highest conviction at top)
         if(a.score!==b.score)return b.score-a.score;
         return (b.q.changePct||0)-(a.q.changePct||0);
     }
@@ -573,18 +710,19 @@ function liveScanUpdate(){
     const scoreLabel=r.score+'/5';
     const srcBadge=r.src==='wb'?'<span class="src-badge src-wb">WB</span>':
       r.src==='seed'?'<span class="src-badge src-sd">SD</span>':'';
-    // RVOL display with heat coloring
     const rvNum=r.rv||0;
     const rvClass=rvNum>=10?'fire':rvNum>=5?'hot':'';
     const rvLabel=rvNum>0?rvNum.toFixed(1)+'x':'—';
-    // Float display
-    const floatLabel=r.floatValue?r.floatValue:'';
-    const p3label=r.p3===true?(r.hasNews?'P3 🔥':'P3'):'P3';
+    const floatLabel=r.floatValue||'';
+    const p3label=r.hasNews?'P3 🔥':'P3';
+    // Pre-market high badge — show if we have it and it's above current price
+    const pmhStr=r.pmh>0?'H:$'+r.pmh.toFixed(2):'';
     return '<div class="scan-row '+sc+(isFresh?' scan-row-new':'')+'" onclick="selectSym(\''+r.sym+'\')">'
       +'<div class="scan-sym-cell">'
         +'<span class="scan-sym '+(u?'up':'dn')+'">'+r.sym+'</span>'
         +srcBadge
         +(r.hasNews?'<span class="news-dot">🔥</span>':'')
+        +(pmhStr?'<span class="pmh-badge">'+pmhStr+'</span>':'')
       +'</div>'
       +'<span class="scan-px">$'+fmtP(r.q.price)+'</span>'
       +'<span class="scan-chg '+(u?'up':'dn')+'">'+(u?'+':'')+((r.q.changePct||0).toFixed(1))+'%</span>'
@@ -635,12 +773,16 @@ async function runWebullScan(){
         if(!Q[sym]||Date.now()-(Q[sym]._ts||0)>20000){
           Q[sym]={symbol:sym,price:px,changePct:chgPct,volume:vol,prevClose:item.pre_close?parseFloat(item.pre_close):px,_ts:Date.now(),_fromWebull:true};
         }
+        if(!pmHigh[sym]||px>pmHigh[sym])pmHigh[sym]=px;
         if(px>=minP&&px<=maxP&&chgPct>=minC&&!scanSyms.includes(sym)){
           scanSyms.push(sym);saveScanSyms();
           symMeta.set(sym,{ts:Date.now(),source:'wb',addedTs:Date.now()});
           if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
+          // Smart alert tone based on initial score estimate
+          const estScore=2+(chgPct>=20?1:0);
+          playPing(estScore>=4?'score4':'new');
           showToast('🔥 '+sym+' +'+chgPct.toFixed(1)+'% · $'+fmtP(px)+' · Webull');
-          playPing();liveScanUpdate();
+          liveScanUpdate();
           setTimeout(startDeepScan,500);
         }
       }
@@ -655,7 +797,15 @@ async function runWebullScan(){
           const rv=parseFloat(item.relative_volume_10d||item.relative_volume||0);
           if(rv>0){
             const threshold=sess==='pre'?2:sess==='aft'?1.5:5;
+            const wasBelow=!scanCache[sym]?.p4;
             scanCache[sym]={...scanCache[sym],p4:rv>=threshold,rvolValue:rv.toFixed(1),_rvolFromWebull:true};
+            // Re-score and alert if symbol just hit 5/5
+            if(wasBelow&&rv>=threshold){
+              const c=scanCache[sym];
+              const sc=[true,true,c.p3===true,true,c.p5===true].filter(Boolean).length;
+              if(sc>=5)playPing('score5');
+              else if(sc>=4)playPing('score4');
+            }
           }
         }
         if(!seenSyms.has(sym)){
@@ -669,8 +819,9 @@ async function runWebullScan(){
             }
             scanSyms.push(sym);saveScanSyms();
             symMeta.set(sym,{ts:Date.now(),source:'wb',addedTs:Date.now()});
+            playPing('new');
             showToast('📊 '+sym+' RVOL +'+chgPct.toFixed(1)+'%');
-            playPing();liveScanUpdate();
+            liveScanUpdate();
             setTimeout(startDeepScan,500);
           }
         }
@@ -725,8 +876,9 @@ async function runSeedScan(){
         scanSyms.push(sym);saveScanSyms();
         symMeta.set(sym,{ts:Date.now(),source:'seed',addedTs:Date.now()});
         if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
+        playPing('new');
         showToast('🔥 '+sym+' +'+((q.changePct||0).toFixed(1))+'% · $'+fmtP(q.price)+' · Seed');
-        playPing();liveScanUpdate();
+        liveScanUpdate();
       }
     }catch(e){}
   }));
@@ -752,13 +904,19 @@ async function startDeepScan(){
       const cached=scanCache[sym]||{};if(Date.now()-(cached.ts||0)<120000)continue;
       if(_deepBadSyms[sym]&&Date.now()-_deepBadSyms[sym]<300000)continue;
       let hasNews=cached.hasNews??false,p3=cached.p3??null,p4=cached.p4??null,p5=cached.p5??null;
+      let latestHeadline=cached.latestHeadline||'';
       let hitLimit=false;
+      const prevScore=[p1,p2,cached.p3===true,cached.p4===true,cached.p5===true].filter(Boolean).length;
       await queueCall(async()=>{try{
         const today=new Date().toISOString().split('T')[0];
         const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];
         const r=await fetch('https://finnhub.io/api/v1/company-news?symbol='+sym+'&from='+from+'&to='+today+'&token='+FHK);
         if(r.status===403||r.status===429){p3=null;hitLimit=true;return;}
-        const news=await r.json();hasNews=Array.isArray(news)&&news.length>0;p3=hasNews;
+        const news=await r.json();
+        hasNews=Array.isArray(news)&&news.length>0;p3=hasNews;
+        if(hasNews&&news[0]?.headline)latestHeadline=news[0].headline;
+        // Cache news for the panel
+        if(Array.isArray(news)&&news.length)_newsCache[sym]=news.slice(0,8);
       }catch(e){p3=null;}});
       if(!scanCache[sym]?._rvolFromWebull){
         await queueCall(async()=>{try{
@@ -784,7 +942,13 @@ async function startDeepScan(){
         }catch(e){}});
       }
       if(hitLimit)_deepBadSyms[sym]=Date.now();
-      scanCache[sym]={...scanCache[sym],p3,p4,p5,hasNews,ts:Date.now()};
+      scanCache[sym]={...scanCache[sym],p3,p4,p5,hasNews,latestHeadline,ts:Date.now()};
+      // Fire smart alert if score just jumped to 4 or 5
+      const newScore=[p1,p2,p3===true,p4===true,p5===true].filter(Boolean).length;
+      if(newScore>prevScore){
+        if(newScore>=5)playPing('score5');
+        else if(newScore>=4)playPing('score4');
+      }
     }catch(e){}
   }
   scanDeepRunning=false;
@@ -798,7 +962,7 @@ setInterval(async()=>{
   if(deepScanCountdown<=0){deepScanCountdown=30;await startDeepScan();}
   else{const el=document.getElementById('scanStatus');if(el&&!scanDeepRunning&&!_webullScanRunning)el.textContent='Next scan '+deepScanCountdown+'s';}
 },1000);
-['f-minp','f-maxp','f-chg','f-rvol'].forEach(id=>{
+['f-minp','f-maxp','f-chg','f-rvol','f-autorm'].forEach(id=>{
   const el=document.getElementById(id);if(el)el.addEventListener('input',()=>liveScanUpdate());
 });
 
@@ -811,6 +975,7 @@ function openChartPanel(sym){
   const meta=[];
   if(c.floatValue)meta.push('Float '+c.floatValue);
   if(c.rvolValue)meta.push('RVOL '+c.rvolValue+'x');
+  if(c.latestHeadline)meta.push('📰 '+c.latestHeadline.substring(0,60)+(c.latestHeadline.length>60?'…':''));
   document.getElementById('cpMeta').textContent=meta.length?meta.join(' · '):'Click to pop out full chart →';
   updateCPPrice();
 }
@@ -820,6 +985,10 @@ function updateCPPrice(){
   const px=document.getElementById('cpPx'),chg=document.getElementById('cpChg');
   if(px){px.textContent='$'+fmtP(q.price);px.className='cp-px '+(u?'up':'dn');}
   if(chg){chg.textContent=(u?'+':'')+(q.changePct||0).toFixed(2)+'%';chg.className='cp-chg '+(u?'up':'dn');}
+  // Pre-market high in chart panel
+  const pmhEl=document.getElementById('cpPmh');
+  if(pmhEl&&pmHigh[curChartSym]){pmhEl.textContent='PMH $'+pmHigh[curChartSym].toFixed(2);}
+  else if(pmhEl){pmhEl.textContent='';}
 }
 const SAVED_LAYOUT_ID='7ghMFdhC';
 let _tvWin=null;
@@ -877,11 +1046,14 @@ function buildScannerSnapshot(){
     const p1=q.price>=minP&&q.price<=maxP,p2=(q.changePct||0)>=minC;
     const src=symMeta.get(sym)?.source||'manual';
     const pillarStr=(v,l)=>l+'='+(v===true?'✓':v===false?'✗':'?');
+    const pmhStr=pmHigh[sym]?'PMH=$'+pmHigh[sym].toFixed(2):'';
     return sym+'['+src+'] $'+fmtP(q.price)+' '+(q.changePct>=0?'+':'')+(q.changePct||0).toFixed(1)+'% '
       +pillarStr(p1,'P1')+' '+pillarStr(p2,'P2')+' '+pillarStr(c.p3,'P3')+' '
       +pillarStr(c.p4,'P4(RVOL'+(c.rvolValue?'='+c.rvolValue+'x':'')+')')+' '
       +pillarStr(c.p5,'P5(Float'+(c.floatValue?'='+c.floatValue:')'))+' '
-      +'score='+[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length+'/5';
+      +'score='+[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length+'/5'
+      +(pmhStr?' '+pmhStr:'')
+      +(c.latestHeadline?' news="'+c.latestHeadline.substring(0,80)+'"':'');
   });
   return lines.length?lines.join('\n'):'No symbols tracked.';
 }
@@ -891,7 +1063,7 @@ async function askClaude(question){
   const thinkingEl=document.getElementById('claudeMsgs').lastChild;
   try{
     const snap=buildScannerSnapshot();
-    const sys='You are a momentum trading assistant embedded in a live 5 Pillars scanner (Ross Cameron strategy). P1=price $1-$20, P2=%change≥10%, P3=news, P4=RVOL≥5x, P5=float<10M. Source: wb=Webull live (entire market, SIP-grade), seed=fallback, manual=user-added. Live data:\n'+snap+'\n\nBe concise and direct. Name specific tickers and numbers. Flag anything scoring 4+/5 as a priority setup.';
+    const sys='You are a momentum trading assistant embedded in a live 5 Pillars scanner (Ross Cameron strategy). P1=price $1-$20, P2=%change≥10%, P3=news, P4=RVOL≥5x, P5=float<10M. PMH=pre-market high (key breakout level). Source: wb=Webull live, seed=fallback, manual=user-added. Live data:\n'+snap+'\n\nBe concise and direct. Name specific tickers and numbers. Flag 4+/5 scorers as priority. Note any PMH levels that are close to current price as potential breakout setups.';
     const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:sys,messages:[{role:'user',content:question}]})});
     const data=await r.json();
     if(data.error){thinkingEl.innerHTML='<span style="font-weight:700;font-size:11px;opacity:.6">CLAUDE</span><br>Error: '+(data.error.message||data.error.type);return;}
