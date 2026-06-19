@@ -20,7 +20,7 @@ input,button{font-family:inherit}
 ::-webkit-scrollbar{width:8px;height:8px}
 ::-webkit-scrollbar-thumb{background:var(--b2);border-radius:4px}
 
-/* ═══ LOGIN WALL ═══ */
+/* LOGIN WALL */
 #loginWall{position:fixed;inset:0;background:radial-gradient(circle at 30% 20%,#15172c,var(--bg));display:flex;align-items:center;justify-content:center;z-index:100}
 .login-box{background:var(--s2);border:1px solid var(--b1);border-radius:16px;padding:36px;width:340px}
 .login-box h1{font-size:20px;font-weight:800;margin-bottom:4px}
@@ -34,7 +34,7 @@ input,button{font-family:inherit}
 .login-switch{text-align:center;font-size:12px;color:var(--mu);margin-top:16px}
 .login-switch a{color:var(--ac2);cursor:pointer;text-decoration:none}
 
-/* ═══ MAIN APP ═══ */
+/* MAIN APP */
 #mainApp{display:none;flex-direction:column;height:100vh}
 .topbar{display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0}
 .brand{font-size:16px;font-weight:800;white-space:nowrap}
@@ -92,7 +92,12 @@ input,button{font-family:inherit}
 .scan-row-new{animation:flashNew 1.6s ease-out}
 @keyframes flashNew{0%{background:#7c6aff33}100%{background:transparent}}
 
-/* ═══ BOTTOM CHART PANEL ═══ */
+/* SOURCE BADGE — shows where each auto-found symbol came from */
+.src-badge{font-size:7px;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.04em;margin-left:3px;vertical-align:middle}
+.src-wb{background:#3b82f622;color:#60a5fa}   /* Webull — blue */
+.src-sd{background:#8b5cf622;color:#a78bfa}   /* Seed — purple */
+
+/* BOTTOM CHART PANEL */
 .chart-panel{flex-shrink:0;background:var(--s1);border-top:1px solid var(--b1);display:flex;align-items:center;gap:14px;padding:10px 16px;cursor:pointer}
 .chart-panel .cp-sym{font-size:15px;font-weight:800;min-width:60px}
 .chart-panel .cp-px{font-family:'DM Mono',monospace;font-size:13px}
@@ -189,7 +194,7 @@ input,button{font-family:inherit}
 <div class="toast" id="toast"></div>
 
 <script>
-// ═══ SUPABASE AUTH (unchanged from existing dashboard) ═══
+// ═══ SUPABASE AUTH ═══
 const SUPA_URL='https://yklxpcatopitwjzutolj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrbHhwY2F0b3BpdHdqenV0b2xqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MDYyMTEsImV4cCI6MjA5NjM4MjIxMX0.KJotgJpSLziUvdZkUb66tV7vZXPEfMOjGOij2-vmk6Q';
 const sf=(p,o={})=>fetch(SUPA_URL+p,{...o,headers:{'apikey':SUPA_KEY,'Content-Type':'application/json',...(o.headers||{})}});
@@ -229,26 +234,26 @@ function showApp(){document.getElementById('loginWall').style.display='none';doc
 function checkAuth(){if(sessionStorage.getItem('sv_token')){showApp();return true;}document.getElementById('loginWall').style.display='flex';return false;}
 function logout(){sessionStorage.clear();location.reload();}
 
-// ═══ FINNHUB KEY — paste your real key here before using ═══
+// ═══ KEYS & CONFIG ═══
 const FHK='d8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
+// Your Cloudflare Worker URL — replace with your actual worker URL
+const WORKER_URL='https://webull-proxy.yedidyah-claude.workers.dev';
 
 // ═══ STATE ═══
-let Q={};                 // symbol -> live quote data
-// Dedicated key for this clean v1 build — deliberately NOT 'sv_scan', which
-// was used by the old multi-widget dashboard. Reusing that key would silently
-// inherit leftover test symbols from past sessions into a "fresh" v1.
+let Q={};
 let scanSyms=JSON.parse(localStorage.getItem('sv_scan_v1')||'[]');
-let scanCache={};         // symbol -> {p3,p4,p5,hasNews,ts,rvolValue,floatValue}
-let newSyms=new Map();    // symbol -> timestamp added (for "NEW" flash)
+let scanCache={};
+let newSyms=new Map();   // sym -> {ts, source:'wb'|'seed'}
 let appReady=false;
 let curChartSym=null;
 let scanDeepRunning=false;
-let _universe=[];
 let _uniIdx=0;
-let _uniLoaded=false;
 let _uniRunning=false;
 let _uniStarted=false;
+let _webullScanRunning=false;
+let _webullLastRun=0;
 let fhWS=null;
+let _wsGaveUp=false;
 
 // ═══ SESSION / CLOCK ═══
 function getSession(){
@@ -273,12 +278,12 @@ function playPing(){try{const ctx=new(window.AudioContext||window.webkitAudioCon
 function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
 const debouncedScanUpdate=debounce(()=>liveScanUpdate(),300);
 
-// ═══ FINNHUB API — queued at ~1.2s/call to respect free-tier rate limit ═══
+// ═══ FINNHUB API — REST polling, rate-limited ═══
 const apiQueue=[];let apiRunning=false;
 function queueCall(fn){return new Promise((resolve,reject)=>{apiQueue.push({fn,resolve,reject});if(!apiRunning)drainQueue();});}
 async function drainQueue(){if(apiRunning)return;apiRunning=true;while(apiQueue.length){const{fn,resolve,reject}=apiQueue.shift();try{resolve(await fn());}catch(e){reject(e);}if(apiQueue.length)await new Promise(r=>setTimeout(r,1200));}apiRunning=false;}
-const _badSyms={}; // sym -> timestamp of last 403/429 on /quote, backs off retrying for 5min
-const _deepBadSyms={}; // sym -> timestamp of last 403/429 on news/metrics, backs off 5min
+const _badSyms={};
+const _deepBadSyms={};
 async function fetchQDirect(sym){
   if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<25000)return;
   if(_badSyms[sym]&&Date.now()-_badSyms[sym]<300000)return;
@@ -287,11 +292,8 @@ async function fetchQDirect(sym){
   });
 }
 async function fetchQ(sym){if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<25000)return;await fetchQDirect(sym);}
-// Finnhub's live WebSocket trade stream is a paid-tier feature — on a free
-// key this will always fail. Try once; if it fails, stop retrying forever
-// and rely fully on the REST /quote polling in fetchQDirect() instead,
-// which works fine on free tier and is already running independently.
-let _wsGaveUp=false;
+
+// Finnhub WebSocket — paid only; fail once and stop retrying
 function connectFinnhubWS(){
   if(_wsGaveUp)return;
   const syms=[...new Set(scanSyms)];
@@ -299,45 +301,39 @@ function connectFinnhubWS(){
     fhWS=new WebSocket('wss://ws.finnhub.io?token='+FHK);
     fhWS.onopen=()=>syms.forEach(s=>fhWS.send(JSON.stringify({type:'subscribe',symbol:s})));
     fhWS.onmessage=e=>{const msg=JSON.parse(e.data);if(msg.type==='trade'&&msg.data){msg.data.forEach(t=>{const sym=t.s,px=t.p;if(!Q[sym])return;const prev=Q[sym].prevClose||px;Q[sym]={...Q[sym],price:px,change:px-prev,changePct:prev?(px-prev)/prev*100:0,high:Math.max(Q[sym].high||px,px),low:Math.min(Q[sym].low||px,px)};});debouncedScanUpdate();updateCPPrice();}};
-    fhWS.onclose=()=>{if(!_wsGaveUp){_wsGaveUp=true;}}; // one failure is enough to know this key can't use it
+    fhWS.onclose=()=>{if(!_wsGaveUp){_wsGaveUp=true;}};
     fhWS.onerror=()=>fhWS.close();
   }catch(e){_wsGaveUp=true;}
 }
 
-// ═══ SYMBOL SELECTION (search bar + scanner click + quick-check) ═══
+// ═══ SYMBOL SELECTION ═══
 async function selectSym(sym){
   sym=sym.toUpperCase().trim();if(!sym)return;
-  // Tickers with a dot suffix (.V, .TO, .HK, etc.) are non-US exchange
-  // listings — Canadian TSX Venture, Hong Kong, etc. Finnhub's free tier
-  // only covers US exchanges, and these generally aren't tradeable through
-  // a typical US broker either, so block them before wasting an API call.
   if(sym.includes('.')&&sym!=='BTC/USD'&&sym!=='ETH/USD'){
-    showToast('🚫 '+sym+' is a non-US exchange listing — not supported here');
-    return;
+    showToast('🚫 '+sym+' is a non-US exchange listing — not supported here');return;
   }
   curChartSym=sym;
   if(!Q[sym])await fetchQDirect(sym);
-  if(!scanSyms.includes(sym)){scanSyms.push(sym);saveScanSyms();newSyms.set(sym,Date.now());playPing();if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));}
+  if(!scanSyms.includes(sym)){
+    scanSyms.push(sym);saveScanSyms();
+    if(!newSyms.has(sym))newSyms.set(sym,{ts:Date.now(),source:'manual'});
+    playPing();
+    if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
+  }
   const q=Q[sym];const minP=parseFloat(document.getElementById('f-minp').value)||1;const maxP=parseFloat(document.getElementById('f-maxp').value)||20;const minC=parseFloat(document.getElementById('f-chg').value)||10;
-  if(q?.price&&(q.price<minP||q.price>maxP)){showToast('📊 '+sym+' opened in chart — outside $'+minP+'-$'+maxP+' range, won\'t appear in scanner list');}
-  else if(q?.price&&(q.changePct||0)<minC){showToast('📊 '+sym+' opened in chart — under '+minC+'% change, won\'t appear in scanner list');}
+  if(q?.price&&(q.price<minP||q.price>maxP)){showToast('📊 '+sym+' opened in chart — outside $'+minP+'-$'+maxP+' range');}
+  else if(q?.price&&(q.changePct||0)<minC){showToast('📊 '+sym+' opened in chart — under '+minC+'% change');}
   else{showToast('📈 '+sym+' added to 5 Pillars Scanner');}
-  liveScanUpdate();
-  openChartPanel(sym);
+  liveScanUpdate();openChartPanel(sym);
   setTimeout(startDeepScan,200);
 }
-function saveScanSyms(){
-  localStorage.setItem('sv_scan_v1',JSON.stringify(scanSyms));
-  syncWatchlistToCloud();
-}
-// ═══ CROSS-DEVICE WATCHLIST SYNC (Supabase) ═══
-// localStorage remains the instant, always-available source of truth for
-// rendering — nothing in the scanner engine reads from Supabase directly.
-// This only reconciles scanSyms in the background so other devices catch up.
+function saveScanSyms(){localStorage.setItem('sv_scan_v1',JSON.stringify(scanSyms));syncWatchlistToCloud();}
+
+// ═══ CROSS-DEVICE SYNC ═══
 let _syncInFlight=false;
 function syncWatchlistToCloud(){
   const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
-  if(!token||!uid)return; // not signed in yet — nothing to sync to
+  if(!token||!uid)return;
   sf('/rest/v1/profiles?id=eq.'+uid,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},body:JSON.stringify({watchlist:scanSyms})}).catch(()=>{});
 }
 async function pullWatchlistFromCloud(){
@@ -347,30 +343,23 @@ async function pullWatchlistFromCloud(){
     const r=await sf('/rest/v1/profiles?select=watchlist&id=eq.'+uid,{headers:{'Authorization':'Bearer '+token}});
     const d=await r.json();
     const cloudList=d?.[0]?.watchlist;
-    if(!Array.isArray(cloudList))return; // column empty/missing — nothing to merge yet
-    // Merge rather than overwrite: union of whatever's local + whatever's in
-    // the cloud, so a symbol added on one device never silently disappears
-    // from the other on next load.
+    if(!Array.isArray(cloudList))return;
     const merged=[...new Set([...scanSyms,...cloudList])];
     if(merged.length!==scanSyms.length||!merged.every(s=>scanSyms.includes(s))){
-      scanSyms=merged;
-      localStorage.setItem('sv_scan_v1',JSON.stringify(scanSyms));
+      scanSyms=merged;localStorage.setItem('sv_scan_v1',JSON.stringify(scanSyms));
       renderScanTags();liveScanUpdate();
       const toFetch=scanSyms.filter(s=>!Q[s]?.price);
       for(const sym of toFetch){await fetchQDirect(sym);await new Promise(r=>setTimeout(r,1100));}
       liveScanUpdate();
     }
-    syncWatchlistToCloud(); // push merged result back so cloud matches too
-  }catch(e){} // any failure here is silent — local list keeps working regardless
+    syncWatchlistToCloud();
+  }catch(e){}
 }
-function addScanSym(){
-  const inp=document.getElementById('addSymInp');const sym=inp.value.toUpperCase().trim();if(!sym)return;
-  inp.value='';selectSym(sym);
-}
-function rmScanSym(sym){scanSyms=scanSyms.filter(s=>s!==sym);saveScanSyms();delete scanCache[sym];liveScanUpdate();}
+function addScanSym(){const inp=document.getElementById('addSymInp');const sym=inp.value.toUpperCase().trim();if(!sym)return;inp.value='';selectSym(sym);}
+function rmScanSym(sym){scanSyms=scanSyms.filter(s=>s!==sym);saveScanSyms();delete scanCache[sym];newSyms.delete(sym);liveScanUpdate();}
 function toggleFilters(){const f=document.getElementById('scanFilters');if(f)f.style.display=f.style.display==='none'?'flex':'none';}
 
-// ═══ 5 PILLARS SCANNER RENDER ═══
+// ═══ SCANNER RENDER ═══
 function renderScanTags(){
   document.getElementById('scanTags').innerHTML=scanSyms.map(s=>
     '<span class="tag">'+s+'<button onclick="rmScanSym(\''+s+'\')">×</button></span>'
@@ -386,17 +375,18 @@ function liveScanUpdate(){
   scanSyms.forEach(sym=>{
     const q=Q[sym];if(!q?.price)return;
     const p1=q.price>=minP&&q.price<=maxP,p2=(q.changePct||0)>=minC;
-    if(!p1||!p2)return; // doesn't meet the two basic pillars — not a real candidate, don't show
+    if(!p1||!p2)return;
     const c=scanCache[sym]||{};
     const score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
-    results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false});
+    const src=newSyms.get(sym)?.source||'manual';
+    results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false,src,rvolValue:c.rvolValue});
   });
   if(!results.length){
-    list.innerHTML='<div class="scan-empty"><div class="ic">🎯</div><div class="t">No symbols yet</div><div class="d">Search a stock above, or type a Webull ticker below to check it.</div></div>';
+    list.innerHTML='<div class="scan-empty"><div class="ic">🎯</div><div class="t">Scanning the market…</div><div class="d">Webull live scan running. Any stock passing P1+P2 appears here automatically.</div></div>';
     return;
   }
   results.sort((a,b)=>{
-    const aT=newSyms.get(a.sym)||0,bT=newSyms.get(b.sym)||0;
+    const aT=newSyms.get(a.sym)?.ts||0,bT=newSyms.get(b.sym)?.ts||0;
     if(aT||bT)return bT-aT;
     if(b.score!==a.score)return b.score-a.score;
     return (b.q.changePct||0)-(a.q.changePct||0);
@@ -408,106 +398,140 @@ function liveScanUpdate(){
     const isNew=newSyms.has(r.sym);
     const pending=r.p3===null||r.p4===null||r.p5===null;
     const scoreLabel=r.score+'/5'+(pending?'+':'');
+    // Source badge: WB = came from Webull live scan, SD = seed universe
+    const srcBadge=r.src==='wb'?'<span class="src-badge src-wb">WB</span>':r.src==='seed'?'<span class="src-badge src-sd">SD</span>':'';
+    // Show Webull's own RVOL if we have it
+    const rvolTip=r.rvolValue?` ${r.rvolValue}x`:'';
     return '<div class="scan-row '+sc+(isNew?' scan-row-new':'')+'" onclick="selectSym(\''+r.sym+'\')">'
-      +'<span class="scan-sym '+(u?'up':'dn')+'">'+r.sym+(r.hasNews?' 🔥':'')+'</span>'
+      +'<span class="scan-sym '+(u?'up':'dn')+'">'+r.sym+srcBadge+(r.hasNews?' 🔥':'')+'</span>'
       +'<span class="scan-px">$'+fmtP(r.q.price)+'</span>'
       +'<span class="scan-chg '+(u?'up':'dn')+'">'+(u?'+':'')+((r.q.changePct||0).toFixed(1))+'%</span>'
-      +'<div class="scan-pills"><span class="pill '+pd(r.p1)+'">P1</span><span class="pill '+pd(r.p2)+'">P2</span><span class="pill '+(pending?'na':pd(r.p3))+'">P3</span><span class="pill '+(pending?'na':pd(r.p4))+'">P4</span><span class="pill '+(pending?'na':pd(r.p5))+'">P5</span></div>'
+      +'<div class="scan-pills"><span class="pill '+pd(r.p1)+'">P1</span><span class="pill '+pd(r.p2)+'">P2</span><span class="pill '+(pending?'na':pd(r.p3))+'">P3</span><span class="pill '+(pending?'na':pd(r.p4))+'">P4'+rvolTip+'</span><span class="pill '+(pending?'na':pd(r.p5))+'">P5</span></div>'
       +'<span class="scan-score">'+scoreLabel+'</span>'
       +'</div>';
   }).join('');
 }
 
-// ═══ DEEP SCAN — P3 (news) + P4 (RVOL) + P5 (float) ═══
-async function startDeepScan(){
-  if(!appReady||scanDeepRunning)return;scanDeepRunning=true;
-  document.getElementById('scanStatus').textContent='⚡ Scanning…';
-  const sess=getSession();const rvThreshold=sess==='pre'?2:sess==='aft'?1.5:5;const minC=sess==='pre'||sess==='aft'?5:10;
-  const etNow=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));const mktOpen=new Date(etNow);mktOpen.setHours(9,30,0,0);const minsElapsed=sess==='mkt'?Math.max(1,(etNow-mktOpen)/60000):390;
-  for(const sym of scanSyms){
-    try{
-      if(!Q[sym])await fetchQ(sym);const q=Q[sym];if(!q?.price)continue;
-      const p1=q.price>=1&&q.price<=20,p2=(q.changePct||0)>=minC;if(!p1||!p2)continue;
-      const cached=scanCache[sym]||{};if(Date.now()-(cached.ts||0)<120000)continue;
-      // Symbols that recently 403/429'd on news/metrics specifically get a
-      // longer 5-minute cooldown on top of the normal 2-minute re-scan gap,
-      // so one rate-limited symbol doesn't keep eating queue slots.
-      if(_deepBadSyms[sym]&&Date.now()-_deepBadSyms[sym]<300000)continue;
-      let hasNews=cached.hasNews??false,p3=cached.p3??null,p4=cached.p4??null,p5=cached.p5??null;
-      let hitLimit=false;
-      await queueCall(async()=>{try{const today=new Date().toISOString().split('T')[0];const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];const r=await fetch('https://finnhub.io/api/v1/company-news?symbol='+sym+'&from='+from+'&to='+today+'&token='+FHK);if(r.status===403||r.status===429){p3=null;hitLimit=true;return;}const news=await r.json();hasNews=Array.isArray(news)&&news.length>0;p3=hasNews;}catch(e){p3=null;}});
-      await queueCall(async()=>{try{
-        const r=await fetch('https://finnhub.io/api/v1/stock/metric?symbol='+sym+'&metric=all&token='+FHK);
-        if(r.status===403||r.status===429){p4=null;p5=null;hitLimit=true;return;}
-        const d=await r.json();const m=d.metric||{};
-        // Finnhub's 10DayAverageTradingVolume is in MILLIONS of shares — must
-        // multiply by 1e6 before dividing into raw quote.volume.
-        const avgDailyVol=(m['10DayAverageTradingVolume']||0)*1e6;
-        if(avgDailyVol>0){const normalizedRVol=(q.volume/avgDailyVol)*(390/minsElapsed);p4=normalizedRVol>=rvThreshold;scanCache[sym]={...scanCache[sym],rvolValue:normalizedRVol.toFixed(1)};}
-        else{p4=(q.changePct||0)>=20;scanCache[sym]={...scanCache[sym],rvolValue:'est'};}
-        const trueFloat=m['shareFloat']??m['float']??null;
-        if(trueFloat!==null){const floatM=trueFloat>1000?trueFloat/1e6:trueFloat;p5=floatM<10;scanCache[sym]={...scanCache[sym],floatValue:floatM.toFixed(1)+'M'};}
-        else{p5=null;scanCache[sym]={...scanCache[sym],floatValue:'—'};}
-      }catch(e){p4=null;p5=null;}});
-      if(hitLimit)_deepBadSyms[sym]=Date.now();
-      scanCache[sym]={...scanCache[sym],p3,p4,p5,hasNews,ts:Date.now()};
-    }catch(e){}
+// ═══ WEBULL LIVE SCAN — the new engine ═══
+// Replaces the old 150-symbol seed universe with a live Webull API call
+// that covers the ENTIRE market. Runs every 30 seconds via the Cloudflare
+// Worker proxy. Each symbol that passes P1+P2 is auto-added with a WB badge.
+// Falls back to seed universe scan if the Worker is not configured or errors.
+async function runWebullScan(){
+  if(!appReady||_webullScanRunning)return;
+  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const mins=et.getHours()*60+et.getMinutes();
+  if(mins<240||mins>1200)return; // 4AM–8PM ET only
+
+  _webullScanRunning=true;
+  _webullLastRun=Date.now();
+
+  const sess=getSession();
+  const minC=sess==='pre'||sess==='aft'?5:10;
+  const minP=parseFloat(document.getElementById('f-minp').value)||1;
+  const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
+
+  try{
+    // Fetch gainers (sorted by % change) — primary P1+P2 source
+    const [gainersResp,activeResp]=await Promise.all([
+      fetch(WORKER_URL+'/gainers?count=50').catch(()=>null),
+      fetch(WORKER_URL+'/active?count=50').catch(()=>null),
+    ]);
+
+    const seenSyms=new Set();
+
+    // Process gainers list
+    if(gainersResp?.ok){
+      const gainersData=await gainersResp.json().catch(()=>null);
+      // Webull returns an array; each item has: symbol, price, change_ratio, volume etc.
+      const items=Array.isArray(gainersData)?gainersData:(gainersData?.data||gainersData?.list||[]);
+      for(const item of items){
+        const sym=(item.symbol||item.ticker||'').toUpperCase().trim();
+        if(!sym||sym.includes('.')||seenSyms.has(sym))continue;
+        seenSyms.add(sym);
+        const px=parseFloat(item.price||item.last_price||0);
+        const chgPct=parseFloat(item.change_ratio||item.change_pct||0)*
+          (Math.abs(parseFloat(item.change_ratio||0))>1?1:100); // handle decimal vs percent
+        const vol=parseFloat(item.volume||0);
+        if(!px)continue;
+        // Store into Q immediately so we don't need an extra Finnhub call
+        if(!Q[sym]||Date.now()-(Q[sym]._ts||0)>20000){
+          Q[sym]={symbol:sym,price:px,changePct:chgPct,volume:vol,
+            prevClose:item.pre_close?parseFloat(item.pre_close):px,
+            _ts:Date.now(),_fromWebull:true};
+        }
+        // P1+P2 gate
+        if(px>=minP&&px<=maxP&&chgPct>=minC){
+          if(!scanSyms.includes(sym)){
+            scanSyms.push(sym);saveScanSyms();
+            newSyms.set(sym,{ts:Date.now(),source:'wb'});
+            if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
+            showToast('🔥 Webull: '+sym+' +'+(chgPct.toFixed(1))+'% $'+fmtP(px));
+            playPing();liveScanUpdate();
+            // Queue Finnhub deep scan for P3+P4+P5 on new symbol
+            setTimeout(startDeepScan,500);
+          }
+        }
+      }
+    }
+
+    // Process top-active list — gives us relative_volume_10d directly
+    if(activeResp?.ok){
+      const activeData=await activeResp.json().catch(()=>null);
+      const items=Array.isArray(activeData)?activeData:(activeData?.data||activeData?.list||[]);
+      for(const item of items){
+        const sym=(item.symbol||item.ticker||'').toUpperCase().trim();
+        if(!sym||sym.includes('.'))continue;
+        // If this symbol is already in our scanner, update its RVOL from Webull's own data
+        if(scanSyms.includes(sym)){
+          const rv=parseFloat(item.relative_volume_10d||item.relative_volume||0);
+          if(rv>0){
+            const sess2=getSession();const threshold=sess2==='pre'?2:sess2==='aft'?1.5:5;
+            scanCache[sym]={...scanCache[sym],
+              p4:rv>=threshold,
+              rvolValue:rv.toFixed(1),
+              _rvolFromWebull:true,
+            };
+          }
+        }
+        // Also add to scanner if passes P1+P2 and not seen yet
+        if(!seenSyms.has(sym)){
+          seenSyms.add(sym);
+          const px=parseFloat(item.price||item.last_price||0);
+          const chgPct=parseFloat(item.change_ratio||item.change_pct||0)*
+            (Math.abs(parseFloat(item.change_ratio||0))>1?1:100);
+          if(px>=minP&&px<=maxP&&chgPct>=minC){
+            if(!Q[sym]||Date.now()-(Q[sym]._ts||0)>20000){
+              Q[sym]={symbol:sym,price:px,changePct:chgPct,
+                volume:parseFloat(item.volume||0),_ts:Date.now(),_fromWebull:true};
+            }
+            if(!scanSyms.includes(sym)){
+              scanSyms.push(sym);saveScanSyms();
+              newSyms.set(sym,{ts:Date.now(),source:'wb'});
+              showToast('📊 Webull RVOL: '+sym+' +'+(chgPct.toFixed(1))+'%');
+              playPing();liveScanUpdate();
+              setTimeout(startDeepScan,500);
+            }
+          }
+        }
+      }
+    }
+
+    document.getElementById('scanStatus').textContent=
+      '⚡ Webull live — '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    liveScanUpdate();
+
+  }catch(e){
+    // Worker unreachable — silent fallback to seed scan
+    console.warn('Webull Worker error, falling back to seed scan:',e);
+  }finally{
+    _webullScanRunning=false;
   }
-  scanDeepRunning=false;
-  const now=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  document.getElementById('scanStatus').textContent='⚡ Last scan: '+now;
-  liveScanUpdate();
-}
-let deepScanCountdown=30;
-setInterval(async()=>{
-  deepScanCountdown--;
-  if(deepScanCountdown<=0){deepScanCountdown=30;await startDeepScan();}
-  else{const el=document.getElementById('scanStatus');if(el&&!scanDeepRunning)el.textContent='⚡ Next scan in '+deepScanCountdown+'s';}
-},1000);
-
-['f-minp','f-maxp','f-chg'].forEach(id=>{
-  document.addEventListener('DOMContentLoaded',()=>{
-    const el=document.getElementById(id);if(el)el.addEventListener('input',()=>liveScanUpdate());
-  });
-});
-
-// ═══ BOTTOM CHART PANEL + TRADINGVIEW POP-OUT (unchanged logic) ═══
-function openChartPanel(sym){
-  let tvSym=sym;if(sym==='BTC/USD')tvSym='BINANCE:BTCUSDT';else if(sym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
-  curChartSym=sym;
-  document.getElementById('chartPanel').style.display='flex';
-  document.getElementById('cpSym').textContent=sym;
-  document.getElementById('cpLabel').textContent='Click to pop out full chart →';
-  updateCPPrice();
-}
-function updateCPPrice(){
-  if(!curChartSym)return;const q=Q[curChartSym];if(!q)return;
-  const u=(q.changePct||0)>=0;
-  const px=document.getElementById('cpPx'),chg=document.getElementById('cpChg');
-  if(px){px.textContent='$'+fmtP(q.price);px.className='cp-px '+(u?'up':'dn');}
-  if(chg){chg.textContent=(u?'+':'')+(q.changePct||0).toFixed(2)+'%';chg.className='cp-chg '+(u?'up':'dn');}
-}
-// User's own saved TradingView layout — a 3-pane chart with each pane set to
-// a different interval. Navigate TO this exact chart ID every time instead
-// of generating a fresh throwaway chart, so the saved layout and per-pane
-// intervals survive across every POP OUT click. Reuse the SAME window via
-// location.href — never close/recreate it and never use &clear=1.
-const SAVED_LAYOUT_ID='7ghMFdhC';
-let _tvWin=null;
-function openTVPopup(){
-  if(!curChartSym){showToast('Select a stock first');return;}
-  let tvSym=curChartSym;if(curChartSym==='BTC/USD')tvSym='BINANCE:BTCUSDT';else if(curChartSym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
-  const base='https://www.tradingview.com/chart/'+SAVED_LAYOUT_ID+'/?symbol='+encodeURIComponent(tvSym);
-  const sw=screen.availWidth,sh=screen.availHeight;const cw=Math.floor(sw*0.9),ch=Math.floor(sh*0.9);const ol=Math.floor((sw-cw)/2),ot=Math.floor((sh-ch)/2);
-  const feat='width='+cw+',height='+ch+',left='+ol+',top='+ot+',resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no';
-  if(_tvWin&&!_tvWin.closed){_tvWin.location.href=base;_tvWin.focus();}
-  else{_tvWin=window.open(base,'tvChartWin',feat);}
 }
 
-// ═══ UNIVERSE AUTO-SCAN ═══
-// Cycles through ~150 known small-cap momentum symbols, checking P1+P2
-// every few seconds. Any symbol passing both gets auto-added to the scanner
-// with a toast + ping — no manual input needed to find live movers.
+// ═══ SEED UNIVERSE FALLBACK ═══
+// Runs in parallel as a safety net — catches symbols that Webull's top-50
+// list might miss (e.g. a small-cap gapping on thin pre-market volume).
 const SEED_UNIVERSE=[
   'MARA','RIOT','CLSK','HUT','BTBT','CIFR','IREN','WULF','CORZ','BITF',
   'PLUG','FCEL','BLNK','CHPT','EVGO','PTRA','GOEV','NKLA','MULN','WKHS',
@@ -523,26 +547,22 @@ const SEED_UNIVERSE=[
   'SOXL','TQQQ','UVXY','LABU','SQQQ','TNA','NUGT','SOXS','FNGU','TECL',
   'IWM','SPXU','SDOW','TECS','DPST','HIBL','HIBS','FNGD','DUST','NAIL',
   'CUPR','VSME','DSY','AZI','NOK','BB','ACB','CGC','TLRY',
-  'HEXO','AUVI','DRUG','IDEX','AEHR','GDHG','PRME','EDSA','HITI','AIXI',
+  'HEXO','AUVI','DRUG','IDEX','AEHR','GDHG','HITI','AIXI',
 ];
-async function loadUniverse(){
-  // SEC EDGAR CORS-blocked — seed list is the real working universe.
-  _universe=SEED_UNIVERSE;
-  _uniLoaded=true;
-}
-async function runUniverseScan(){
-  if(!appReady||_uniRunning||!_uniLoaded)return;
+async function runSeedScan(){
+  if(!appReady||_uniRunning)return;
   const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
   const mins=et.getHours()*60+et.getMinutes();
-  if(mins<240||mins>1200)return; // only 4AM–8PM ET
+  if(mins<240||mins>1200)return;
   _uniRunning=true;
   const sess=getSession();
   const minC=sess==='pre'||sess==='aft'?5:10;
-  const list=_universe.length?_universe:SEED_UNIVERSE;
+  const minP=parseFloat(document.getElementById('f-minp').value)||1;
+  const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
   const batch=[];
   for(let i=0;i<8;i++){
-    const sym=list[_uniIdx%list.length];
-    _uniIdx=(_uniIdx+1)%list.length;
+    const sym=SEED_UNIVERSE[_uniIdx%SEED_UNIVERSE.length];
+    _uniIdx=(_uniIdx+1)%SEED_UNIVERSE.length;
     if(scanSyms.includes(sym))continue;
     if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<60000)continue;
     batch.push(sym);
@@ -551,10 +571,10 @@ async function runUniverseScan(){
     try{
       await fetchQDirect(sym);
       const q=Q[sym];if(!q?.price)return;
-      if(q.price>=1&&q.price<=20&&(q.changePct||0)>=minC){
+      if(q.price>=minP&&q.price<=maxP&&(q.changePct||0)>=minC){
         if(!scanSyms.includes(sym)){
           scanSyms.push(sym);saveScanSyms();
-          newSyms.set(sym,Date.now());
+          newSyms.set(sym,{ts:Date.now(),source:'seed'});
           if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
           showToast('🔥 Auto-found: '+sym+' +'+(q.changePct||0).toFixed(1)+'% $'+fmtP(q.price));
           playPing();liveScanUpdate();
@@ -565,23 +585,112 @@ async function runUniverseScan(){
   _uniRunning=false;
 }
 function startUniverseScan(){
-  if(_uniStarted)return;
-  _uniStarted=true;
-  _universe=SEED_UNIVERSE;
-  _uniLoaded=true;
-  setTimeout(loadUniverse,20000);
+  if(_uniStarted)return;_uniStarted=true;
+  // Webull scan: every 30 seconds (entire market)
   setTimeout(()=>{
-    runUniverseScan();
-    setInterval(runUniverseScan,3000);
+    runWebullScan();
+    setInterval(runWebullScan,30000);
   },12000);
+  // Seed scan: every 3 seconds (known small-caps, fallback)
+  setTimeout(()=>{
+    runSeedScan();
+    setInterval(runSeedScan,3000);
+  },15000);
+}
+
+// ═══ DEEP SCAN — P3 (news) + P4 (RVOL) + P5 (float) via Finnhub ═══
+async function startDeepScan(){
+  if(!appReady||scanDeepRunning)return;scanDeepRunning=true;
+  document.getElementById('scanStatus').textContent='⚡ Deep scanning…';
+  const sess=getSession();const rvThreshold=sess==='pre'?2:sess==='aft'?1.5:5;const minC=sess==='pre'||sess==='aft'?5:10;
+  const etNow=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));const mktOpen=new Date(etNow);mktOpen.setHours(9,30,0,0);const minsElapsed=sess==='mkt'?Math.max(1,(etNow-mktOpen)/60000):390;
+  for(const sym of scanSyms){
+    try{
+      if(!Q[sym])await fetchQ(sym);const q=Q[sym];if(!q?.price)continue;
+      const p1=q.price>=1&&q.price<=20,p2=(q.changePct||0)>=minC;if(!p1||!p2)continue;
+      const cached=scanCache[sym]||{};if(Date.now()-(cached.ts||0)<120000)continue;
+      if(_deepBadSyms[sym]&&Date.now()-_deepBadSyms[sym]<300000)continue;
+      let hasNews=cached.hasNews??false,p3=cached.p3??null,p4=cached.p4??null,p5=cached.p5??null;
+      let hitLimit=false;
+      await queueCall(async()=>{try{const today=new Date().toISOString().split('T')[0];const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];const r=await fetch('https://finnhub.io/api/v1/company-news?symbol='+sym+'&from='+from+'&to='+today+'&token='+FHK);if(r.status===403||r.status===429){p3=null;hitLimit=true;return;}const news=await r.json();hasNews=Array.isArray(news)&&news.length>0;p3=hasNews;}catch(e){p3=null;}});
+      // Only fetch Finnhub RVOL if Webull didn't already give us a real value
+      if(!scanCache[sym]?._rvolFromWebull){
+        await queueCall(async()=>{try{
+          const r=await fetch('https://finnhub.io/api/v1/stock/metric?symbol='+sym+'&metric=all&token='+FHK);
+          if(r.status===403||r.status===429){p4=null;p5=null;hitLimit=true;return;}
+          const d=await r.json();const m=d.metric||{};
+          const avgDailyVol=(m['10DayAverageTradingVolume']||0)*1e6;
+          if(avgDailyVol>0){const normalizedRVol=(q.volume/avgDailyVol)*(390/minsElapsed);p4=normalizedRVol>=rvThreshold;scanCache[sym]={...scanCache[sym],rvolValue:normalizedRVol.toFixed(1)};}
+          else{p4=(q.changePct||0)>=20;scanCache[sym]={...scanCache[sym],rvolValue:'est'};}
+          const trueFloat=m['shareFloat']??m['float']??null;
+          if(trueFloat!==null){const floatM=trueFloat>1000?trueFloat/1e6:trueFloat;p5=floatM<10;scanCache[sym]={...scanCache[sym],floatValue:floatM.toFixed(1)+'M'};}
+          else{p5=null;scanCache[sym]={...scanCache[sym],floatValue:'—'};}
+        }catch(e){p4=null;p5=null;}});
+      } else {
+        // Webull gave us RVOL — still get float from Finnhub
+        await queueCall(async()=>{try{
+          const r=await fetch('https://finnhub.io/api/v1/stock/metric?symbol='+sym+'&metric=all&token='+FHK);
+          if(r.status===403||r.status===429){hitLimit=true;return;}
+          const d=await r.json();const m=d.metric||{};
+          const trueFloat=m['shareFloat']??m['float']??null;
+          if(trueFloat!==null){const floatM=trueFloat>1000?trueFloat/1e6:trueFloat;p5=floatM<10;scanCache[sym]={...scanCache[sym],floatValue:floatM.toFixed(1)+'M'};}
+          else{p5=null;}
+          // Keep the p4 value Webull gave us
+          p4=scanCache[sym]?.p4??null;
+        }catch(e){}});
+      }
+      if(hitLimit)_deepBadSyms[sym]=Date.now();
+      scanCache[sym]={...scanCache[sym],p3,p4,p5,hasNews,ts:Date.now()};
+    }catch(e){}
+  }
+  scanDeepRunning=false;
+  const now=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('scanStatus').textContent='⚡ Last scan: '+now;
+  liveScanUpdate();
+}
+let deepScanCountdown=30;
+setInterval(async()=>{
+  deepScanCountdown--;
+  if(deepScanCountdown<=0){deepScanCountdown=30;await startDeepScan();}
+  else{const el=document.getElementById('scanStatus');if(el&&!scanDeepRunning&&!_webullScanRunning)el.textContent='⚡ Next scan in '+deepScanCountdown+'s';}
+},1000);
+
+['f-minp','f-maxp','f-chg'].forEach(id=>{
+  document.addEventListener('DOMContentLoaded',()=>{
+    const el=document.getElementById(id);if(el)el.addEventListener('input',()=>liveScanUpdate());
+  });
+});
+
+// ═══ CHART PANEL + TRADINGVIEW POP-OUT ═══
+function openChartPanel(sym){
+  curChartSym=sym;
+  document.getElementById('chartPanel').style.display='flex';
+  document.getElementById('cpSym').textContent=sym;
+  document.getElementById('cpLabel').textContent='Click to pop out full chart →';
+  updateCPPrice();
+}
+function updateCPPrice(){
+  if(!curChartSym)return;const q=Q[curChartSym];if(!q)return;
+  const u=(q.changePct||0)>=0;
+  const px=document.getElementById('cpPx'),chg=document.getElementById('cpChg');
+  if(px){px.textContent='$'+fmtP(q.price);px.className='cp-px '+(u?'up':'dn');}
+  if(chg){chg.textContent=(u?'+':'')+(q.changePct||0).toFixed(2)+'%';chg.className='cp-chg '+(u?'up':'dn');}
+}
+const SAVED_LAYOUT_ID='7ghMFdhC';
+let _tvWin=null;
+function openTVPopup(){
+  if(!curChartSym){showToast('Select a stock first');return;}
+  let tvSym=curChartSym;if(curChartSym==='BTC/USD')tvSym='BINANCE:BTCUSDT';else if(curChartSym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
+  const base='https://www.tradingview.com/chart/'+SAVED_LAYOUT_ID+'/?symbol='+encodeURIComponent(tvSym);
+  const sw=screen.availWidth,sh=screen.availHeight;const cw=Math.floor(sw*0.9),ch=Math.floor(sh*0.9);const ol=Math.floor((sw-cw)/2),ot=Math.floor((sh-ch)/2);
+  const feat='width='+cw+',height='+ch+',left='+ol+',top='+ot+',resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no';
+  if(_tvWin&&!_tvWin.closed){_tvWin.location.href=base;_tvWin.focus();}
+  else{_tvWin=window.open(base,'tvChartWin',feat);}
 }
 
 // ═══ CLAUDE ASSISTANT ═══
-// Read-only: this only reads scanSyms/Q/scanCache, already in memory from
-// the scanner engine above. It never writes to any of that state, so it
-// cannot affect scanning, scoring, or live prices in any way.
 let claudeOpen=false;
-let claudeHistory=[]; // {role,content} pairs for this session only — resets on reload
+let claudeHistory=[];
 let claudeKey=localStorage.getItem('sv_claude_key')||'';
 function toggleClaude(){
   claudeOpen=!claudeOpen;
@@ -600,7 +709,7 @@ function saveClaudeKey(){
   claudeKey=key;localStorage.setItem('sv_claude_key',key);
   document.getElementById('claudeKeyRow').style.display='none';
   inp.value='';
-  addClaudeMsg('assistant','Key saved! Ask me things like "what looks good right now" or hit Deep Scan Summary below.');
+  addClaudeMsg('assistant','Key saved! Ask me anything about your live scanner data.');
 }
 function addClaudeMsg(role,text){
   claudeHistory.push({role,content:text});
@@ -613,8 +722,6 @@ function addClaudeMsg(role,text){
   el.scrollTop=el.scrollHeight;
 }
 function buildScannerSnapshot(){
-  // Every symbol currently tracked, including ones that haven't passed
-  // P1/P2 yet — Claude needs to see the failures too, not just winners.
   const minP=parseFloat(document.getElementById('f-minp').value)||1;
   const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
   const minC=parseFloat(document.getElementById('f-chg').value)||10;
@@ -623,87 +730,59 @@ function buildScannerSnapshot(){
     if(!q?.price)return sym+': no price data loaded yet';
     const c=scanCache[sym]||{};
     const p1=q.price>=minP&&q.price<=maxP,p2=(q.changePct||0)>=minC;
+    const src=newSyms.get(sym)?.source||'manual';
     const pillarStr=(v,label)=>label+'='+(v===true?'PASS':v===false?'FAIL':'pending');
-    return sym+': $'+fmtP(q.price)+', '+(q.changePct>=0?'+':'')+(q.changePct||0).toFixed(1)+'%, '
-      +pillarStr(p1,'P1-price')+', '+pillarStr(p2,'P2-change')+', '+pillarStr(c.p3,'P3-news')+', '
-      +pillarStr(c.p4,'P4-RVOL')+(c.rvolValue?'('+c.rvolValue+'x)':'')+', '
-      +pillarStr(c.p5,'P5-float')+(c.floatValue?'('+c.floatValue+')':'')+', score='
+    return sym+'['+src+']: $'+fmtP(q.price)+', '+(q.changePct>=0?'+':'')+(q.changePct||0).toFixed(1)+'%, '
+      +pillarStr(p1,'P1')+', '+pillarStr(p2,'P2')+', '+pillarStr(c.p3,'P3')+', '
+      +pillarStr(c.p4,'P4')+(c.rvolValue?'('+c.rvolValue+'x)':'')+', '
+      +pillarStr(c.p5,'P5')+(c.floatValue?'('+c.floatValue+')':'')+', score='
       +[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length+'/5';
   });
-  return lines.length?lines.join('\n'):'No symbols currently tracked in the scanner.';
+  return lines.length?lines.join('\n'):'No symbols currently tracked.';
 }
 async function askClaude(question){
-  if(!claudeKey){
-    document.getElementById('claudeKeyRow').style.display='flex';
-    showToast('Paste your Anthropic API key first');
-    return;
-  }
-  addClaudeMsg('user',question);
-  addClaudeMsg('assistant','…thinking…');
+  if(!claudeKey){document.getElementById('claudeKeyRow').style.display='flex';showToast('Paste your Anthropic API key first');return;}
+  addClaudeMsg('user',question);addClaudeMsg('assistant','…thinking…');
   const thinkingEl=document.getElementById('claudeMsgs').lastChild;
   try{
     const snapshot=buildScannerSnapshot();
-    const sysPrompt='You are a trading assistant embedded in a live 5 Pillars momentum scanner (Ross Cameron strategy: P1 price $1-$20, P2 %change, P3 news catalyst, P4 relative volume, P5 float<10M). '
-      +'Current live scanner data:\n'+snapshot+'\n\n'
-      +'Answer the user\'s question using ONLY this real data. Be direct and specific — name actual tickers and numbers. '
-      +'If something is pending/unscored, say so plainly rather than guessing. Keep it concise.';
-    const r=await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:sysPrompt,messages:[{role:'user',content:question}]})
-    });
+    const sysPrompt='You are a trading assistant embedded in a live 5 Pillars momentum scanner (Ross Cameron strategy: P1 price $1-$20, P2 %change, P3 news catalyst, P4 RVOL, P5 float<10M). Source codes: wb=Webull live scan (entire market, SIP-grade data), seed=seed universe fallback, manual=user-added. Current live data:\n'+snapshot+'\n\nBe direct, name tickers and numbers. If pending say so.';
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:sysPrompt,messages:[{role:'user',content:question}]})});
     const data=await r.json();
-    if(data.error){
-      thinkingEl.innerHTML='<b>Claude:</b> API error: '+(data.error.message||data.error.type)+'. Check your key is correct and has credits.';
-      claudeHistory[claudeHistory.length-1].content=thinkingEl.textContent;
-      document.getElementById('claudeMsgs').scrollTop=document.getElementById('claudeMsgs').scrollHeight;
-      return;
-    }
-    const text=data?.content?.map(b=>b.text||'').join('\n').trim()||'No response received.';
+    if(data.error){thinkingEl.innerHTML='<b>Claude:</b> API error: '+(data.error.message||data.error.type);claudeHistory[claudeHistory.length-1].content=thinkingEl.textContent;document.getElementById('claudeMsgs').scrollTop=document.getElementById('claudeMsgs').scrollHeight;return;}
+    const text=data?.content?.map(b=>b.text||'').join('\n').trim()||'No response.';
     thinkingEl.innerHTML='<b>Claude:</b> '+text.replace(/\n/g,'<br>');
     claudeHistory[claudeHistory.length-1].content=text;
-  }catch(e){
-    thinkingEl.innerHTML='<b>Claude:</b> Something went wrong reaching the assistant. Try again in a moment.';
-  }
+  }catch(e){thinkingEl.innerHTML='<b>Claude:</b> Something went wrong. Try again.';}
   document.getElementById('claudeMsgs').scrollTop=document.getElementById('claudeMsgs').scrollHeight;
 }
 
 // ═══ INIT ═══
 async function init(){
-  // One-time migration: wipe the old dashboard's sv_scan key so leftover
-  // test symbols from previous sessions never silently appear. Run once
-  // and stamp a flag so this never fires again.
   if(!localStorage.getItem('sv_v1_migrated')){
-    localStorage.removeItem('sv_scan');    // old dashboard's key
-    localStorage.removeItem('sv_scan_v1'); // reset our own key too, truly fresh start
-    scanSyms=[];
-    // Also clear the Supabase watchlist column so cloud sync doesn't restore old data
+    localStorage.removeItem('sv_scan');localStorage.removeItem('sv_scan_v1');scanSyms=[];
     const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
     if(token&&uid)sf('/rest/v1/profiles?id=eq.'+uid,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},body:JSON.stringify({watchlist:[]})}).catch(()=>{});
     localStorage.setItem('sv_v1_migrated','1');
   }
-  // One-time cleanup: remove any non-US-exchange tickers (.V, .TO, .HK, etc.)
   scanSyms=scanSyms.filter(s=>!s.includes('.')||s==='BTC/USD'||s==='ETH/USD');
-  saveScanSyms();
-  renderScanTags();liveScanUpdate();
+  saveScanSyms();renderScanTags();liveScanUpdate();
   connectFinnhubWS();
   const toFetch=scanSyms.filter(s=>!Q[s]?.price);
   const statusEl=document.getElementById('scanStatus');
   for(let i=0;i<toFetch.length;i++){
     const sym=toFetch[i];
     if(statusEl)statusEl.textContent='⚡ Loading prices… '+(i+1)+'/'+toFetch.length+' ('+sym+')';
-    await fetchQDirect(sym);
-    liveScanUpdate();
+    await fetchQDirect(sym);liveScanUpdate();
     await new Promise(r=>setTimeout(r,1100));
   }
   appReady=true;liveScanUpdate();
-  pullWatchlistFromCloud(); // background — doesn't block local rendering above
+  pullWatchlistFromCloud();
   setTimeout(startDeepScan,3000);
-  startUniverseScan(); // begin auto-finding momentum stocks from seed universe
+  startUniverseScan();
   setInterval(()=>{if(appReady)liveScanUpdate();},15000);
 }
 
-// Defeats iOS bfcache restoring a frozen old snapshot of the page.
 window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
 if(checkAuth())init();
 </script>
