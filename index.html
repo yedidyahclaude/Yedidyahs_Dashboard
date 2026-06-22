@@ -154,6 +154,7 @@ input,button,textarea{font-family:inherit}
 .src-badge{font-size:7px;font-weight:800;padding:1px 4px;border-radius:3px;letter-spacing:.05em;flex-shrink:0}
 .src-wb{background:#3b82f620;color:#60a5fa;border:1px solid #3b82f640}
 .src-sd{background:#8b5cf620;color:#a78bfa;border:1px solid #8b5cf640}
+.src-fp{background:#10b98120;color:#34d399;border:1px solid #10b98140}
 .news-dot{font-size:10px;flex-shrink:0}
 .pmh-badge{font-size:9px;font-weight:700;color:var(--sky);font-family:'DM Mono',monospace;flex-shrink:0;opacity:.8}
 .halt-badge{font-size:7px;font-weight:800;padding:1px 4px;border-radius:3px;background:#f0506e22;color:var(--rd);border:1px solid #f0506e40;flex-shrink:0;animation:haltPulse 1.2s ease-in-out infinite}
@@ -394,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v2.8</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v2.9</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -466,8 +467,8 @@ input,button,textarea{font-family:inherit}
         </div>
 
         <div class="scan-add">
-          <input id="addSymInp" type="text" placeholder="Saw it on Webull? Type ticker to instant-check all 5 pillars…" onkeydown="if(event.key==='Enter')addScanSym()"/>
-          <button onclick="addScanSym()">Check →</button>
+          <input id="addSymInp" type="text" placeholder="Paste tickers: GETY, SAGT, EHGO or just one — press Enter to add + score all 5 pillars" onkeydown="if(event.key==='Enter')addScanSyms()"/>
+          <button onclick="addScanSyms()">Check →</button>
         </div>
 
         <div class="scan-tags-wrap" id="scanTagsWrap" style="display:none">
@@ -915,7 +916,34 @@ async function selectSym(sym){
   setTimeout(startDeepScan,200);
 }
 function saveScanSyms(){localStorage.setItem('sv_scan_v1',JSON.stringify(scanSyms));syncWatchlistToCloud();}
-function addScanSym(){const inp=document.getElementById('addSymInp');const sym=inp.value.toUpperCase().trim();if(!sym)return;inp.value='';selectSym(sym);}
+
+// Single add (kept for internal use)
+function addScanSym(sym){if(sym)selectSym(sym);}
+
+// Bulk add — accepts comma/space/newline separated tickers
+// e.g. "GETY, SAGT, EHGO" or pasted from anywhere
+function addScanSyms(){
+  const inp=document.getElementById('addSymInp');
+  const raw=inp.value.trim();
+  if(!raw)return;
+  inp.value='';
+  // Split on commas, spaces, newlines — filter empty + non-US
+  const syms=[...new Set(
+    raw.split(/[\s,\n]+/)
+      .map(s=>s.toUpperCase().trim())
+      .filter(s=>s.length>0&&s.length<=6&&!s.includes('.'))
+  )];
+  if(!syms.length)return;
+  if(syms.length===1){selectSym(syms[0]);return;}
+  // Multiple symbols — add all, show count toast
+  showToast('📋 Adding '+syms.length+' symbols…');
+  syms.forEach((sym,i)=>{
+    setTimeout(()=>{
+      selectSym(sym);
+      if(i===syms.length-1)showToast('✅ Added '+syms.length+' symbols — scoring in progress');
+    },i*150); // stagger slightly to avoid race conditions
+  });
+}
 function rmScanSym(sym,e){if(e)e.stopPropagation();scanSyms=scanSyms.filter(s=>s!==sym);saveScanSyms();delete scanCache[sym];symMeta.delete(sym);delete failTimer[sym];liveScanUpdate();}
 function clearAllSyms(){if(!confirm('Remove all symbols from scanner?'))return;scanSyms=[];saveScanSyms();scanCache={};symMeta.clear();failTimer={};liveScanUpdate();}
 function toggleFilters(){
@@ -1077,7 +1105,9 @@ function liveScanUpdate(){
     const isFresh=now-r.addedTs<FRESH_MS;
     const isPinned=starredSyms.has(r.sym);
     const pending=r.p3===null&&r.p4===null&&r.p5===null;
-    const srcBadge=r.src==='wb'?'<span class="src-badge src-wb">WB</span>':r.src==='seed'?'<span class="src-badge src-sd">SD</span>':'';
+    const srcBadge=r.src==='wb'?'<span class="src-badge src-wb">WB</span>':
+      r.src==='fp'?'<span class="src-badge src-fp">FP</span>':
+      r.src==='seed'?'<span class="src-badge src-sd">SD</span>':'';
     const rvNum=r.rv||0;
     const rvClass=rvNum>=10?'fire':rvNum>=5?'hot':'';
     const rvLabel=rvNum>0?rvNum.toFixed(1)+'x':'—';
@@ -1255,7 +1285,51 @@ async function runWebullScan(){
   finally{_webullScanRunning=false;}
 }
 
-// ═══ SEED FALLBACK ═══
+// ═══ FMP LIVE SCAN — NYSE + Nasdaq + AMEX coverage ═══
+// Runs in parallel with Webull. Catches NYSE stocks like GETY that
+// Webull's OpenAPI misses due to exchange/subscription limitations.
+let _fmpScanRunning=false;
+async function runFmpScan(){
+  if(!appReady||_fmpScanRunning)return;
+  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const mins=et.getHours()*60+et.getMinutes();
+  if(mins<240||mins>1200)return;
+  _fmpScanRunning=true;
+  const sess=getSession();
+  const minC=sess==='pre'||sess==='aft'?5:10;
+  const minP=parseFloat(document.getElementById('f-minp').value)||1;
+  const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
+  try{
+    const resp=await fetch(WORKER_URL+'/fmp-gainers').catch(()=>null);
+    if(!resp?.ok){_fmpScanRunning=false;return;}
+    const items=await resp.json().catch(()=>null);
+    if(!Array.isArray(items)){_fmpScanRunning=false;return;}
+    for(const item of items){
+      const sym=(item.symbol||'').toUpperCase().trim();
+      if(!sym||sym.includes('.'))continue;
+      const px=parseFloat(item.price||0);
+      const chgPct=parseFloat(item.change_ratio||0);
+      if(!px)continue;
+      // Update Q if we don't have fresh data
+      if(!Q[sym]||Date.now()-(Q[sym]._ts||0)>30000){
+        Q[sym]={symbol:sym,price:px,changePct:chgPct,volume:parseFloat(item.volume||0),
+          prevClose:parseFloat(item.pre_close||px),_ts:Date.now(),_fromFmp:true};
+      }
+      if(!pmHigh[sym]||px>pmHigh[sym])pmHigh[sym]=px;
+      if(px>=minP&&px<=maxP&&chgPct>=minC&&!scanSyms.includes(sym)){
+        scanSyms.push(sym);saveScanSyms();
+        symMeta.set(sym,{ts:Date.now(),source:'fp',addedTs:Date.now()});
+        if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
+        playPing('new');
+        showToast('🟢 FMP: '+sym+' +'+chgPct.toFixed(1)+'% · $'+fmtP(px));
+        addLog('new',sym,'+'+chgPct.toFixed(1)+'% $'+fmtP(px)+' — FMP (NYSE/NAS/AMEX)');
+        liveScanUpdate();
+        setTimeout(startDeepScan,500);
+      }
+    }
+  }catch(e){console.warn('FMP scan error:',e);}
+  finally{_fmpScanRunning=false;}
+}
 const SEED_UNIVERSE=[
   'MARA','RIOT','CLSK','HUT','BTBT','CIFR','IREN','WULF','CORZ','BITF',
   'PLUG','FCEL','BLNK','CHPT','EVGO','PTRA','GOEV','NKLA','MULN','WKHS',
@@ -1315,7 +1389,13 @@ function startUniverseScan(){
   function scheduleNextWebull(){
     setTimeout(()=>{runWebullScan();scheduleNextWebull();},getWebullInterval());
   }
+  // FMP scan: every 30s — covers NYSE/AMEX that Webull API misses
+  // Staggered 15s after Webull so they don't fire simultaneously
+  function scheduleNextFmp(){
+    setTimeout(()=>{runFmpScan();scheduleNextFmp();},30000);
+  }
   setTimeout(()=>{runWebullScan();scheduleNextWebull();},12000);
+  setTimeout(()=>{runFmpScan();scheduleNextFmp();},27000); // staggered 15s
   setTimeout(()=>{runSeedScan();setInterval(runSeedScan,3000);},15000);
 }
 
