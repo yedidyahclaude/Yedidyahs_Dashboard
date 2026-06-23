@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.0</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.1</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -436,6 +436,8 @@ input,button,textarea{font-family:inherit}
           <div class="flt-g"><span class="flt-l">Min RVOL</span><input class="flt-i" type="number" value="2" step="0.5" id="f-rvol"/></div>
           <div class="flt-divider"></div>
           <div class="flt-g"><span class="flt-l">Auto-remove (min)</span><input class="flt-i" type="number" value="5" min="1" max="60" id="f-autorm"/></div>
+          <div class="flt-divider"></div>
+          <div class="flt-g"><span class="flt-l">Max shown</span><input class="flt-i" type="number" value="20" min="5" max="100" id="f-maxshow" title="Max symbols shown in scanner — tracked symbols continue scoring silently"/></div>
           <div class="sess-threshold">
             <span class="flt-l">Active Threshold</span>
             <span class="thresh-val cls" id="sessThreshold">—</span>
@@ -928,11 +930,11 @@ function addScanSyms(){
   const raw=inp.value.trim();
   if(!raw)return;
   inp.value='';
-  // Split on commas, spaces, newlines — filter empty + non-US
+  // Split on commas, spaces, newlines — filter empty + non-US + typos
   const syms=[...new Set(
     raw.split(/[\s,\n]+/)
       .map(s=>s.toUpperCase().trim())
-      .filter(s=>s.length>0&&s.length<=6&&!s.includes('.'))
+      .filter(s=>s.length>=1&&s.length<=5&&/^[A-Z]+$/.test(s)) // only 1-5 uppercase letters, no numbers/special chars
   )];
   if(!syms.length)return;
   if(syms.length===1){selectSym(syms[0]);return;}
@@ -1094,6 +1096,7 @@ function liveScanUpdate(){
     if(empty)empty.style.display='flex';if(rows)rows.innerHTML='';if(sortBar)sortBar.style.display='none';return;
   }
   if(empty)empty.style.display='none';if(sortBar)sortBar.style.display='grid';
+
   const FRESH_MS=90000;
   results.sort((a,b)=>{
     // Pinned/starred always float to absolute top
@@ -1113,8 +1116,14 @@ function liveScanUpdate(){
     }
     return sortDir*(bv-av);
   });
+
+  // Apply max display cap AFTER sorting — top N shown, rest tracked silently
+  const maxShow=parseInt(document.getElementById('f-maxshow')?.value)||20;
+  const displayResults=results.slice(0,maxShow);
+  const hiddenCount=results.length-displayResults.length;
+  if(countEl&&hiddenCount>0)countEl.textContent=displayResults.length+'/'+results.length;
   const pd=v=>v===true?'pass':v===false?'fail':'na';
-  rows.innerHTML=results.map(r=>{
+  rows.innerHTML=displayResults.map(r=>{
     const u=(r.q.changePct||0)>=0;
     const sc=r.halted?'halted':r.score>=5?'score5':r.score>=4?'score4':'score3';
     const isFresh=now-r.addedTs<FRESH_MS;
@@ -1485,7 +1494,7 @@ setInterval(async()=>{
   if(deepScanCountdown<=0){deepScanCountdown=30;await startDeepScan();}
   else{const el=document.getElementById('scanStatus');if(el&&!scanDeepRunning&&!_webullScanRunning)el.textContent='Next scan '+deepScanCountdown+'s';}
 },1000);
-['f-minp','f-maxp','f-chg','f-rvol','f-autorm'].forEach(id=>{
+['f-minp','f-maxp','f-chg','f-rvol','f-autorm','f-maxshow'].forEach(id=>{
   const el=document.getElementById(id);if(el)el.addEventListener('input',()=>liveScanUpdate());
 });
 
