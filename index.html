@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v2.9</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.0</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -474,6 +474,7 @@ input,button,textarea{font-family:inherit}
         <div class="scan-tags-wrap" id="scanTagsWrap" style="display:none">
           <div class="scan-tags" id="scanTags"></div>
           <button class="tags-clear" onclick="clearAllSyms()">Clear all</button>
+          <button class="tags-clear" onclick="forceRescan()" style="color:var(--ac2);border-color:var(--ac)">↺ Reload</button>
         </div>
 
         <div class="scan-list" id="scanList">
@@ -945,7 +946,21 @@ function addScanSyms(){
   });
 }
 function rmScanSym(sym,e){if(e)e.stopPropagation();scanSyms=scanSyms.filter(s=>s!==sym);saveScanSyms();delete scanCache[sym];symMeta.delete(sym);delete failTimer[sym];liveScanUpdate();}
-function clearAllSyms(){if(!confirm('Remove all symbols from scanner?'))return;scanSyms=[];saveScanSyms();scanCache={};symMeta.clear();failTimer={};liveScanUpdate();}
+function clearAllSyms(){
+  scanSyms=[];saveScanSyms();scanCache={};symMeta.clear();failTimer={};
+  liveScanUpdate();
+  // Immediately trigger fresh scans so list repopulates within seconds
+  showToast('🗑 Cleared — rescanning now…');
+  setTimeout(()=>{runWebullScan();},300);
+  setTimeout(()=>{runFmpScan();},600);
+  setTimeout(()=>{startDeepScan();},2000);
+}
+function forceRescan(){
+  showToast('↺ Force rescanning…');
+  runWebullScan();
+  setTimeout(()=>{runFmpScan();},500);
+  setTimeout(()=>{startDeepScan();},2000);
+}
 function toggleFilters(){
   const f=document.getElementById('scanFilters');
   const btn=document.querySelector('[onclick="toggleFilters()"]');
