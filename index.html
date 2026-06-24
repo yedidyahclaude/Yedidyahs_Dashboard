@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.2</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.3</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -951,16 +951,16 @@ function rmScanSym(sym,e){if(e)e.stopPropagation();scanSyms=scanSyms.filter(s=>s
 function clearAllSyms(){
   scanSyms=[];saveScanSyms();scanCache={};symMeta.clear();failTimer={};
   liveScanUpdate();
-  // Immediately trigger fresh scans so list repopulates within seconds
   showToast('🗑 Cleared — rescanning now…');
-  setTimeout(()=>{runWebullScan();},300);
-  setTimeout(()=>{runFmpScan();},600);
-  setTimeout(()=>{startDeepScan();},2000);
+  // Stagger to avoid duplicate calls with scheduled scan
+  setTimeout(()=>{if(!_webullScanRunning)runWebullScan();},500);
+  setTimeout(()=>{if(!_fmpScanRunning)runFmpScan();},1000);
+  setTimeout(()=>{startDeepScan();},3000);
 }
 function forceRescan(){
   showToast('↺ Force rescanning…');
-  runWebullScan();
-  setTimeout(()=>{runFmpScan();},500);
+  if(!_webullScanRunning)runWebullScan();
+  setTimeout(()=>{if(!_fmpScanRunning)runFmpScan();},500);
   setTimeout(()=>{startDeepScan();},2000);
 }
 function toggleFilters(){
@@ -1408,7 +1408,9 @@ function startUniverseScan(){
   // Adaptive scan speed: 10s pre-market, 30s market hours, 60s after hours/closed
   function getWebullInterval(){
     const sess=getSession();
-    return sess==='pre'?10000:sess==='mkt'?30000:60000;
+    // 30s pre-market, 30s market hours, 60s after hours
+    // Note: 10s was causing Webull API rate limit 429 errors
+    return sess==='aft'?60000:30000;
   }
   function scheduleNextWebull(){
     setTimeout(()=>{runWebullScan();scheduleNextWebull();},getWebullInterval());
@@ -1819,6 +1821,18 @@ async function init(){
     localStorage.setItem('sv_v1_migrated','1');
   }
   scanSyms=scanSyms.filter(s=>!s.includes('.')||s==='BTC/USD'||s==='ETH/USD');
+  // Clear symbols added more than 12 hours ago — they're from a previous session
+  // Keeps manually-pinned (starred) symbols regardless of age
+  const twelveHoursAgo=Date.now()-12*60*60*1000;
+  const staleBefore=scanSyms.filter(s=>{
+    const meta=symMeta.get(s);
+    return meta&&meta.addedTs<twelveHoursAgo&&!starredSyms.has(s);
+  });
+  if(staleBefore.length){
+    scanSyms=scanSyms.filter(s=>!staleBefore.includes(s));
+    staleBefore.forEach(s=>{delete scanCache[s];symMeta.delete(s);});
+    showToast('🗑 Cleared '+staleBefore.length+' symbols from previous session');
+  }
   saveScanSyms();liveScanUpdate();updateSortArrows();
   // Pulse panel open by default
   document.getElementById('pulsePanel').style.display='flex';
