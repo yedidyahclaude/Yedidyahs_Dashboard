@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.1</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.2</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -1430,7 +1430,25 @@ async function startDeepScan(){
   if(statusEl)statusEl.textContent='Scanning P3/P4/P5…';
   const sess=getSession();const rvThreshold=sess==='pre'?2:sess==='aft'?1.5:5;const minC=sess==='pre'||sess==='aft'?5:10;
   const etNow=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));const mktOpen=new Date(etNow);mktOpen.setHours(9,30,0,0);const minsElapsed=sess==='mkt'?Math.max(1,(etNow-mktOpen)/60000):390;
-  for(const sym of [...scanSyms]){
+
+  // Smart cap: only deep-scan top 30 candidates sorted by existing score + % change
+  // This prevents Finnhub 429 rate limit errors when 100+ symbols are tracked
+  // Symbols beyond cap keep their existing P3/P4/P5 data — nothing is lost
+  const candidates=[...scanSyms]
+    .filter(sym=>{
+      const q=Q[sym];if(!q?.price)return false;
+      return q.price>=1&&q.price<=20&&(q.changePct||0)>=minC;
+    })
+    .sort((a,b)=>{
+      const ca=scanCache[a]||{},cb=scanCache[b]||{};
+      const scoreA=[true,true,ca.p3===true,ca.p4===true,ca.p5===true].filter(Boolean).length;
+      const scoreB=[true,true,cb.p3===true,cb.p4===true,cb.p5===true].filter(Boolean).length;
+      if(scoreB!==scoreA)return scoreB-scoreA;
+      return (Q[b]?.changePct||0)-(Q[a]?.changePct||0);
+    })
+    .slice(0,30); // cap at 30 — comfortably within Finnhub free 60 calls/min
+
+  for(const sym of candidates){
     try{
       if(!Q[sym])await fetchQ(sym);const q=Q[sym];if(!q?.price)continue;
       const p1=q.price>=1&&q.price<=20,p2=(q.changePct||0)>=minC;if(!p1||!p2)continue;
