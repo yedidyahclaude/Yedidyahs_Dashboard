@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.7</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.8</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -1452,8 +1452,8 @@ async function startDeepScan(){
     try{
       if(!Q[sym])await fetchQ(sym);const q=Q[sym];if(!q?.price)continue;
       const p1=q.price>=1&&q.price<=20,p2=(q.changePct||0)>=minC;if(!p1||!p2)continue;
-      const cached=scanCache[sym]||{};if(Date.now()-(cached.ts||0)<180000)continue;
-      if(_deepBadSyms[sym]&&Date.now()-_deepBadSyms[sym]<300000)continue;
+      const cached=scanCache[sym]||{};if(Date.now()-(cached.ts||0)<600000)continue; // 10min cache — prevents Finnhub 429s
+      if(_deepBadSyms[sym]&&Date.now()-_deepBadSyms[sym]<600000)continue;
       let hasNews=cached.hasNews??false,p3=cached.p3??null,p4=cached.p4??null,p5=cached.p5??null;
       let latestHeadline=cached.latestHeadline||'';
       let hitLimit=false;
@@ -1506,10 +1506,10 @@ async function startDeepScan(){
   if(statusEl)statusEl.textContent='WB live · '+now;
   liveScanUpdate();
 }
-let deepScanCountdown=30;
+let deepScanCountdown=60;
 setInterval(async()=>{
   deepScanCountdown--;
-  if(deepScanCountdown<=0){deepScanCountdown=30;await startDeepScan();}
+  if(deepScanCountdown<=0){deepScanCountdown=60;await startDeepScan();}
   else{const el=document.getElementById('scanStatus');if(el&&!scanDeepRunning&&!_webullScanRunning)el.textContent='Next scan '+deepScanCountdown+'s';}
 },1000);
 ['f-minp','f-maxp','f-chg','f-rvol','f-autorm','f-maxshow'].forEach(id=>{
