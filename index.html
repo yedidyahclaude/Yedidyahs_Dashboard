@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.5</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.6</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -593,7 +593,7 @@ function checkAuth(){if(sessionStorage.getItem('sv_token')){showApp();return tru
 function logout(){sessionStorage.clear();location.reload();}
 
 // ═══ CONFIG ═══
-const FHK='d8gla1pr01qlgcuk91o0d8gla1pr01qlgcuk91og';
+// Finnhub key moved to Worker — never expose API keys in browser code
 const WORKER_URL='https://webull-proxy.yedidyah-claude.workers.dev';
 const FH_URL='https://finnhub-proxy.yedidyah-claude.workers.dev';
 
@@ -738,11 +738,14 @@ function updateSortArrows(){
 // ═══ FINNHUB API ═══
 const apiQueue=[];let apiRunning=false;
 function queueCall(fn){return new Promise((resolve,reject)=>{apiQueue.push({fn,resolve,reject});if(!apiRunning)drainQueue();});}
-async function drainQueue(){if(apiRunning)return;apiRunning=true;while(apiQueue.length){const{fn,resolve,reject}=apiQueue.shift();try{resolve(await fn());}catch(e){reject(e);}if(apiQueue.length)await new Promise(r=>setTimeout(r,1200));}apiRunning=false;}
+async function drainQueue(){if(apiRunning)return;apiRunning=true;while(apiQueue.length){const{fn,resolve,reject}=apiQueue.shift();try{resolve(await fn());}catch(e){reject(e);}if(apiQueue.length)await new Promise(r=>setTimeout(r,1500));}apiRunning=false;}
 const _badSyms={};const _deepBadSyms={};
 async function fetchQDirect(sym){
-  if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<25000)return;
+  if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<90000)return;
   if(_badSyms[sym]&&Date.now()-_badSyms[sym]<300000)return;
+  // Skip Finnhub if we already have fresh Webull data — Webull is more accurate
+  if(Q[sym]?._fromWebull&&Date.now()-(Q[sym]._ts||0)<120000)return;
+  if(Q[sym]?._fromFmp&&Date.now()-(Q[sym]._ts||0)<120000)return;
   return queueCall(async()=>{
     try{
       const r=await fetch(FH_URL+'/quote?symbol='+sym);
@@ -756,17 +759,12 @@ async function fetchQDirect(sym){
     }catch(e){}
   });
 }
-async function fetchQ(sym){if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<25000)return;await fetchQDirect(sym);}
+async function fetchQ(sym){if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<90000)return;await fetchQDirect(sym);}
 
 function connectFinnhubWS(){
-  if(_wsGaveUp)return;
-  try{
-    fhWS=new WebSocket('wss://ws.finnhub.io?token='+FHK);
-    fhWS.onopen=()=>[...new Set(scanSyms)].forEach(s=>fhWS.send(JSON.stringify({type:'subscribe',symbol:s})));
-    fhWS.onmessage=e=>{const msg=JSON.parse(e.data);if(msg.type==='trade'&&msg.data){msg.data.forEach(t=>{const sym=t.s,px=t.p;if(!Q[sym])return;const prev=Q[sym].prevClose||px;Q[sym]={...Q[sym],price:px,change:px-prev,changePct:prev?(px-prev)/prev*100:0,high:Math.max(Q[sym].high||px,px),low:Math.min(Q[sym].low||px,px)};if(!pmHigh[sym]||px>pmHigh[sym])pmHigh[sym]=px;});debouncedScanUpdate();updateCPPrice();}};
-    fhWS.onclose=()=>{if(!_wsGaveUp)_wsGaveUp=true;};
-    fhWS.onerror=()=>fhWS.close();
-  }catch(e){_wsGaveUp=true;}
+  // WebSocket disabled — all Finnhub calls routed through Worker proxy
+  // Direct WS bypasses proxy, causes CORS + rate limit errors
+  _wsGaveUp=true;
 }
 
 // ═══ NOTES — timestamped, Supabase-synced, permanent history ═══
@@ -1455,7 +1453,7 @@ async function startDeepScan(){
     try{
       if(!Q[sym])await fetchQ(sym);const q=Q[sym];if(!q?.price)continue;
       const p1=q.price>=1&&q.price<=20,p2=(q.changePct||0)>=minC;if(!p1||!p2)continue;
-      const cached=scanCache[sym]||{};if(Date.now()-(cached.ts||0)<120000)continue;
+      const cached=scanCache[sym]||{};if(Date.now()-(cached.ts||0)<180000)continue;
       if(_deepBadSyms[sym]&&Date.now()-_deepBadSyms[sym]<300000)continue;
       let hasNews=cached.hasNews??false,p3=cached.p3??null,p4=cached.p4??null,p5=cached.p5??null;
       let latestHeadline=cached.latestHeadline||'';
