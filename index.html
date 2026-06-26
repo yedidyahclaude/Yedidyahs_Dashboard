@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.8</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -1070,11 +1070,14 @@ function liveScanUpdate(){
     const c=scanCache[sym]||{};
     const rv=parseFloat(c.rvolValue)||0;
     if(!p1||!p2){
-      if(!failTimer[sym])failTimer[sym]=now;
-      if(now-failTimer[sym]>autoRmMs){
-        addLog('rm',sym,'Auto-removed after '+autoRmMins+'min below threshold');
-        scanSyms=scanSyms.filter(s=>s!==sym);
-        saveScanSyms();delete scanCache[sym];symMeta.delete(sym);
+      // Only auto-remove if we have real price data — API failure (price=0) should not remove symbols
+      if(q&&q.price>0){
+        if(!failTimer[sym])failTimer[sym]=now;
+        if(now-failTimer[sym]>autoRmMs){
+          addLog('rm',sym,'Auto-removed after '+autoRmMins+'min below threshold');
+          scanSyms=scanSyms.filter(s=>s!==sym);
+          saveScanSyms();delete scanCache[sym];symMeta.delete(sym);
+        }
       }
       return;
     } else {delete failTimer[sym];}
