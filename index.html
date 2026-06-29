@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.1</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.2</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -437,7 +437,7 @@ input,button,textarea{font-family:inherit}
           <div class="flt-divider"></div>
           <div class="flt-g"><span class="flt-l">Auto-remove (min)</span><input class="flt-i" type="number" value="5" min="1" max="60" id="f-autorm"/></div>
           <div class="flt-divider"></div>
-          <div class="flt-g"><span class="flt-l">Max shown</span><input class="flt-i" type="number" value="20" min="5" max="100" id="f-maxshow" title="Max symbols shown in scanner — tracked symbols continue scoring silently"/></div>
+          <div class="flt-g"><span class="flt-l">Max shown</span><input class="flt-i" type="number" value="15" min="5" max="100" id="f-maxshow" title="Max symbols shown in scanner — tracked symbols continue scoring silently"/></div>
           <div class="sess-threshold">
             <span class="flt-l">Active Threshold</span>
             <span class="thresh-val cls" id="sessThreshold">—</span>
@@ -1454,7 +1454,7 @@ async function startDeepScan(){
       if(scoreB!==scoreA)return scoreB-scoreA;
       return (Q[b]?.changePct||0)-(Q[a]?.changePct||0);
     })
-    .slice(0,30); // cap at 30 — comfortably within Finnhub free 60 calls/min
+    .slice(0,20); // cap at 20 — with 3 keys = 180 calls/min, 20 symbols = 40 calls max
 
   for(const sym of candidates){
     try{
@@ -1829,7 +1829,7 @@ async function init(){
   scanSyms=scanSyms.filter(s=>!s.includes('.')||s==='BTC/USD'||s==='ETH/USD');
   // Clear symbols added more than 12 hours ago — they're from a previous session
   // Keeps manually-pinned (starred) symbols regardless of age
-  const twelveHoursAgo=Date.now()-12*60*60*1000;
+  const twelveHoursAgo=Date.now()-4*60*60*1000; // 4hrs — clears previous day symbols every morning
   const staleBefore=scanSyms.filter(s=>{
     const meta=symMeta.get(s);
     return meta&&meta.addedTs<twelveHoursAgo&&!starredSyms.has(s);
