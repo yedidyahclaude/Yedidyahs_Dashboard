@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.2</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.3</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -1829,10 +1829,12 @@ async function init(){
   scanSyms=scanSyms.filter(s=>!s.includes('.')||s==='BTC/USD'||s==='ETH/USD');
   // Clear symbols added more than 12 hours ago — they're from a previous session
   // Keeps manually-pinned (starred) symbols regardless of age
-  const twelveHoursAgo=Date.now()-4*60*60*1000; // 4hrs — clears previous day symbols every morning
+  const fourHoursAgo=Date.now()-4*60*60*1000;
   const staleBefore=scanSyms.filter(s=>{
+    if(starredSyms.has(s))return false; // never clear starred
     const meta=symMeta.get(s);
-    return meta&&meta.addedTs<twelveHoursAgo&&!starredSyms.has(s);
+    if(!meta||!meta.addedTs)return true; // no metadata = from previous session, clear it
+    return meta.addedTs<fourHoursAgo;
   });
   if(staleBefore.length){
     scanSyms=scanSyms.filter(s=>!staleBefore.includes(s));
