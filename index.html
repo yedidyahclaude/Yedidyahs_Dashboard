@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.3</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.4</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -1018,10 +1018,16 @@ function renderNews(sym){
 function closeNewsPanel(){document.getElementById('newsPanel').style.display='none';}
 
 // ═══ CROSS-DEVICE SYNC ═══
+let _syncTimer=null;
 function syncWatchlistToCloud(){
-  const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
-  if(!token||!uid)return;
-  sf('/rest/v1/profiles?id=eq.'+uid,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},body:JSON.stringify({watchlist:scanSyms})}).catch(()=>{});
+  // Debounced — waits 3s after last change before syncing
+  // Prevents 37 Supabase calls when 37 symbols load at startup
+  clearTimeout(_syncTimer);
+  _syncTimer=setTimeout(()=>{
+    const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
+    if(!token||!uid)return;
+    sf('/rest/v1/profiles?id=eq.'+uid,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},body:JSON.stringify({watchlist:scanSyms})}).catch(()=>{});
+  },3000);
 }
 async function pullWatchlistFromCloud(){
   const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
