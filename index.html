@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.6</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.7</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -634,6 +634,7 @@ let _uniIdx=0;
 let _uniRunning=false;
 let _uniStarted=false;
 let _webullScanRunning=false;
+let _lastWebullCall=0;
 let fhWS=null;
 let _wsGaveUp=false;
 let sortCol='score';
@@ -1225,6 +1226,8 @@ function liveScanUpdate(){
 // ═══ WEBULL LIVE SCAN — 100 symbols ═══
 async function runWebullScan(){
   if(!appReady||_webullScanRunning)return;
+  if(Date.now()-_lastWebullCall<10000)return; // hard floor: no Webull call within 10s of the last one, no matter the source
+  _lastWebullCall=Date.now();
   const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
   const mins=et.getHours()*60+et.getMinutes();
   if(mins<240||mins>1200)return;
