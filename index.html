@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.7</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.8</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -1329,8 +1329,11 @@ async function runWebullScan(){
 // Runs in parallel with Webull. Catches NYSE stocks like GETY that
 // Webull's OpenAPI misses due to exchange/subscription limitations.
 let _fmpScanRunning=false;
+let _lastFmpCall=0;
 async function runFmpScan(){
   if(!appReady||_fmpScanRunning)return;
+  if(Date.now()-_lastFmpCall<90000)return; // FMP free tier — hard floor 90s between calls
+  _lastFmpCall=Date.now();
   const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
   const mins=et.getHours()*60+et.getMinutes();
   if(mins<240||mins>1200)return;
@@ -1433,7 +1436,7 @@ function startUniverseScan(){
   // FMP scan: every 30s — covers NYSE/AMEX that Webull API misses
   // Staggered 15s after Webull so they don't fire simultaneously
   function scheduleNextFmp(){
-    setTimeout(()=>{runFmpScan();scheduleNextFmp();},30000);
+    setTimeout(()=>{runFmpScan();scheduleNextFmp();},90000); // matches FMP free tier floor
   }
   setTimeout(()=>{runWebullScan();scheduleNextWebull();},12000);
   setTimeout(()=>{runFmpScan();scheduleNextFmp();},27000); // staggered 15s
