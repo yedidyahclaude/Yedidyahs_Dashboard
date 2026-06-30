@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.8</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.9</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -1330,8 +1330,9 @@ async function runWebullScan(){
 // Webull's OpenAPI misses due to exchange/subscription limitations.
 let _fmpScanRunning=false;
 let _lastFmpCall=0;
+let _fmpQuotaExhausted=false;
 async function runFmpScan(){
-  if(!appReady||_fmpScanRunning)return;
+  if(!appReady||_fmpScanRunning||_fmpQuotaExhausted)return;
   if(Date.now()-_lastFmpCall<90000)return; // FMP free tier — hard floor 90s between calls
   _lastFmpCall=Date.now();
   const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
@@ -1344,6 +1345,13 @@ async function runFmpScan(){
   const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
   try{
     const resp=await fetch(WORKER_URL+'/fmp-gainers').catch(()=>null);
+    if(resp?.status===429){
+      // FMP free tier is 250 requests/DAY, not per-minute — once exhausted, retrying
+      // does nothing but waste a request when the quota resets. Stop for the rest of today.
+      _fmpQuotaExhausted=true;
+      addLog('rm','FMP','Daily quota likely exhausted — pausing FMP scan until tomorrow');
+      _fmpScanRunning=false;return;
+    }
     if(!resp?.ok){_fmpScanRunning=false;return;}
     const items=await resp.json().catch(()=>null);
     if(!Array.isArray(items)){_fmpScanRunning=false;return;}
