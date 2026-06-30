@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.5</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.6</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -1235,10 +1235,11 @@ async function runWebullScan(){
   const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
   try{
     // Bumped to 100 — catches twice as many movers
-    const [gainersResp,activeResp]=await Promise.all([
-      fetch(WORKER_URL+'/gainers?count=100').catch(()=>null),
-      fetch(WORKER_URL+'/active?count=100').catch(()=>null),
-    ]);
+    // Sequential, not parallel — Webull rate limits per-second, simultaneous
+    // calls to /gainers + /active trip it even with 60s between cycles
+    const gainersResp=await fetch(WORKER_URL+'/gainers?count=100').catch(()=>null);
+    await new Promise(r=>setTimeout(r,2000));
+    const activeResp=await fetch(WORKER_URL+'/active?count=100').catch(()=>null);
     const seenSyms=new Set();
     if(gainersResp?.ok){
       const gainersData=await gainersResp.json().catch(()=>null);
