@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.9</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.10</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -961,13 +961,13 @@ function clearAllSyms(){
   showToast('🗑 Cleared — rescanning now…');
   // Stagger to avoid duplicate calls with scheduled scan
   setTimeout(()=>{if(!_webullScanRunning)runWebullScan();},500);
-  setTimeout(()=>{if(!_fmpScanRunning)runFmpScan();},1000);
+  setTimeout(()=>{if(!_fmpScanRunning&&!_fmpQuotaExhausted)runFmpScan();},1000);
   setTimeout(()=>{startDeepScan();},3000);
 }
 function forceRescan(){
   showToast('↺ Force rescanning…');
   if(!_webullScanRunning)runWebullScan();
-  setTimeout(()=>{if(!_fmpScanRunning)runFmpScan();},500);
+  setTimeout(()=>{if(!_fmpScanRunning&&!_fmpQuotaExhausted)runFmpScan();},500);
   setTimeout(()=>{startDeepScan();},2000);
 }
 function toggleFilters(){
@@ -1329,8 +1329,8 @@ async function runWebullScan(){
 // Runs in parallel with Webull. Catches NYSE stocks like GETY that
 // Webull's OpenAPI misses due to exchange/subscription limitations.
 let _fmpScanRunning=false;
-let _lastFmpCall=0;
 let _fmpQuotaExhausted=false;
+let _lastFmpCall=0;
 async function runFmpScan(){
   if(!appReady||_fmpScanRunning||_fmpQuotaExhausted)return;
   if(Date.now()-_lastFmpCall<90000)return; // FMP free tier — hard floor 90s between calls
