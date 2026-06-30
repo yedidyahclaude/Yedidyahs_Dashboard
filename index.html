@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.4</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.5</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -555,7 +555,14 @@ input,button,textarea{font-family:inherit}
 // ═══ SUPABASE ═══
 const SUPA_URL='https://yklxpcatopitwjzutolj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrbHhwY2F0b3BpdHdqenV0b2xqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MDYyMTEsImV4cCI6MjA5NjM4MjIxMX0.KJotgJpSLziUvdZkUb66tV7vZXPEfMOjGOij2-vmk6Q';
-const sf=(p,o={})=>fetch(SUPA_URL+p,{...o,headers:{'apikey':SUPA_KEY,'Content-Type':'application/json',...(o.headers||{})}});
+let _supaAuthDead=false;
+const sf=(p,o={})=>{
+  if(_supaAuthDead&&p.includes('/rest/v1/'))return Promise.resolve(new Response('{}',{status:401}));
+  return fetch(SUPA_URL+p,{...o,headers:{'apikey':SUPA_KEY,'Content-Type':'application/json',...(o.headers||{})}}).then(r=>{
+    if(r.status===401&&p.includes('/rest/v1/'))_supaAuthDead=true;
+    return r;
+  });
+};
 async function tryLogin(){
   const email=document.getElementById('loginEmail').value.trim(),pass=document.getElementById('loginPass').value.trim();
   const err=document.getElementById('loginErr'),btn=document.getElementById('loginBtn');
@@ -1259,7 +1266,7 @@ async function runWebullScan(){
         const tr=parseFloat(item.turnover_rate||item.turnover||0);
         if(tr>0&&scanCache[sym])scanCache[sym]={...scanCache[sym],turnoverRate:tr.toFixed(2)};
         if(!pmHigh[sym]||px>pmHigh[sym])pmHigh[sym]=px;
-        if(px>=minP&&px<=maxP&&chgPct>=minC&&!scanSyms.includes(sym)){
+        if(px>=minP&&px<=maxP&&chgPct>=minC&&!scanSyms.includes(sym)&&scanSyms.length<25){
           scanSyms.push(sym);saveScanSyms();
           symMeta.set(sym,{ts:Date.now(),source:'wb',addedTs:Date.now()});
           if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
@@ -1297,10 +1304,7 @@ async function runWebullScan(){
           const px=parseFloat(item.price||item.last_price||0);
           const rawRatio=parseFloat(item.change_ratio||item.change_pct||0);
           const chgPct=Math.abs(rawRatio)<=1?rawRatio*100:rawRatio;
-          if(px>=minP&&px<=maxP&&chgPct>=minC&&!scanSyms.includes(sym)){
-            if(!Q[sym]||Date.now()-(Q[sym]._ts||0)>20000){
-              Q[sym]={symbol:sym,price:px,changePct:chgPct,volume:parseFloat(item.volume||0),_ts:Date.now(),_fromWebull:true};
-            }
+          if(px>=minP&&px<=maxP&&chgPct>=minC&&!scanSyms.includes(sym)&&scanSyms.length<25){
             scanSyms.push(sym);saveScanSyms();
             symMeta.set(sym,{ts:Date.now(),source:'wb',addedTs:Date.now()});
             playPing('new');showToast('📊 '+sym+' RVOL +'+chgPct.toFixed(1)+'%');
@@ -1348,7 +1352,7 @@ async function runFmpScan(){
           prevClose:parseFloat(item.pre_close||px),_ts:Date.now(),_fromFmp:true};
       }
       if(!pmHigh[sym]||px>pmHigh[sym])pmHigh[sym]=px;
-      if(px>=minP&&px<=maxP&&chgPct>=minC&&!scanSyms.includes(sym)){
+      if(px>=minP&&px<=maxP&&chgPct>=minC&&!scanSyms.includes(sym)&&scanSyms.length<25){
         scanSyms.push(sym);saveScanSyms();
         symMeta.set(sym,{ts:Date.now(),source:'fp',addedTs:Date.now()});
         if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
@@ -1400,7 +1404,7 @@ async function runSeedScan(){
   await Promise.all(batch.map(async sym=>{
     try{
       await fetchQDirect(sym);const q=Q[sym];if(!q?.price)return;
-      if(q.price>=minP&&q.price<=maxP&&(q.changePct||0)>=minC&&!scanSyms.includes(sym)){
+      if(q.price>=minP&&q.price<=maxP&&(q.changePct||0)>=minC&&!scanSyms.includes(sym)&&scanSyms.length<25){
         scanSyms.push(sym);saveScanSyms();
         symMeta.set(sym,{ts:Date.now(),source:'seed',addedTs:Date.now()});
         if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
@@ -1835,13 +1839,18 @@ async function init(){
   scanSyms=scanSyms.filter(s=>!s.includes('.')||s==='BTC/USD'||s==='ETH/USD');
   // Clear symbols added more than 12 hours ago — they're from a previous session
   // Keeps manually-pinned (starred) symbols regardless of age
+  const todayStr=new Date().toLocaleDateString('en-US',{timeZone:'America/New_York'});
+  const lastClearDay=localStorage.getItem('sv_last_clear_day');
+  const isNewDay=lastClearDay!==todayStr;
   const fourHoursAgo=Date.now()-4*60*60*1000;
   const staleBefore=scanSyms.filter(s=>{
     if(starredSyms.has(s))return false; // never clear starred
+    if(isNewDay)return true; // new trading day — clear everything from yesterday
     const meta=symMeta.get(s);
-    if(!meta||!meta.addedTs)return true; // no metadata = from previous session, clear it
+    if(!meta||!meta.addedTs)return true;
     return meta.addedTs<fourHoursAgo;
   });
+  localStorage.setItem('sv_last_clear_day',todayStr);
   if(staleBefore.length){
     scanSyms=scanSyms.filter(s=>!staleBefore.includes(s));
     staleBefore.forEach(s=>{delete scanCache[s];symMeta.delete(s);});
