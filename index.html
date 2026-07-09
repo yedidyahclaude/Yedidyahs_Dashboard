@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.12</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.13</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -766,6 +766,28 @@ const _badSyms={};const _deepBadSyms={};
 let _fh429s=[],_fhPausedUntil=0;
 function fhNote429(){const now=Date.now();_fh429s=_fh429s.filter(t=>now-t<60000);_fh429s.push(now);if(_fh429s.length>=5&&now>=_fhPausedUntil){_fhPausedUntil=now+60000;_fh429s=[];showToast('⏸ Finnhub rate limited — pausing scans 60s');}}
 function fhPaused(){return Date.now()<_fhPausedUntil;}
+// Direct Finnhub from the browser (residential IP = dedicated 60/min per key, no shared
+// Cloudflare egress-IP contention). Keys live ONLY in localStorage — never in the repo.
+// Set once via console: localStorage.setItem('sv_fh_keys',JSON.stringify(['key1','key2','key3']))
+// No keys set = falls back to the Worker proxy exactly as before.
+let fhKeys=JSON.parse(localStorage.getItem('sv_fh_keys')||'[]');let _fhKeyIdx=0;
+function fhNextKey(){if(!Array.isArray(fhKeys)||!fhKeys.length)return null;const k=fhKeys[_fhKeyIdx%fhKeys.length];_fhKeyIdx++;return k;}
+async function fhFetch(path){
+  const key=fhNextKey();
+  if(key){
+    try{
+      const qs=path.split('?')[1]||'';
+      let ep='quote';
+      if(path.startsWith('/news'))ep='company-news';
+      else if(path.startsWith('/metric'))ep='stock/metric';
+      const extra=ep==='stock/metric'?'&metric=all':'';
+      const r=await fetch('https://finnhub.io/api/v1/'+ep+'?'+qs+extra+'&token='+key);
+      if(r.status!==429&&r.status!==403)return r; // direct worked (or real error) — use it
+      // direct rate-limited — fall through to proxy (KV cache may still have it)
+    }catch(e){}
+  }
+  return fetch(FH_URL+path);
+}
 async function fetchQDirect(sym){
   if(fhPaused())return;
   if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<90000)return;
@@ -775,7 +797,7 @@ async function fetchQDirect(sym){
   if(Q[sym]?._fromFmp&&Date.now()-(Q[sym]._ts||0)<120000)return;
   return queueCall(async()=>{
     try{
-      const r=await fetch(FH_URL+'/quote?symbol='+sym);
+      const r=await fhFetch('/quote?symbol='+sym);
       if(r.status===429||r.status===403){_badSyms[sym]=Date.now();if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-quote',r.status,FH_URL+'/quote?symbol='+sym,sym);return;}
       const q=await r.json();
       if(q.c){
@@ -1020,7 +1042,7 @@ async function loadNews(sym){
   try{
     const today=new Date().toISOString().split('T')[0];
     const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];
-    const r=await fetch(FH_URL+'/news?symbol='+sym+'&from='+from+'&to='+today);
+    const r=await fhFetch('/news?symbol='+sym+'&from='+from+'&to='+today);
     if(!r.ok){list.innerHTML='<div class="news-empty">No news available</div>';return;}
     const items=await r.json();
     _newsCache[sym]=(Array.isArray(items)?items:[]).slice(0,8);
@@ -1517,7 +1539,7 @@ async function startDeepScan(){
       await queueCall(async()=>{try{
         const today=new Date().toISOString().split('T')[0];
         const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];
-        const r=await fetch(FH_URL+'/news?symbol='+sym+'&from='+from+'&to='+today);
+        const r=await fhFetch('/news?symbol='+sym+'&from='+from+'&to='+today);
         if(r.status===403||r.status===429){p3=null;hitLimit=true;if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-news',r.status,FH_URL+'/news?symbol='+sym,sym);return;}
         const news=await r.json();
         hasNews=Array.isArray(news)&&news.length>0;p3=hasNews;
@@ -1526,7 +1548,7 @@ async function startDeepScan(){
       }catch(e){p3=null;}});
       if(!scanCache[sym]?._rvolFromWebull){
         await queueCall(async()=>{try{
-          const r=await fetch(FH_URL+'/metric?symbol='+sym);
+          const r=await fhFetch('/metric?symbol='+sym);
           if(r.status===403||r.status===429){p4=null;p5=null;hitLimit=true;if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-metric',r.status,FH_URL+'/metric?symbol='+sym,sym);return;}
           const d=await r.json();const m=d.metric||{};
           const avgDailyVol=(m['10DayAverageTradingVolume']||0)*1e6;
@@ -1538,7 +1560,7 @@ async function startDeepScan(){
         }catch(e){p4=null;p5=null;}});
       } else {
         await queueCall(async()=>{try{
-          const r=await fetch(FH_URL+'/metric?symbol='+sym);
+          const r=await fhFetch('/metric?symbol='+sym);
           if(r.status===403||r.status===429){hitLimit=true;if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-metric-retry',r.status,FH_URL+'/metric?symbol='+sym,sym);return;}
           const d=await r.json();const m=d.metric||{};
           const tf=m['shareFloat']??m['float']??null;
