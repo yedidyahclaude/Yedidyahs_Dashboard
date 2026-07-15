@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.20</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.22</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -844,7 +844,7 @@ async function fhFetch(path){
 // No key set = these features silently stay off, everything else works as before.
 let fmpKey=localStorage.getItem('sv_fmp_key')||'';
 let _fmpCalls=JSON.parse(localStorage.getItem('sv_fmp_calls')||'{}');
-function fmpBudgetOk(){const d=new Date().toISOString().split('T')[0];if(_fmpCalls.date!==d)_fmpCalls={date:d,count:0};return _fmpCalls.count<200;} // hard stop at 200/day (plan cap 250)
+function fmpBudgetOk(){const d=new Date().toISOString().split('T')[0];if(_fmpCalls.date!==d)_fmpCalls={date:d,count:0};return _fmpCalls.count<2000;} // runaway guard — Starter plan is 300/min, no daily cap
 function fmpCount(){_fmpCalls.count=(_fmpCalls.count||0)+1;localStorage.setItem('sv_fmp_calls',JSON.stringify(_fmpCalls));}
 let _fmpCooldownUntil=0; // any FMP 429 pauses ALL frontend FMP calls for 2 min so the quota window resets
 function fmpCoolingDown(){return Date.now()<_fmpCooldownUntil;}
@@ -856,7 +856,11 @@ async function getFloatFMP(sym){
   try{
     fmpCount();
     const r=await fetch('https://financialmodelingprep.com/stable/shares-float?symbol='+encodeURIComponent(sym)+'&apikey='+fmpKey);
-    if(r.status===429){_fmpCooldownUntil=Date.now()+120000;return null;}
+    if(r.status===429){
+      let daily=false;try{const t=await r.text();daily=/limit reach|upgrade your plan/i.test(t);}catch(e){}
+      if(daily){_fmpCalls.count=999;localStorage.setItem('sv_fmp_calls',JSON.stringify(_fmpCalls));} // daily quota gone — fmpBudgetOk() stays false until the date rolls over
+      _fmpCooldownUntil=Date.now()+120000;return null;
+    }
     if(!r.ok)return null;
     const d=await r.json();
     const row=Array.isArray(d)?d[0]:d;
@@ -875,7 +879,12 @@ async function fmpVolumeBackfill(syms){
     try{
       fmpCount();
       const r=await fetch('https://financialmodelingprep.com/stable/quote-short?symbol='+encodeURIComponent(sym)+'&apikey='+fmpKey);
-      if(r.status===429){delete _volTried[sym];_fmpCooldownUntil=Date.now()+120000;return;} // rate limited — retry this symbol after cooldown
+      if(r.status===429){
+        delete _volTried[sym];
+        let daily=false;try{const t=await r.text();daily=/limit reach|upgrade your plan/i.test(t);}catch(e){}
+        if(daily){_fmpCalls.count=999;localStorage.setItem('sv_fmp_calls',JSON.stringify(_fmpCalls));}
+        _fmpCooldownUntil=Date.now()+120000;return;
+      } // rate limited — retry after cooldown; daily limit — dead until tomorrow
       if(r.status===402||r.status===403){_fmpVolDead=true;sessionStorage.setItem('sv_fmpvol_dead','1');return;} // plan gate — give up silently for the session
       if(!r.ok)continue;
       const d=await r.json();const it=Array.isArray(d)?d[0]:d;
@@ -1495,7 +1504,7 @@ let _fmpQuotaExhausted=false;
 let _lastFmpCall=0;
 async function runFmpScan(){
   if(!appReady||_fmpScanRunning||_fmpQuotaExhausted)return;
-  if(Date.now()-_lastFmpCall<90000)return; // FMP free tier — hard floor 90s between calls
+  if(Date.now()-_lastFmpCall<45000)return; // Starter plan — 45s cadence for faster NYSE discovery
   _lastFmpCall=Date.now();
   const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
   const mins=et.getHours()*60+et.getMinutes();
@@ -1608,7 +1617,7 @@ function startUniverseScan(){
   // FMP scan: every 30s — covers NYSE/AMEX that Webull API misses
   // Staggered 15s after Webull so they don't fire simultaneously
   function scheduleNextFmp(){
-    setTimeout(()=>{runFmpScan();scheduleNextFmp();},90000); // matches FMP free tier floor
+    setTimeout(()=>{runFmpScan();scheduleNextFmp();},45000); // Starter plan — 45s cadence
   }
   setTimeout(()=>{runWebullScan();scheduleNextWebull();},12000);
   setTimeout(()=>{runFmpScan();scheduleNextFmp();},27000); // staggered 15s
