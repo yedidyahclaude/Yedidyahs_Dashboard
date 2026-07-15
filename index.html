@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.26</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.27</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -792,6 +792,34 @@ function playPing(type='new'){
     el.style.transform='scale(1)';
   },300);
 }
+// P4 is recomputed on EVERY render, not frozen at deep-scan time.
+// avgVol changes daily; volume changes every 10s from Webull — so RVOL is derived
+// live at zero API cost. This is why a 5/5 can decay to 4/5 as the tape cools.
+function minsIntoSession(){
+  const s=getSession();
+  if(s!=='mkt')return 390;
+  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const open=new Date(et);open.setHours(9,30,0,0);
+  return Math.max(1,(et-open)/60000);
+}
+function scoreP4(sym,minsOverride){
+  const q=Q[sym],c=scanCache[sym]||{};
+  if(!q)return {pass:null,label:'—',bad:true};
+  const sess=getSession();
+  const volFloor=sess==='mkt'?500000:100000;
+  const rvT=sess==='pre'?2:sess==='aft'?1.5:5;
+  const vol=q.volume||0;
+  const avg=c.avgVol||0;
+  if(!avg){ // no trustworthy average — fall back to raw volume alone
+    return {pass:vol>=volFloor?true:(vol?false:null),label:'—',bad:true};
+  }
+  const mins=minsOverride||minsIntoSession();
+  const rv=(vol/avg)*(390/mins);
+  const bad=rv>200; // implausible ratio — show but never trust
+  const label=rv>=100?String(Math.round(rv)):rv.toFixed(1);
+  const pass=bad?vol>=volFloor*3:(rv>=rvT&&vol>=volFloor);
+  return {pass,label,bad};
+}
 function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
 const debouncedScanUpdate=debounce(()=>liveScanUpdate(),250);
 
@@ -852,12 +880,25 @@ function isStaleQuote(sym){
   return q.priceTs<(sessionStart.getTime()-offset);
 }
 // P3 quality gate — a real catalyst is stock-specific and fresh.
-// Generic daily movers-list articles (published for dozens of tickers every day)
-// never count; neither does anything older than the previous session.
-const GENERIC_NEWS=/stocks? moving in|top gainers and losers|gap-ups and gap-downs|unusual volume|top (stock )?mov(ers|ements)|most active|which stocks are|what[\u2019']?s happening (on|in)|market is filled with|gapping stocks|earnings scheduled for|(mon|tues|wednes|thurs|fri)day[\u2019']?s (session|intraday|pre-?market|after)|let[\u2019']?s (take|have) a look|stocks? (that are )?in motion|get insights into|discover the (top|most)|wondering what/i;
-function isRealCatalyst(a){
+// Three ways an article fails:
+//   1. GENERIC — daily movers-list wallpaper ("These stocks are moving in today's session")
+//   2. MARKET  — index/macro news tagged to every ticker ("Dow Gains Over 150 Points")
+//   3. ROUNDUP — one article tagged to many tickers; the news is about someone else
+//                (KUST scored 5/5 on "Why Aehr Test Systems Shares Are Trading Higher")
+const GENERIC_NEWS=/stocks? (are |that are )?moving|top gainers and losers|gap-ups and gap-downs|unusual volume|top (stock )?mov(ers|ements)|most active|which stocks are|what[\u2019']?s happening (on|in)|market is filled with|gapping stocks|earnings scheduled for|(mon|tues|wednes|thurs|fri)day[\u2019']?s (session|intraday|pre-?market|after)|let[\u2019']?s (take|have) a look|stocks? (that are )?in motion|get insights into|discover the (top|most)|wondering what|and other big stocks|shares? (are )?trading (higher|lower)|here are \d+ stocks|\d+ stocks moving/i;
+const MARKET_NEWS=/\b(dow|s&p ?500|nasdaq composite|russell 2000|nyse composite)\b.{0,45}\b(gain|fall|rise|rises|drop|jump|slide|slides|point|close|closes|surge|tumble|rally|rallies)|^(dow|s&p|nasdaq|the markets?|us stocks|stocks) (gain|fall|rise|drop|jump|slide|clos|surge|tumble|rall)/i;
+function isRealCatalyst(a,sym){
   if(!a||!a.headline)return false;
-  if(GENERIC_NEWS.test(a.headline))return false;
+  const h=a.headline;
+  if(GENERIC_NEWS.test(h)||MARKET_NEWS.test(h))return false;
+  // Tagged to a crowd of tickers = roundup, not this company's catalyst
+  const rel=(a.related||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(rel.length>3)return false;
+  // Headline names a different company's ticker and not ours
+  if(sym){
+    const tick=h.match(/\(([A-Z]{1,5})\)/g)||[];
+    if(tick.length&&!tick.some(t=>t==='('+sym+')'))return false;
+  }
   const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
   const hours=et.getDay()===1?72:24; // Mondays look back through the weekend
   return (a.datetime||0)*1000>=Date.now()-hours*3600000;
@@ -1285,6 +1326,11 @@ function liveScanUpdate(){
   scanSyms.forEach(sym=>{
     const q=Q[sym];if(!q?.price)return;
     if(isStaleQuote(sym))return; // yesterday's data — never rank it
+    // P4 recomputed live — RVOL moves with the tape, so scores rise AND fall
+    if(scanCache[sym]&&scanCache[sym].ts){
+      const rv=scoreP4(sym);
+      scanCache[sym].p4=rv.pass;scanCache[sym].rvolValue=rv.label;scanCache[sym].rvolBad=rv.bad;
+    }
     const p1=q.price>=minP&&q.price<=maxP;
     const p2=(q.changePct||0)>=minC;
     const c=scanCache[sym]||{};
@@ -1700,7 +1746,9 @@ async function startDeepScan(){
     try{
       if(!Q[sym]||!Q[sym].high)await fetchQ(sym);const q=Q[sym];if(!q?.price)continue;
       const p1=q.price>=1&&q.price<=20,p2=(q.changePct||0)>=minC;if(!p1||!p2)continue;
-      const cached=scanCache[sym]||{};if(Date.now()-(cached.ts||0)<600000)continue; // 10min cache — prevents Finnhub 429s
+      // 3min cache — P4 is live-recomputed every render, so this only gates the
+      // API-costly parts (news + metric). Was 10min, which froze scores mid-move.
+      const cached=scanCache[sym]||{};if(Date.now()-(cached.ts||0)<180000)continue;
       if(_deepBadSyms[sym]&&Date.now()-_deepBadSyms[sym]<600000)continue;
       let hasNews=cached.hasNews??false,p3=cached.p3??null,p4=cached.p4??null,p5=cached.p5??null;
       let latestHeadline=cached.latestHeadline||'';
@@ -1712,7 +1760,7 @@ async function startDeepScan(){
         const r=await fhFetch('/news?symbol='+sym+'&from='+from+'&to='+today);
         if(r.status===403||r.status===429){p3=null;hitLimit=true;if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-news',r.status,FH_URL+'/news?symbol='+sym,sym);return;}
         const news=await r.json();
-        const catalysts=Array.isArray(news)?news.filter(isRealCatalyst):[];
+        const catalysts=Array.isArray(news)?news.filter(a=>isRealCatalyst(a,sym)):[];
         hasNews=catalysts.length>0;p3=hasNews;
         if(catalysts.length&&catalysts[0].headline)latestHeadline=catalysts[0].headline;
         else if(Array.isArray(news)&&news[0]?.headline)latestHeadline=news[0].headline; // display-only fallback
@@ -1725,11 +1773,19 @@ async function startDeepScan(){
           const d=await r.json();const m=d.metric||{};
           const avgDailyVol=(m['10DayAverageTradingVolume']||0)*1e6;
           const volFloor=sess==='mkt'?500000:100000; // absolute floor — a big ratio on a dead tape is not momentum
-          if(avgDailyVol>0){const nRVol=(q.volume/avgDailyVol)*(390/minsElapsed);p4=nRVol>=rvThreshold&&(q.volume||0)>=volFloor;scanCache[sym]={...scanCache[sym],rvolValue:nRVol.toFixed(1)};}
-          else{p4=(q.changePct||0)>=20&&(q.volume||0)>=volFloor;scanCache[sym]={...scanCache[sym],rvolValue:'est'};}
+          // avgVol is cached so RVOL can be recomputed live on every render (see scoreP4)
+          // — a 10-day average under 5k shares means broken/new-listing data, not signal.
+          scanCache[sym]={...scanCache[sym],avgVol:avgDailyVol>=5000?avgDailyVol:0};
+          const rv=scoreP4(sym,mins);
+          p4=rv.pass;
+          scanCache[sym]={...scanCache[sym],rvolValue:rv.label,rvolBad:rv.bad};
           const tf=m['shareFloat']??m['float']??null;
-          if(tf!==null){const fm=tf>1000?tf/1e6:tf;p5=fm<10;scanCache[sym]={...scanCache[sym],floatValue:fm.toFixed(1)+'M'};}
-          else{const fs=await getFloatFMP(sym);if(fs){const fm=fs/1e6;p5=fm<10;scanCache[sym]={...scanCache[sym],floatValue:fm.toFixed(1)+'M'};}else{p5=null;scanCache[sym]={...scanCache[sym],floatValue:'—'};}}
+          let fm=null;
+          if(tf!==null)fm=tf>1000?tf/1e6:tf;
+          else{const fs=await getFloatFMP(sym);if(fs)fm=fs/1e6;}
+          // Sub-50k float is a data error, not a tradeable float — never score it
+          if(fm!==null&&fm>=0.05){p5=fm<10;scanCache[sym]={...scanCache[sym],floatValue:fm<0.1?'<0.1M':fm.toFixed(1)+'M'};}
+          else{p5=null;scanCache[sym]={...scanCache[sym],floatValue:'—'};}
         }catch(e){p4=null;p5=null;}});
       } else {
         await queueCall(async()=>{try{
@@ -1737,8 +1793,11 @@ async function startDeepScan(){
           if(r.status===403||r.status===429){hitLimit=true;if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-metric-retry',r.status,FH_URL+'/metric?symbol='+sym,sym);return;}
           const d=await r.json();const m=d.metric||{};
           const tf=m['shareFloat']??m['float']??null;
-          if(tf!==null){const fm=tf>1000?tf/1e6:tf;p5=fm<10;scanCache[sym]={...scanCache[sym],floatValue:fm.toFixed(1)+'M'};}
-          else{const fs=await getFloatFMP(sym);if(fs){const fm=fs/1e6;p5=fm<10;scanCache[sym]={...scanCache[sym],floatValue:fm.toFixed(1)+'M'};}else p5=null;}
+          let fm=null;
+          if(tf!==null)fm=tf>1000?tf/1e6:tf;
+          else{const fs=await getFloatFMP(sym);if(fs)fm=fs/1e6;}
+          if(fm!==null&&fm>=0.05){p5=fm<10;scanCache[sym]={...scanCache[sym],floatValue:fm<0.1?'<0.1M':fm.toFixed(1)+'M'};}
+          else{p5=null;scanCache[sym]={...scanCache[sym],floatValue:'—'};}
           p4=scanCache[sym]?.p4??null;
         }catch(e){}});
       }
