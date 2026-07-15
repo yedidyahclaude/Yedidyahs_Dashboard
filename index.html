@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.14</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.16</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -575,7 +575,7 @@ async function tryLogin(){
     const pr=await sf('/rest/v1/profiles?select=approved&id=eq.'+d.user.id,{headers:{'Authorization':'Bearer '+d.access_token}});
     const prof=await pr.json();
     if(!prof?.[0]?.approved){err.textContent='Pending admin approval.';err.style.display='block';btn.textContent='Sign In →';btn.disabled=false;return;}
-    sessionStorage.setItem('sv_token',d.access_token);sessionStorage.setItem('sv_uid',d.user.id);sessionStorage.setItem('sv_email',d.user.email);
+    sessionStorage.setItem('sv_token',d.access_token);sessionStorage.setItem('sv_refresh',d.refresh_token||'');sessionStorage.setItem('sv_uid',d.user.id);sessionStorage.setItem('sv_email',d.user.email);
     showApp();
   }catch(e){err.textContent='Connection error.';err.style.display='block';btn.textContent='Sign In →';btn.disabled=false;}
 }
@@ -787,6 +787,45 @@ async function fhFetch(path){
     }catch(e){}
   }
   return fetch(FH_URL+path);
+}
+// FMP direct (Starter plan) — float for P5 + volume/h-l-o backfill for non-Nasdaq rows
+// that Webull (Nasdaq-only) can never cover. Key lives ONLY in localStorage:
+//   localStorage.setItem('sv_fmp_key','YOUR_FMP_KEY')
+// No key set = these features silently stay off, everything else works as before.
+let fmpKey=localStorage.getItem('sv_fmp_key')||'';
+let _fmpCalls=JSON.parse(localStorage.getItem('sv_fmp_calls')||'{}');
+function fmpBudgetOk(){const d=new Date().toISOString().split('T')[0];if(_fmpCalls.date!==d)_fmpCalls={date:d,count:0};return _fmpCalls.count<200;} // hard stop at 200/day (plan cap 250)
+function fmpCount(){_fmpCalls.count=(_fmpCalls.count||0)+1;localStorage.setItem('sv_fmp_calls',JSON.stringify(_fmpCalls));}
+let _floatCache=JSON.parse(localStorage.getItem('sv_float_cache')||'{}');
+async function getFloatFMP(sym){
+  const c=_floatCache[sym];
+  if(c&&Date.now()-c.ts<7*86400000)return c.v; // float rarely changes — 7-day cache
+  if(!fmpKey||!fmpBudgetOk())return null;
+  try{
+    fmpCount();
+    const r=await fetch('https://financialmodelingprep.com/api/v4/shares_float?symbol='+encodeURIComponent(sym)+'&apikey='+fmpKey);
+    if(!r.ok)return null;
+    const d=await r.json();
+    const fs=Array.isArray(d)&&d[0]&&d[0].floatShares?d[0].floatShares:null;
+    if(fs){_floatCache[sym]={v:fs,ts:Date.now()};localStorage.setItem('sv_float_cache',JSON.stringify(_floatCache));}
+    return fs;
+  }catch(e){return null;}
+}
+async function fmpVolumeBackfill(syms){
+  if(!fmpKey||!syms.length||!fmpBudgetOk())return;
+  try{
+    fmpCount(); // ONE batched call for all missing-volume symbols
+    const r=await fetch('https://financialmodelingprep.com/api/v3/quote/'+syms.map(encodeURIComponent).join(',')+'?apikey='+fmpKey);
+    if(!r.ok)return;
+    const arr=await r.json();
+    (Array.isArray(arr)?arr:[]).forEach(it=>{
+      const sym=(it.symbol||'').toUpperCase();if(!Q[sym])return;
+      if(it.volume&&!Q[sym].volume)Q[sym].volume=it.volume;
+      if(it.open&&!Q[sym].open)Q[sym].open=it.open;
+      if(it.dayHigh&&!Q[sym].high)Q[sym].high=it.dayHigh;
+      if(it.dayLow&&!Q[sym].low)Q[sym].low=it.dayLow;
+    });
+  }catch(e){}
 }
 async function fetchQDirect(sym){
   if(fhPaused())return;
@@ -1067,15 +1106,37 @@ function renderNews(sym){
 function closeNewsPanel(){document.getElementById('newsPanel').style.display='none';}
 
 // ═══ CROSS-DEVICE SYNC ═══
+// Supabase access tokens expire after 60 min. Refresh proactively at 45 min,
+// and reactively on any 401, so multi-hour trading sessions never lose sync.
+async function refreshSession(){
+  const rt=sessionStorage.getItem('sv_refresh');
+  if(!rt)return false;
+  try{
+    const r=await sf('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:rt})});
+    if(!r.ok)return false;
+    const d=await r.json();
+    if(d.access_token){sessionStorage.setItem('sv_token',d.access_token);if(d.refresh_token)sessionStorage.setItem('sv_refresh',d.refresh_token);return true;}
+  }catch(e){}
+  return false;
+}
+setInterval(()=>{if(sessionStorage.getItem('sv_refresh'))refreshSession();},45*60*1000);
 let _syncTimer=null;
 function syncWatchlistToCloud(){
   // Debounced — waits 3s after last change before syncing
   // Prevents 37 Supabase calls when 37 symbols load at startup
   clearTimeout(_syncTimer);
-  _syncTimer=setTimeout(()=>{
-    const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
+  _syncTimer=setTimeout(async()=>{
+    const uid=sessionStorage.getItem('sv_uid');
+    let token=sessionStorage.getItem('sv_token');
     if(!token||!uid)return;
-    sf('/rest/v1/profiles?id=eq.'+uid,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},body:JSON.stringify({watchlist:scanSyms})}).catch(()=>{});
+    try{
+      const body=JSON.stringify({watchlist:scanSyms});
+      let r=await sf('/rest/v1/profiles?id=eq.'+uid,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},body});
+      if(r.status===401&&await refreshSession()){
+        token=sessionStorage.getItem('sv_token');
+        await sf('/rest/v1/profiles?id=eq.'+uid,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},body});
+      }
+    }catch(e){}
   },3000);
 }
 async function pullWatchlistFromCloud(){
@@ -1525,6 +1586,8 @@ async function startDeepScan(){
     })
     .slice(0,20); // cap at 20 — with 3 keys = 180 calls/min, 20 symbols = 40 calls max
 
+  await fmpVolumeBackfill(candidates.filter(s=>Q[s]&&!Q[s].volume)); // one batched FMP call fills volume for NYSE/AMEX rows
+
   for(const sym of candidates){
     if(fhPaused())break; // circuit breaker open — stop deep scan, next cycle retries
     try{
@@ -1556,7 +1619,7 @@ async function startDeepScan(){
           else{p4=(q.changePct||0)>=20;scanCache[sym]={...scanCache[sym],rvolValue:'est'};}
           const tf=m['shareFloat']??m['float']??null;
           if(tf!==null){const fm=tf>1000?tf/1e6:tf;p5=fm<10;scanCache[sym]={...scanCache[sym],floatValue:fm.toFixed(1)+'M'};}
-          else{p5=null;scanCache[sym]={...scanCache[sym],floatValue:'—'};}
+          else{const fs=await getFloatFMP(sym);if(fs){const fm=fs/1e6;p5=fm<10;scanCache[sym]={...scanCache[sym],floatValue:fm.toFixed(1)+'M'};}else{p5=null;scanCache[sym]={...scanCache[sym],floatValue:'—'};}}
         }catch(e){p4=null;p5=null;}});
       } else {
         await queueCall(async()=>{try{
@@ -1565,7 +1628,7 @@ async function startDeepScan(){
           const d=await r.json();const m=d.metric||{};
           const tf=m['shareFloat']??m['float']??null;
           if(tf!==null){const fm=tf>1000?tf/1e6:tf;p5=fm<10;scanCache[sym]={...scanCache[sym],floatValue:fm.toFixed(1)+'M'};}
-          else p5=null;
+          else{const fs=await getFloatFMP(sym);if(fs){const fm=fs/1e6;p5=fm<10;scanCache[sym]={...scanCache[sym],floatValue:fm.toFixed(1)+'M'};}else p5=null;}
           p4=scanCache[sym]?.p4??null;
         }catch(e){}});
       }
