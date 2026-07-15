@@ -352,6 +352,16 @@ async function refreshSession(){
 setInterval(()=>{if(sessionStorage.getItem('sv_refresh'))refreshSession();},45*60*1000);
 
 // ═══ DATA HELPERS (ported from desktop v3.9.26) ═══
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+// Circuit breaker — 5 rate-limits in 60s pauses all Finnhub calls for 60s so the
+// per-key windows can reset, instead of hammering a wall and flooding the log.
+let _fh429=[],_fhPausedUntil=0;
+function fhNote429(){
+  const n=Date.now();_fh429=_fh429.filter(t=>n-t<60000);_fh429.push(n);
+  if(_fh429.length>=5&&n>=_fhPausedUntil){_fhPausedUntil=n+60000;_fh429=[];
+    toast('⏸ Rate limited — pausing 60s');}
+}
+function fhPaused(){return Date.now()<_fhPausedUntil;}
 async function fhFetch(path){
   const key=fhNextKey();
   if(key){
@@ -363,11 +373,13 @@ async function fhFetch(path){
       const extra=ep==='stock/metric'?'&metric=all':'';
       const r=await fetch('https://finnhub.io/api/v1/'+ep+'?'+qs+extra+'&token='+key);
       if(r.status!==429&&r.status!==403)return r;
-      logErr('finnhub-direct',path,r.status);
+      if(r.status===429)fhNote429();
+      if(!fhPaused())logErr('finnhub-direct',path,r.status);
     }catch(e){logErr('finnhub-direct',e.message);}
   }
   const pr=await fetch(FH_URL+path);
-  if(!pr.ok)logErr('finnhub-proxy',path,pr.status);
+  if(pr.status===429)fhNote429();
+  if(!pr.ok&&!fhPaused())logErr('finnhub-proxy',path,pr.status);
   return pr;
 }
 // Yesterday's quote must never score: Finnhub free tier serves stale closes pre-market.
@@ -475,6 +487,7 @@ async function deepScan(){
   }).sort((a,b)=>(Q[b]?.changePct||0)-(Q[a]?.changePct||0)).slice(0,12);
 
   for(const sym of cands){
+    if(fhPaused())break; // breaker open — resume next cycle
     const q=Q[sym];if(!q)continue;
     const c=cache[sym]||{};
     let p3=c.p3??null,p4=c.p4??null,p5=c.p5??null,head=c.head||'';
@@ -490,7 +503,7 @@ async function deepScan(){
           head=cats[0]?.headline||news[0]?.headline||'';
         }
       }
-      await new Promise(r=>setTimeout(r,300));
+      await sleep(500); // ~2 calls/sec — inside 3 keys × 60/min with headroom
       // P4 + P5
       const rm=await fhFetch('/metric?symbol='+sym);
       if(rm.ok){
@@ -514,6 +527,7 @@ async function deepScan(){
         else{p5=null;c.float='—';}
       }
       // day range for VWAP-ish context
+      await sleep(500);
       const rq=await fhFetch('/quote?symbol='+sym);
       if(rq.ok){
         const d=await rq.json();
@@ -523,7 +537,7 @@ async function deepScan(){
     }catch(e){}
     cache[sym]={...c,p3,p4,p5,head};
     render();
-    await new Promise(r=>setTimeout(r,400));
+    await sleep(500);
   }
   _deepRun=false;
 }
@@ -660,7 +674,18 @@ function startApp(){
   setInterval(()=>{if(getSession()!=='closed')fmpScan();},60000);
   setInterval(deepScan,20000);
   setInterval(render,5000);
-  if(!fhKeys.length)setTimeout(()=>toast('Tap ⚙ to add your keys for full speed'),2500);
+  if(!fhKeys.length){
+    setTimeout(()=>{
+      toast('⚠ No Finnhub keys — tap ⚙ to add them');
+      const b=$('list');
+      if(b)b.insertAdjacentHTML('afterbegin',
+        '<div onclick="openSettings()" style="background:rgba(240,185,79,.12);border:1px solid var(--gold);'
+        +'border-radius:12px;padding:12px;margin-bottom:8px;font-size:12px;line-height:1.5;cursor:pointer">'
+        +'<b style="color:var(--gold)">⚠ Running on the shared proxy</b><br>'
+        +'<span style="color:var(--dim)">No keys on this phone, so every call is rate-limited. '
+        +'Tap here → paste your 3 Finnhub keys → Save.</span></div>');
+    },2000);
+  }
   // Home Screen mode opens chart links in a dismissable in-app sheet that shares
   // Safari's cookies — signed in, your presets, and a Done button instead of a stray tab.
   const standalone=window.navigator.standalone||window.matchMedia('(display-mode: standalone)').matches;
