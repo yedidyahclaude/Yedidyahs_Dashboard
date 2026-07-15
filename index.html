@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.22</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.23</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -858,7 +858,7 @@ async function getFloatFMP(sym){
     const r=await fetch('https://financialmodelingprep.com/stable/shares-float?symbol='+encodeURIComponent(sym)+'&apikey='+fmpKey);
     if(r.status===429){
       let daily=false;try{const t=await r.text();daily=/limit reach|upgrade your plan/i.test(t);}catch(e){}
-      if(daily){_fmpCalls.count=999;localStorage.setItem('sv_fmp_calls',JSON.stringify(_fmpCalls));} // daily quota gone — fmpBudgetOk() stays false until the date rolls over
+      if(daily){_fmpCalls.count=9999;localStorage.setItem('sv_fmp_calls',JSON.stringify(_fmpCalls));} // daily quota gone — fmpBudgetOk() stays false until the date rolls over
       _fmpCooldownUntil=Date.now()+120000;return null;
     }
     if(!r.ok)return null;
@@ -873,22 +873,23 @@ let _fmpVolDead=sessionStorage.getItem('sv_fmpvol_dead')==='1'; // plan doesn't 
 const _volTried={};
 async function fmpVolumeBackfill(syms){
   if(!fmpKey||_fmpVolDead||!syms.length||!fmpBudgetOk()||fmpCoolingDown())return;
+  const now=Date.now();
   for(const sym of syms){
-    if(_volTried[sym])continue; // one attempt per symbol — keeps budget tiny
-    _volTried[sym]=true;
+    if(now-(_volTried[sym]||0)<300000)continue; // refresh FMP volumes every 5 min (Starter plan) — keeps NYSE RVOL live
+    _volTried[sym]=now;
     try{
       fmpCount();
       const r=await fetch('https://financialmodelingprep.com/stable/quote-short?symbol='+encodeURIComponent(sym)+'&apikey='+fmpKey);
       if(r.status===429){
         delete _volTried[sym];
         let daily=false;try{const t=await r.text();daily=/limit reach|upgrade your plan/i.test(t);}catch(e){}
-        if(daily){_fmpCalls.count=999;localStorage.setItem('sv_fmp_calls',JSON.stringify(_fmpCalls));}
+        if(daily){_fmpCalls.count=9999;localStorage.setItem('sv_fmp_calls',JSON.stringify(_fmpCalls));}
         _fmpCooldownUntil=Date.now()+120000;return;
       } // rate limited — retry after cooldown; daily limit — dead until tomorrow
       if(r.status===402||r.status===403){_fmpVolDead=true;sessionStorage.setItem('sv_fmpvol_dead','1');return;} // plan gate — give up silently for the session
       if(!r.ok)continue;
       const d=await r.json();const it=Array.isArray(d)?d[0]:d;
-      if(it&&it.volume&&Q[sym]&&!Q[sym].volume)Q[sym].volume=it.volume;
+      if(it&&it.volume&&Q[sym]&&(!Q[sym].volume||Q[sym]._volFmp)){Q[sym].volume=it.volume;Q[sym]._volFmp=true;}
     }catch(e){delete _volTried[sym];}
   }
 }
@@ -1654,7 +1655,7 @@ async function startDeepScan(){
     })
     .slice(0,20); // cap at 20 — with 3 keys = 180 calls/min, 20 symbols = 40 calls max
 
-  await fmpVolumeBackfill(candidates.filter(s=>Q[s]&&!Q[s].volume)); // one batched FMP call fills volume for NYSE/AMEX rows
+  await fmpVolumeBackfill(candidates.filter(s=>Q[s]&&(!Q[s].volume||Q[s]._volFmp))); // fills NYSE volume + refreshes FMP-sourced volumes every 5 min
 
   for(const sym of candidates){
     if(fhPaused())break; // circuit breaker open — stop deep scan, next cycle retries
