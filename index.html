@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.25</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.26</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -854,7 +854,7 @@ function isStaleQuote(sym){
 // P3 quality gate — a real catalyst is stock-specific and fresh.
 // Generic daily movers-list articles (published for dozens of tickers every day)
 // never count; neither does anything older than the previous session.
-const GENERIC_NEWS=/stocks? moving in|top gainers and losers|gap-ups and gap-downs|unusual volume|top (stock )?mov(ers|ements)|most active|which stocks are|what[\u2019']?s happening (on|in)|market is filled with|gapping stocks|earnings scheduled for|(mon|tues|wednes|thurs|fri)day[\u2019']?s (session|intraday|pre-?market|after)/i;
+const GENERIC_NEWS=/stocks? moving in|top gainers and losers|gap-ups and gap-downs|unusual volume|top (stock )?mov(ers|ements)|most active|which stocks are|what[\u2019']?s happening (on|in)|market is filled with|gapping stocks|earnings scheduled for|(mon|tues|wednes|thurs|fri)day[\u2019']?s (session|intraday|pre-?market|after)|let[\u2019']?s (take|have) a look|stocks? (that are )?in motion|get insights into|discover the (top|most)|wondering what/i;
 function isRealCatalyst(a){
   if(!a||!a.headline)return false;
   if(GENERIC_NEWS.test(a.headline))return false;
@@ -1128,6 +1128,11 @@ function addScanSyms(){
 function rmScanSym(sym,e){if(e)e.stopPropagation();scanSyms=scanSyms.filter(s=>s!==sym);saveScanSyms();delete scanCache[sym];symMeta.delete(sym);delete failTimer[sym];liveScanUpdate();}
 function clearAllSyms(){
   scanSyms=[];saveScanSyms();scanCache={};symMeta.clear();failTimer={};
+  _lastDeepScan=0; // reset the 3-min deep-scan gate so new symbols score immediately
+  Object.keys(_newsCache).forEach(k=>delete _newsCache[k]);
+  Object.keys(_volTried).forEach(k=>delete _volTried[k]);
+  Object.keys(_badSyms).forEach(k=>delete _badSyms[k]);
+  Object.keys(_deepBadSyms).forEach(k=>delete _deepBadSyms[k]);
   liveScanUpdate();
   showToast('🗑 Cleared — rescanning now…');
   // Stagger to avoid duplicate calls with scheduled scan
