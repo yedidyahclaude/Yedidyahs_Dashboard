@@ -132,6 +132,18 @@ input:focus{outline:0;border-color:var(--ac)}
 .hint{font-size:11px;color:var(--dim);line-height:1.6;margin-top:8px}
 .hint code{background:var(--panel2);padding:1px 4px;border-radius:3px;font-size:10px}
 
+/* ── chart popout ── */
+.chartwrap{position:fixed;inset:0;z-index:65;background:var(--bg);display:none;
+  flex-direction:column;padding-top:var(--safe-t);padding-bottom:var(--safe-b)}
+.chartwrap.on{display:flex}
+.chart-top{display:flex;align-items:center;gap:10px;padding:10px 12px;
+  border-bottom:1px solid var(--line)}
+
+/* ── diagnostics ── */
+.diag{background:var(--panel);border:1px solid var(--line);border-radius:10px;
+  padding:10px;font-size:10px;font-family:ui-monospace,monospace;color:var(--dim);
+  max-height:200px;overflow-y:auto;white-space:pre-wrap;word-break:break-all;margin-top:8px}
+
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--safe-b) + 20px);
   background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:11px 18px;
   border-radius:11px;font-size:13px;font-weight:600;z-index:70;opacity:0;
@@ -173,6 +185,13 @@ input:focus{outline:0;border-color:var(--ac)}
   <div class="hint" style="margin-top:24px">
     Signed in as <b id="who">—</b> · <a href="#" onclick="doLogout();return false" style="color:var(--ac2)">Sign out</a>
   </div>
+
+  <label style="margin-top:26px">Diagnostics</label>
+  <div class="diag" id="diag">No errors captured.</div>
+  <button class="btn ghost" onclick="copyDiag()">Copy errors</button>
+  <div class="hint">Also mirrored to the server log — open
+    <a href="https://webull-proxy.yedidyah-claude.workers.dev/errors" target="_blank" style="color:var(--ac2)">/errors</a>
+    on any device to read what this phone reported.</div>
 </div>
 
 <!-- APP -->
@@ -210,8 +229,20 @@ input:focus{outline:0;border-color:var(--ac)}
   <div class="sh-body">
     <div class="nlab">News</div>
     <div id="sh-news"></div>
-    <a class="tv" id="sh-tv" target="_blank" rel="noopener">Open chart in TradingView ↗</a>
+    <button class="tv" onclick="openChart()">Open chart</button>
+    <a class="tv" id="sh-tv" target="_blank" rel="noopener"
+       style="background:var(--panel2);color:var(--txt);border:1px solid var(--line);margin-top:8px">Full TradingView layout ↗</a>
   </div>
+</div>
+
+<!-- CHART POPOUT -->
+<div class="chartwrap" id="chartwrap">
+  <div class="chart-top">
+    <div class="sh-sym" id="cw-sym" style="font-size:19px">—</div>
+    <div class="mono" id="cw-px" style="font-size:15px;font-weight:700"></div>
+    <button class="iconbtn" style="margin-left:auto" onclick="closeChart()">✕</button>
+  </div>
+  <div id="tvbox" style="flex:1;min-height:0"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -230,6 +261,22 @@ let scanSyms=[],appReady=false;
 const $=id=>document.getElementById(id);
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');
   clearTimeout(t._x);t._x=setTimeout(()=>t.classList.remove('on'),2400);}
+
+// ═══ ERRORS — phones have no console, so capture everything ═══
+// Kept locally (Settings → Diagnostics, with Copy) and mirrored to the
+// webull-proxy KV log at /errors so it can be read from any device.
+const errLog=[];
+function logErr(src,msg,status){
+  const e={t:new Date().toLocaleTimeString('en-US',{hour12:false}),src,msg:String(msg).slice(0,160),status:status||''};
+  errLog.unshift(e);if(errLog.length>40)errLog.pop();
+  const d=$('diag');if(d&&$('settings').classList.contains('on'))renderDiag();
+  try{
+    fetch(WORKER_URL+'/log-error',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({source:'mobile:'+src,status:status||0,url:location.pathname,message:String(msg).slice(0,200)})}).catch(()=>{});
+  }catch(_){}
+}
+window.addEventListener('error',e=>logErr('js',e.message+' @'+(e.lineno||'?')));
+window.addEventListener('unhandledrejection',e=>logErr('promise',e.reason?.message||e.reason));
 
 // ═══ SESSION / TIME ═══
 function etNow(){return new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));}
@@ -258,7 +305,26 @@ function openSettings(){
   $('k-fh1').value=fhKeys[0]||'';$('k-fh2').value=fhKeys[1]||'';$('k-fh3').value=fhKeys[2]||'';
   $('k-fmp').value=fmpKey;
   $('who').textContent=sessionStorage.getItem('sv_email')||'—';
+  renderDiag();
   $('settings').classList.add('on');
+}
+function renderDiag(){
+  const d=$('diag');if(!d)return;
+  d.textContent=errLog.length
+    ? errLog.map(e=>e.t+'  '+e.src+(e.status?' ['+e.status+']':'')+'  '+e.msg).join('\n')
+    : 'No errors captured.';
+}
+function copyDiag(){
+  const txt=errLog.length?errLog.map(e=>e.t+' '+e.src+(e.status?' ['+e.status+']':'')+' '+e.msg).join('\n')
+    :'No errors captured.';
+  const done=()=>toast('Errors copied — paste them to Claude');
+  if(navigator.clipboard?.writeText)navigator.clipboard.writeText(txt).then(done,()=>fallback());
+  else fallback();
+  function fallback(){
+    const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);
+    ta.select();try{document.execCommand('copy');done();}catch(e){toast('Copy failed — screenshot instead');}
+    ta.remove();
+  }
 }
 function closeSettings(){$('settings').classList.remove('on');}
 function saveKeys(){
@@ -289,7 +355,7 @@ async function doLogin(){
     sessionStorage.setItem('sv_email',d.user.email);
     localStorage.setItem('sv_m_email',email);
     startApp();
-  }catch(e){m.className='msg err';m.textContent='Network error — check your connection.';}
+  }catch(e){logErr('login',e.message);m.className='msg err';m.textContent='Network error — check your connection.';}
 }
 function doLogout(){sessionStorage.clear();location.reload();}
 async function refreshSession(){
@@ -316,9 +382,12 @@ async function fhFetch(path){
       const extra=ep==='stock/metric'?'&metric=all':'';
       const r=await fetch('https://finnhub.io/api/v1/'+ep+'?'+qs+extra+'&token='+key);
       if(r.status!==429&&r.status!==403)return r;
-    }catch(e){}
+      logErr('finnhub-direct',path,r.status);
+    }catch(e){logErr('finnhub-direct',e.message);}
   }
-  return fetch(FH_URL+path);
+  const pr=await fetch(FH_URL+path);
+  if(!pr.ok)logErr('finnhub-proxy',path,pr.status);
+  return pr;
 }
 // Yesterday's quote must never score: Finnhub free tier serves stale closes pre-market.
 function isStale(sym){
@@ -329,11 +398,26 @@ function isStale(sym){
   const off=et.getTime()-Date.now();
   return q.priceTs<(ss.getTime()-off);
 }
-// A real catalyst is stock-specific and fresh. Generic daily movers-lists never count.
-const GENERIC=/stocks? moving in|top gainers and losers|gap-ups and gap-downs|unusual volume|top (stock )?mov(ers|ements)|most active|which stocks are|what[\u2019']?s happening (on|in)|market is filled with|gapping stocks|earnings scheduled for|(mon|tues|wednes|thurs|fri)day[\u2019']?s (session|intraday|pre-?market|after)|let[\u2019']?s (take|have) a look|stocks? (that are )?in motion|get insights into|discover the (top|most)|wondering what/i;
-function isRealCatalyst(a){
+// A real catalyst is stock-specific and fresh.
+// Three ways an article fails:
+//   1. GENERIC  — daily movers-list wallpaper ("12 Stocks Moving In Tuesday's Session")
+//   2. MARKET   — index/macro news tagged to every ticker ("Dow Gains Over 150 Points")
+//   3. ROUNDUP  — one article tagged to many tickers; the news is about someone else
+//                 (KUST scored on "Why Aehr Test Systems Shares Are Trading Higher")
+const GENERIC=/stocks? moving (in|higher|lower)|top gainers and losers|gap-ups and gap-downs|unusual volume|top (stock )?mov(ers|ements)|most active|which stocks are|what[\u2019']?s happening (on|in)|market is filled with|gapping stocks|earnings scheduled for|(mon|tues|wednes|thurs|fri)day[\u2019']?s (session|intraday|pre-?market|after)|let[\u2019']?s (take|have) a look|stocks? (that are )?in motion|get insights into|discover the (top|most)|wondering what|and other big stocks|shares? (are )?trading (higher|lower)/i;
+const MARKET=/\b(dow|s&p ?500|nasdaq composite|russell|nyse composite|wall street|stock market|us markets?|futures)\b.*(gain|fall|rise|drop|jump|slide|point|close|open|surge|tumble)|^(dow|s&p|nasdaq|markets?) /i;
+function isRealCatalyst(a,sym){
   if(!a||!a.headline)return false;
-  if(GENERIC.test(a.headline))return false;
+  const h=a.headline;
+  if(GENERIC.test(h)||MARKET.test(h))return false;
+  // Tagged to a crowd of tickers = roundup, not this company's catalyst
+  const rel=(a.related||'').split(',').map(s=>s.trim()).filter(Boolean);
+  if(rel.length>3)return false;
+  // Headline names a different company's ticker and not ours
+  if(sym){
+    const tick=h.match(/\(([A-Z]{1,5})\)/g)||[];
+    if(tick.length&&!tick.some(t=>t==='('+sym+')'))return false;
+  }
   const hrs=etNow().getDay()===1?72:24;
   return (a.datetime||0)*1000>=Date.now()-hrs*3600000;
 }
@@ -345,8 +429,8 @@ async function webullScan(){
   const sess=getSession(),minC=(sess==='pre'||sess==='aft')?5:10;
   try{
     for(const ep of ['/gainers','/active']){
-      const r=await fetch(WORKER_URL+ep).catch(()=>null);
-      if(!r?.ok)continue;
+      const r=await fetch(WORKER_URL+ep).catch(e=>{logErr('webull',ep+' '+e.message);return null;});
+      if(!r?.ok){if(r)logErr('webull',ep,r.status);continue;}
       const items=await r.json().catch(()=>null);
       if(!Array.isArray(items))continue;
       for(const it of items){
@@ -370,8 +454,8 @@ async function fmpScan(){
   const sess=getSession(),minC=(sess==='pre'||sess==='aft')?5:10;
   try{
     const r=await fetch(WORKER_URL+'/fmp-gainers').catch(()=>null);
-    if(r?.status===429){_fmpDead=true;_fmpRun=false;return;}
-    if(!r?.ok){_fmpRun=false;return;}
+    if(r?.status===429){logErr('fmp-gainers','rate limited — paused',429);_fmpDead=true;_fmpRun=false;return;}
+    if(!r?.ok){if(r)logErr('fmp-gainers','failed',r.status);_fmpRun=false;return;}
     const items=await r.json().catch(()=>null);
     if(Array.isArray(items))for(const it of items){
       const sym=(it.symbol||'').toUpperCase().trim();
@@ -420,7 +504,7 @@ async function deepScan(){
         const news=await rn.json();
         if(Array.isArray(news)){
           newsCache[sym]=news.slice(0,8);
-          const cats=news.filter(isRealCatalyst);
+          const cats=news.filter(a=>isRealCatalyst(a,sym));
           p3=cats.length>0;
           head=cats[0]?.headline||news[0]?.headline||'';
         }
@@ -431,18 +515,22 @@ async function deepScan(){
       if(rm.ok){
         const m=(await rm.json()).metric||{};
         const avg=(m['10DayAverageTradingVolume']||0)*1e6;
-        if(avg>0){
+        // A 10-day average under 5k shares means the feed is broken or the stock
+        // just listed — the resulting 4000x "RVOL" is noise, not a signal.
+        if(avg>=5000){
           const rv=(q.volume/avg)*(390/mins);
           p4=rv>=rvT&&(q.volume||0)>=volFloor;
-          c.rvol=rv.toFixed(1);
-        }else{p4=(q.changePct||0)>=20&&(q.volume||0)>=volFloor;c.rvol='est';}
+          c.rvol=rv>=100?Math.round(rv)+'':rv.toFixed(1);
+          c.rvolBad=rv>200; // implausible — show but never trust
+          if(c.rvolBad)p4=(q.volume||0)>=volFloor*3; // fall back to raw volume
+        }else{p4=(q.volume||0)>=volFloor;c.rvol='—';c.rvolBad=true;}
         const tf=m['shareFloat']??m['float']??null;
-        if(tf!==null){const fm=tf>1000?tf/1e6:tf;p5=fm<10;c.float=fm.toFixed(1)+'M';}
-        else{
-          const fs=await getFloat(sym);
-          if(fs){const fm=fs/1e6;p5=fm<10;c.float=fm.toFixed(1)+'M';}
-          else{p5=null;c.float='—';}
-        }
+        let fm=null;
+        if(tf!==null)fm=tf>1000?tf/1e6:tf;
+        else{const fs=await getFloat(sym);if(fs)fm=fs/1e6;}
+        // Sub-50k float is a data error, not a tradeable float — don't score it
+        if(fm!==null&&fm>=0.05){p5=fm<10;c.float=fm<0.1?'<0.1M':fm.toFixed(1)+'M';}
+        else{p5=null;c.float='—';}
       }
       // day range for VWAP-ish context
       const rq=await fhFetch('/quote?symbol='+sym);
@@ -467,7 +555,7 @@ async function getFloat(sym){
   if(!fmpKey)return null;
   try{
     const r=await fetch('https://financialmodelingprep.com/stable/shares-float?symbol='+encodeURIComponent(sym)+'&apikey='+fmpKey);
-    if(!r.ok)return null;
+    if(!r.ok){logErr('fmp-float',sym,r.status);return null;}
     const d=await r.json();const row=Array.isArray(d)?d[0]:d;
     const fs=row&&row.floatShares?row.floatShares:null;
     if(fs){floatCache[sym]={v:fs,ts:Date.now()};localStorage.setItem('sv_float_cache',JSON.stringify(floatCache));}
@@ -492,7 +580,7 @@ function render(){
   }).sort((a,b)=>{
     const d=scoreOf(b)-scoreOf(a);
     return d||((Q[b]?.changePct||0)-(Q[a]?.changePct||0));
-  });
+  }).slice(0,12); // best 12 only — no scrolling for a fresh set of eyes at the open
 
   $('s-track').textContent=rows.length;
   $('s-5').textContent=rows.filter(s=>scoreOf(s)===5).length;
@@ -519,7 +607,7 @@ function render(){
       +(q._src?'<span class="src">'+q._src+'</span>':'')+vwap
       +'<div class="price mono">$'+q.price.toFixed(2)+'</div>'
       +'<div class="chg mono '+((q.changePct||0)>=0?'up':'dn')+'">'+((q.changePct||0)>=0?'+':'')+(q.changePct||0).toFixed(1)+'%</div></div>'
-      +'<div class="r2"><span class="meta">RVOL <b>'+(c.rvol||'—')+(c.rvol&&c.rvol!=='est'?'x':'')+'</b></span>'
+      +'<div class="r2"><span class="meta">RVOL <b'+(c.rvolBad?' style="color:var(--dim)"':'')+'>'+(c.rvol||'—')+(c.rvol&&c.rvol!=='—'?'x':'')+(c.rvolBad&&c.rvol!=='—'?'?':'')+'</b></span>'
       +'<span class="meta">Float <b>'+(c.float||'—')+'</b></span>'
       +'<span class="score '+(sc===5?'s5':sc===4?'s4':'')+'">'+sc+'/5</span></div>'
       +'<div class="pills">'+pill(p1)+pill(p2)+pill(c.p3)+pill(c.p4)+pill(c.p5)+'</div>'
@@ -542,7 +630,7 @@ function openSheet(sym){
     +(q.high?'<span>Day <b>$'+(q.low||0).toFixed(2)+'–$'+q.high.toFixed(2)+'</b></span>':'');
   const items=newsCache[sym]||[];
   $('sh-news').innerHTML=items.length?items.map(n=>{
-    const real=isRealCatalyst(n);
+    const real=isRealCatalyst(n,sym);
     const t=new Date(n.datetime*1000).toLocaleString('en-US',
       {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'});
     return '<div class="nitem" onclick="window.open(\''+n.url+'\',\'_blank\')">'
@@ -553,7 +641,39 @@ function openSheet(sym){
   $('sh-tv').href='https://www.tradingview.com/chart/'+SAVED_LAYOUT_ID+'/?symbol='+sym;
   $('scrim').classList.add('on');$('sheet').classList.add('on');
 }
-function closeSheet(){$('scrim').classList.remove('on');$('sheet').classList.remove('on');sheetSym=null;}
+function closeSheet(){$('scrim').classList.remove('on');$('sheet').classList.remove('on');}
+
+// Chart stays inside the app — no tab switching, scanner keeps running behind it
+function openChart(){
+  if(!sheetSym)return;
+  const sym=sheetSym,q=Q[sym];
+  $('cw-sym').textContent=sym;
+  $('cw-px').innerHTML='$'+q.price.toFixed(2)+' <span class="'+((q.changePct||0)>=0?'up':'dn')+'">'
+    +((q.changePct||0)>=0?'+':'')+(q.changePct||0).toFixed(1)+'%</span>';
+  $('tvbox').innerHTML='<div id="tvinner" style="height:100%"></div>';
+  $('chartwrap').classList.add('on');
+  const build=()=>{
+    try{
+      new TradingView.widget({
+        container_id:'tvinner',symbol:sym,interval:'5',timezone:'America/New_York',
+        theme:'dark',style:'1',locale:'en',autosize:true,
+        hide_side_toolbar:true,allow_symbol_change:false,
+        withdateranges:false,save_image:false,
+        backgroundColor:'#0a0a12',gridColor:'rgba(37,37,56,.6)',
+        studies:['VWAP@tv-basicstudies'],
+        extended_hours:true
+      });
+    }catch(e){logErr('tv-widget',e.message);}
+  };
+  if(window.TradingView)build();
+  else{
+    const s=document.createElement('script');
+    s.src='https://s3.tradingview.com/tv.js';s.onload=build;
+    s.onerror=()=>{$('tvbox').innerHTML='<div class="empty">Chart failed to load. Use the full layout link instead.</div>';};
+    document.head.appendChild(s);
+  }
+}
+function closeChart(){$('chartwrap').classList.remove('on');$('tvbox').innerHTML='';}
 
 // swipe-down to close
 (function(){
