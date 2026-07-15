@@ -28,6 +28,7 @@ body{padding-top:var(--safe-t);padding-bottom:var(--safe-b)}
   padding:10px 12px;display:flex;align-items:center;gap:10px}
 .brand{font-weight:800;font-size:15px;letter-spacing:-.02em}
 .brand span{color:var(--ac2)}
+.ver{font-size:9px;color:var(--ac2);opacity:.65;font-weight:700;letter-spacing:.02em}
 .clock{margin-left:auto;font-size:13px;font-weight:700;color:var(--gold)}
 .sess{font-size:9px;padding:2px 6px;border-radius:4px;background:var(--panel2);
   color:var(--dim);letter-spacing:.08em;font-weight:700}
@@ -79,7 +80,7 @@ body{padding-top:var(--safe-t);padding-bottom:var(--safe-b)}
 
 /* ── bottom sheet ── */
 .scrim{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:40;opacity:0;
-  pointer-events:none;transition:opacity .2s}
+  pointer-events:none;transition:opacity .2s;touch-action:none}
 .scrim.on{opacity:1;pointer-events:auto}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:50;background:var(--panel);
   border-top:1px solid var(--line);border-radius:18px 18px 0 0;
@@ -94,7 +95,8 @@ body{padding-top:var(--safe-t);padding-bottom:var(--safe-b)}
 .sh-px{margin-left:auto;font-size:19px;font-weight:700}
 .sh-sub{font-size:11px;color:var(--dim);margin-top:6px;display:flex;gap:12px;flex-wrap:wrap}
 .sh-sub b{color:var(--txt)}
-.sh-body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px 16px;flex:1}
+.sh-body{overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px 16px 16px;flex:1;
+  overscroll-behavior:contain}
 .nlab{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.1em;
   font-weight:700;margin:2px 0 8px}
 .nitem{padding:10px 0;border-bottom:1px solid var(--line)}
@@ -176,7 +178,7 @@ input:focus{outline:0;border-color:var(--ac)}
   <div class="msg" id="k-msg"></div>
 
   <div class="hint" style="margin-top:24px">
-    Signed in as <b id="who">—</b> · <a href="#" onclick="doLogout();return false" style="color:var(--ac2)">Sign out</a>
+    Version <b id="verS">—</b> · Signed in as <b id="who">—</b> · <a href="#" onclick="doLogout();return false" style="color:var(--ac2)">Sign out</a>
   </div>
 
   <label style="margin-top:26px">Diagnostics</label>
@@ -191,6 +193,7 @@ input:focus{outline:0;border-color:var(--ac)}
 <div id="app" style="display:none">
   <div class="top">
     <div class="brand">5 <span>Pillars</span></div>
+    <div class="ver mono" id="ver">—</div>
     <div class="sess" id="sess">—</div>
     <div class="clock mono" id="clock">--:--:--</div>
     <button class="iconbtn" onclick="manualScan()" id="refBtn">↻</button>
@@ -230,6 +233,7 @@ input:focus{outline:0;border-color:var(--ac)}
 
 <script>
 // ═══ CONFIG (identical to desktop) ═══
+const VERSION='m1.4';
 const SUPA_URL='https://yklxpcatopitwjzutolj.supabase.co';
 const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrbHhwY2F0b3BpdHdqenV0b2xqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MDYyMTEsImV4cCI6MjA5NjM4MjIxMX0.KJotgJpSLziUvdZkUb66tV7vZXPEfMOjGOij2-vmk6Q';
 const WORKER_URL='https://webull-proxy.yedidyah-claude.workers.dev';
@@ -286,6 +290,7 @@ function openSettings(){
   $('k-fh1').value=fhKeys[0]||'';$('k-fh2').value=fhKeys[1]||'';$('k-fh3').value=fhKeys[2]||'';
   $('k-fmp').value=fmpKey;
   $('who').textContent=sessionStorage.getItem('sv_email')||'—';
+  $('verS').textContent=VERSION;
   renderDiag();
   $('settings').classList.add('on');
 }
@@ -612,7 +617,26 @@ function render(){
 }
 
 // ═══ SHEET ═══
-let sheetSym=null;
+// Freeze the page behind the sheet. iOS ignores overflow:hidden on body, so the
+// scroll position is pinned with position:fixed and restored on close — otherwise
+// pulling up/down drags the scanner around underneath the news.
+let sheetSym=null,_lockY=0;
+function lockScroll(){
+  _lockY=window.scrollY||0;
+  document.body.style.position='fixed';
+  document.body.style.top=(-_lockY)+'px';
+  document.body.style.left='0';
+  document.body.style.right='0';
+  document.body.style.width='100%';
+}
+function unlockScroll(){
+  document.body.style.position='';
+  document.body.style.top='';
+  document.body.style.left='';
+  document.body.style.right='';
+  document.body.style.width='';
+  window.scrollTo(0,_lockY);
+}
 function openSheet(sym){
   sheetSym=sym;
   const q=Q[sym],c=cache[sym]||{};
@@ -634,24 +658,35 @@ function openSheet(sym){
       +'<span>'+(n.source||'')+' · '+t+' ET</span></div></div>';
   }).join(''):'<div class="empty" style="padding:24px 0">No news pulled yet. It arrives with the next scan.</div>';
   $('sh-tv').href='https://www.tradingview.com/chart/'+SAVED_LAYOUT_ID+'/?symbol='+encodeURIComponent(sym)+'&interval=10S';
+  lockScroll();
   $('scrim').classList.add('on');$('sheet').classList.add('on');
 }
-function closeSheet(){$('scrim').classList.remove('on');$('sheet').classList.remove('on');sheetSym=null;}
+function closeSheet(){
+  $('scrim').classList.remove('on');$('sheet').classList.remove('on');
+  unlockScroll();sheetSym=null;
+}
 
-// swipe-down to close
+// swipe-down to close — header always drags; the scrolling body only when at its top
 (function(){
-  let y0=null;const sh=$('sheet');
-  sh.addEventListener('touchstart',e=>{if(sh.querySelector('.sh-body').scrollTop<=0)y0=e.touches[0].clientY;},{passive:true});
+  let y0=null,dragging=false;const sh=$('sheet');
+  sh.addEventListener('touchstart',e=>{
+    const inBody=e.target.closest('.sh-body');
+    if(inBody&&$('sheet').querySelector('.sh-body').scrollTop>0){y0=null;return;}
+    y0=e.touches[0].clientY;dragging=false;
+    sh.style.transition='none';
+  },{passive:true});
   sh.addEventListener('touchmove',e=>{
-    if(y0===null)return;const dy=e.touches[0].clientY-y0;
+    if(y0===null)return;
+    const dy=e.touches[0].clientY-y0;
+    if(dy>4)dragging=true;
     if(dy>0)sh.style.transform='translateY('+dy+'px)';
   },{passive:true});
   sh.addEventListener('touchend',e=>{
     if(y0===null)return;
-    const dy=(e.changedTouches[0].clientY-y0);
-    sh.style.transform='';
-    if(dy>90)closeSheet();
-    y0=null;
+    const dy=e.changedTouches[0].clientY-y0;
+    sh.style.transition='';sh.style.transform='';
+    if(dragging&&dy>90)closeSheet();
+    y0=null;dragging=false;
   });
 })();
 
@@ -695,6 +730,8 @@ function startApp(){
   }
 }
 (function init(){
+  $('ver').textContent=VERSION;
+  document.title='5 Pillars '+VERSION;
   const saved=localStorage.getItem('sv_m_email');
   if(saved)$('li-email').value=saved;
   if(sessionStorage.getItem('sv_token'))startApp();
