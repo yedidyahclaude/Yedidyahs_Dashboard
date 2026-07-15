@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.19</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.20</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -846,14 +846,17 @@ let fmpKey=localStorage.getItem('sv_fmp_key')||'';
 let _fmpCalls=JSON.parse(localStorage.getItem('sv_fmp_calls')||'{}');
 function fmpBudgetOk(){const d=new Date().toISOString().split('T')[0];if(_fmpCalls.date!==d)_fmpCalls={date:d,count:0};return _fmpCalls.count<200;} // hard stop at 200/day (plan cap 250)
 function fmpCount(){_fmpCalls.count=(_fmpCalls.count||0)+1;localStorage.setItem('sv_fmp_calls',JSON.stringify(_fmpCalls));}
+let _fmpCooldownUntil=0; // any FMP 429 pauses ALL frontend FMP calls for 2 min so the quota window resets
+function fmpCoolingDown(){return Date.now()<_fmpCooldownUntil;}
 let _floatCache=JSON.parse(localStorage.getItem('sv_float_cache')||'{}');
 async function getFloatFMP(sym){
   const c=_floatCache[sym];
   if(c&&Date.now()-c.ts<7*86400000)return c.v; // float rarely changes — 7-day cache
-  if(!fmpKey||!fmpBudgetOk())return null;
+  if(!fmpKey||!fmpBudgetOk()||fmpCoolingDown())return null;
   try{
     fmpCount();
     const r=await fetch('https://financialmodelingprep.com/stable/shares-float?symbol='+encodeURIComponent(sym)+'&apikey='+fmpKey);
+    if(r.status===429){_fmpCooldownUntil=Date.now()+120000;return null;}
     if(!r.ok)return null;
     const d=await r.json();
     const row=Array.isArray(d)?d[0]:d;
@@ -865,18 +868,19 @@ async function getFloatFMP(sym){
 let _fmpVolDead=sessionStorage.getItem('sv_fmpvol_dead')==='1'; // plan doesn't include quote endpoints — stop trying
 const _volTried={};
 async function fmpVolumeBackfill(syms){
-  if(!fmpKey||_fmpVolDead||!syms.length||!fmpBudgetOk())return;
+  if(!fmpKey||_fmpVolDead||!syms.length||!fmpBudgetOk()||fmpCoolingDown())return;
   for(const sym of syms){
-    if(_volTried[sym])continue; // one attempt per symbol per session — keeps budget tiny
+    if(_volTried[sym])continue; // one attempt per symbol — keeps budget tiny
     _volTried[sym]=true;
     try{
       fmpCount();
       const r=await fetch('https://financialmodelingprep.com/stable/quote-short?symbol='+encodeURIComponent(sym)+'&apikey='+fmpKey);
+      if(r.status===429){delete _volTried[sym];_fmpCooldownUntil=Date.now()+120000;return;} // rate limited — retry this symbol after cooldown
       if(r.status===402||r.status===403){_fmpVolDead=true;sessionStorage.setItem('sv_fmpvol_dead','1');return;} // plan gate — give up silently for the session
       if(!r.ok)continue;
       const d=await r.json();const it=Array.isArray(d)?d[0]:d;
       if(it&&it.volume&&Q[sym]&&!Q[sym].volume)Q[sym].volume=it.volume;
-    }catch(e){}
+    }catch(e){delete _volTried[sym];}
   }
 }
 async function fetchQDirect(sym){
