@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.24</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.25</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -850,6 +850,17 @@ function isStaleQuote(sym){
   const sessionStart=new Date(et);sessionStart.setHours(4,0,0,0);
   const offset=et.getTime()-Date.now(); // ET-to-local drift of the trick above cancels out
   return q.priceTs<(sessionStart.getTime()-offset);
+}
+// P3 quality gate — a real catalyst is stock-specific and fresh.
+// Generic daily movers-list articles (published for dozens of tickers every day)
+// never count; neither does anything older than the previous session.
+const GENERIC_NEWS=/stocks? moving in|top gainers and losers|gap-ups and gap-downs|unusual volume|top (stock )?mov(ers|ements)|most active|which stocks are|what[\u2019']?s happening (on|in)|market is filled with|gapping stocks|earnings scheduled for|(mon|tues|wednes|thurs|fri)day[\u2019']?s (session|intraday|pre-?market|after)/i;
+function isRealCatalyst(a){
+  if(!a||!a.headline)return false;
+  if(GENERIC_NEWS.test(a.headline))return false;
+  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const hours=et.getDay()===1?72:24; // Mondays look back through the weekend
+  return (a.datetime||0)*1000>=Date.now()-hours*3600000;
 }
 // FMP direct (Starter plan) — float for P5 + volume/h-l-o backfill for non-Nasdaq rows
 // that Webull (Nasdaq-only) can never cover. Key lives ONLY in localStorage:
@@ -1696,8 +1707,10 @@ async function startDeepScan(){
         const r=await fhFetch('/news?symbol='+sym+'&from='+from+'&to='+today);
         if(r.status===403||r.status===429){p3=null;hitLimit=true;if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-news',r.status,FH_URL+'/news?symbol='+sym,sym);return;}
         const news=await r.json();
-        hasNews=Array.isArray(news)&&news.length>0;p3=hasNews;
-        if(hasNews&&news[0]?.headline)latestHeadline=news[0].headline;
+        const catalysts=Array.isArray(news)?news.filter(isRealCatalyst):[];
+        hasNews=catalysts.length>0;p3=hasNews;
+        if(catalysts.length&&catalysts[0].headline)latestHeadline=catalysts[0].headline;
+        else if(Array.isArray(news)&&news[0]?.headline)latestHeadline=news[0].headline; // display-only fallback
         if(Array.isArray(news)&&news.length)_newsCache[sym]=news.slice(0,8);
       }catch(e){p3=null;}});
       if(!scanCache[sym]?._rvolFromWebull){
@@ -1706,8 +1719,9 @@ async function startDeepScan(){
           if(r.status===403||r.status===429){p4=null;p5=null;hitLimit=true;if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-metric',r.status,FH_URL+'/metric?symbol='+sym,sym);return;}
           const d=await r.json();const m=d.metric||{};
           const avgDailyVol=(m['10DayAverageTradingVolume']||0)*1e6;
-          if(avgDailyVol>0){const nRVol=(q.volume/avgDailyVol)*(390/minsElapsed);p4=nRVol>=rvThreshold;scanCache[sym]={...scanCache[sym],rvolValue:nRVol.toFixed(1)};}
-          else{p4=(q.changePct||0)>=20;scanCache[sym]={...scanCache[sym],rvolValue:'est'};}
+          const volFloor=sess==='mkt'?500000:100000; // absolute floor — a big ratio on a dead tape is not momentum
+          if(avgDailyVol>0){const nRVol=(q.volume/avgDailyVol)*(390/minsElapsed);p4=nRVol>=rvThreshold&&(q.volume||0)>=volFloor;scanCache[sym]={...scanCache[sym],rvolValue:nRVol.toFixed(1)};}
+          else{p4=(q.changePct||0)>=20&&(q.volume||0)>=volFloor;scanCache[sym]={...scanCache[sym],rvolValue:'est'};}
           const tf=m['shareFloat']??m['float']??null;
           if(tf!==null){const fm=tf>1000?tf/1e6:tf;p5=fm<10;scanCache[sym]={...scanCache[sym],floatValue:fm.toFixed(1)+'M'};}
           else{const fs=await getFloatFMP(sym);if(fs){const fm=fs/1e6;p5=fm<10;scanCache[sym]={...scanCache[sym],floatValue:fm.toFixed(1)+'M'};}else{p5=null;scanCache[sym]={...scanCache[sym],floatValue:'—'};}}
