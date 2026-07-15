@@ -132,13 +132,6 @@ input:focus{outline:0;border-color:var(--ac)}
 .hint{font-size:11px;color:var(--dim);line-height:1.6;margin-top:8px}
 .hint code{background:var(--panel2);padding:1px 4px;border-radius:3px;font-size:10px}
 
-/* ── chart popout ── */
-.chartwrap{position:fixed;inset:0;z-index:65;background:var(--bg);display:none;
-  flex-direction:column;padding-top:var(--safe-t);padding-bottom:var(--safe-b)}
-.chartwrap.on{display:flex}
-.chart-top{display:flex;align-items:center;gap:10px;padding:10px 12px;
-  border-bottom:1px solid var(--line)}
-
 /* ── diagnostics ── */
 .diag{background:var(--panel);border:1px solid var(--line);border-radius:10px;
   padding:10px;font-size:10px;font-family:ui-monospace,monospace;color:var(--dim);
@@ -229,20 +222,8 @@ input:focus{outline:0;border-color:var(--ac)}
   <div class="sh-body">
     <div class="nlab">News</div>
     <div id="sh-news"></div>
-    <button class="tv" onclick="openChart()">Open chart</button>
-    <a class="tv" id="sh-tv" target="_blank" rel="noopener"
-       style="background:var(--panel2);color:var(--txt);border:1px solid var(--line);margin-top:8px">Full TradingView layout ↗</a>
+    <a class="tv" id="sh-tv" target="_blank" rel="noopener">Open chart ↗</a>
   </div>
-</div>
-
-<!-- CHART POPOUT -->
-<div class="chartwrap" id="chartwrap">
-  <div class="chart-top">
-    <div class="sh-sym" id="cw-sym" style="font-size:19px">—</div>
-    <div class="mono" id="cw-px" style="font-size:15px;font-weight:700"></div>
-    <button class="iconbtn" style="margin-left:auto" onclick="closeChart()">✕</button>
-  </div>
-  <div id="tvbox" style="flex:1;min-height:0"></div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -638,42 +619,10 @@ function openSheet(sym){
       +'<div class="nm"><span class="tag '+(real?'real':'gen')+'">'+(real?'CATALYST':'ROUTINE')+'</span>'
       +'<span>'+(n.source||'')+' · '+t+' ET</span></div></div>';
   }).join(''):'<div class="empty" style="padding:24px 0">No news pulled yet. It arrives with the next scan.</div>';
-  $('sh-tv').href='https://www.tradingview.com/chart/'+SAVED_LAYOUT_ID+'/?symbol='+sym;
+  $('sh-tv').href='https://www.tradingview.com/chart/'+SAVED_LAYOUT_ID+'/?symbol='+encodeURIComponent(sym)+'&interval=10S';
   $('scrim').classList.add('on');$('sheet').classList.add('on');
 }
-function closeSheet(){$('scrim').classList.remove('on');$('sheet').classList.remove('on');}
-
-// Chart stays inside the app — no tab switching, scanner keeps running behind it
-function openChart(){
-  if(!sheetSym)return;
-  const sym=sheetSym,q=Q[sym];
-  $('cw-sym').textContent=sym;
-  $('cw-px').innerHTML='$'+q.price.toFixed(2)+' <span class="'+((q.changePct||0)>=0?'up':'dn')+'">'
-    +((q.changePct||0)>=0?'+':'')+(q.changePct||0).toFixed(1)+'%</span>';
-  $('tvbox').innerHTML='<div id="tvinner" style="height:100%"></div>';
-  $('chartwrap').classList.add('on');
-  const build=()=>{
-    try{
-      new TradingView.widget({
-        container_id:'tvinner',symbol:sym,interval:'5',timezone:'America/New_York',
-        theme:'dark',style:'1',locale:'en',autosize:true,
-        hide_side_toolbar:true,allow_symbol_change:false,
-        withdateranges:false,save_image:false,
-        backgroundColor:'#0a0a12',gridColor:'rgba(37,37,56,.6)',
-        studies:['VWAP@tv-basicstudies'],
-        extended_hours:true
-      });
-    }catch(e){logErr('tv-widget',e.message);}
-  };
-  if(window.TradingView)build();
-  else{
-    const s=document.createElement('script');
-    s.src='https://s3.tradingview.com/tv.js';s.onload=build;
-    s.onerror=()=>{$('tvbox').innerHTML='<div class="empty">Chart failed to load. Use the full layout link instead.</div>';};
-    document.head.appendChild(s);
-  }
-}
-function closeChart(){$('chartwrap').classList.remove('on');$('tvbox').innerHTML='';}
+function closeSheet(){$('scrim').classList.remove('on');$('sheet').classList.remove('on');sheetSym=null;}
 
 // swipe-down to close
 (function(){
@@ -712,6 +661,13 @@ function startApp(){
   setInterval(deepScan,20000);
   setInterval(render,5000);
   if(!fhKeys.length)setTimeout(()=>toast('Tap ⚙ to add your keys for full speed'),2500);
+  // Home Screen mode opens chart links in a dismissable in-app sheet that shares
+  // Safari's cookies — signed in, your presets, and a Done button instead of a stray tab.
+  const standalone=window.navigator.standalone||window.matchMedia('(display-mode: standalone)').matches;
+  if(!standalone&&!localStorage.getItem('sv_m_a2hs')){
+    localStorage.setItem('sv_m_a2hs','1');
+    setTimeout(()=>toast('Tip: Share → Add to Home Screen for cleaner charts'),6000);
+  }
 }
 (function init(){
   const saved=localStorage.getItem('sv_m_email');
