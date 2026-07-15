@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.17</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.19</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -403,6 +403,7 @@ input,button,textarea{font-family:inherit}
       <span class="sess cls" id="sessbdg">—</span>
     </div>
     <div class="topbar-right">
+      <button class="tb-btn" id="soundBtn" onclick="toggleSound()" title="Toggle alert sounds">🔔</button>
       <button class="tb-btn" onclick="toggleFilters()">⚙ Filters</button>
       <button class="tb-btn" id="pulseToggleBtn" onclick="togglePulse()">📊 Pulse</button>
       <button class="tb-btn" id="logToggleBtn" onclick="toggleLog()">📋 Log</button>
@@ -722,7 +723,55 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 // ── VISUAL ALERT SYSTEM — replaces Web Audio API (which was causing bugs) ──
 // Uses CSS animations on the scan header to signal different alert types.
 // No AudioContext, no browser limits, works on all devices including iPhone.
+// ═══ SOUND ALERTS (v3.9.18) ═══
+// 5 distinct sounds, all synthesized — no audio files, works offline.
+// AudioContext is created on first tap/click (browser autoplay policy).
+let soundOn=localStorage.getItem('sv_sound')!=='0';
+let _actx=null;
+function _ctx(){if(!_actx){try{_actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}if(_actx&&_actx.state==='suspended')_actx.resume();return _actx;}
+document.addEventListener('pointerdown',()=>{_ctx();},{once:true});
+function tone(freq,start,dur,type='sine',vol=0.18){
+  const c=_ctx();if(!c)return;
+  try{
+    const o=c.createOscillator(),g=c.createGain();
+    o.type=type;o.frequency.value=freq;
+    g.gain.setValueAtTime(0.0001,c.currentTime+start);
+    g.gain.linearRampToValueAtTime(vol,c.currentTime+start+0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+start+dur);
+    o.connect(g);g.connect(c.destination);
+    o.start(c.currentTime+start);o.stop(c.currentTime+start+dur+0.05);
+  }catch(e){}
+}
+function playSound(type){
+  if(!soundOn)return;
+  switch(type){
+    case 'score5':tone(523,0,.14);tone(659,.12,.14);tone(784,.24,.14);tone(1047,.36,.32);break;      // 🚀 rising C-E-G-C arpeggio — jackpot
+    case 'score4':tone(392,0,.12,'triangle');tone(523,.13,.24,'triangle');break;                     // ⚡ two-note rise — priority
+    case 'pmh':tone(1319,0,.09,'square',0.12);tone(1319,.14,.09,'square',0.12);break;                // 🎯 urgent double ping — PMH breakout
+    case 'halt':tone(220,0,.28,'sawtooth',0.14);tone(165,.26,.36,'sawtooth',0.14);break;             // 🛑 low descending — warning
+    default:tone(880,0,.08,'sine',0.11);                                                              // 🔥 soft blip — new symbol
+  }
+}
+function toggleSound(){
+  soundOn=!soundOn;localStorage.setItem('sv_sound',soundOn?'1':'0');
+  const b=document.getElementById('soundBtn');if(b)b.textContent=soundOn?'🔔':'🔕';
+  showToast(soundOn?'🔔 Alert sounds ON':'🔕 Alert sounds muted');
+  if(soundOn)playSound('new');
+}
+setTimeout(()=>{const b=document.getElementById('soundBtn');if(b)b.textContent=soundOn?'🔔':'🔕';},0);
+// PMH breakout — fires ONCE per symbol per day, only during regular market hours,
+// the first time price crosses above the recorded pre-market high (key entry trigger).
+const _pmhAlerted={};
+function checkPmhBreak(sym,px){
+  if(getSession()!=='mkt')return;
+  if(!pmHigh[sym]||px<=pmHigh[sym]||_pmhAlerted[sym])return;
+  _pmhAlerted[sym]=true;
+  playPing('pmh');
+  showToast('🎯 '+sym+' broke pre-market high $'+pmHigh[sym].toFixed(2));
+  addLog('pmh',sym,'Broke PMH $'+pmHigh[sym].toFixed(2));
+}
 function playPing(type='new'){
+  playSound(type);
   const el=document.getElementById('scanCount');
   if(!el)return;
   // Different colors for different alert types
@@ -730,6 +779,7 @@ function playPing(type='new'){
     score5:'#19c48a', // green — 5/5 confirmed
     score4:'#f0b94f', // gold — 4/5 priority
     halt:'#f0506e',   // red — trading halt
+    pmh:'#42d4f4',    // cyan — PMH breakout
     new:'#7c6aff',    // purple — new symbol
   };
   const col=colors[type]||colors.new;
@@ -812,23 +862,22 @@ async function getFloatFMP(sym){
     return fs||null;
   }catch(e){return null;}
 }
+let _fmpVolDead=sessionStorage.getItem('sv_fmpvol_dead')==='1'; // plan doesn't include quote endpoints — stop trying
+const _volTried={};
 async function fmpVolumeBackfill(syms){
-  if(!fmpKey||!syms.length||!fmpBudgetOk())return;
-  try{
-    fmpCount(); // ONE batched call for all missing-volume symbols
-    const list=syms.map(encodeURIComponent).join(',');
-    let r=await fetch('https://financialmodelingprep.com/stable/batch-quote?symbols='+list+'&apikey='+fmpKey);
-    if(!r.ok){r=await fetch('https://financialmodelingprep.com/api/v3/quote/'+list+'?apikey='+fmpKey);} // legacy fallback
-    if(!r.ok)return;
-    const arr=await r.json();
-    (Array.isArray(arr)?arr:[]).forEach(it=>{
-      const sym=(it.symbol||'').toUpperCase();if(!Q[sym])return;
-      if(it.volume&&!Q[sym].volume)Q[sym].volume=it.volume;
-      if(it.open&&!Q[sym].open)Q[sym].open=it.open;
-      if(it.dayHigh&&!Q[sym].high)Q[sym].high=it.dayHigh;
-      if(it.dayLow&&!Q[sym].low)Q[sym].low=it.dayLow;
-    });
-  }catch(e){}
+  if(!fmpKey||_fmpVolDead||!syms.length||!fmpBudgetOk())return;
+  for(const sym of syms){
+    if(_volTried[sym])continue; // one attempt per symbol per session — keeps budget tiny
+    _volTried[sym]=true;
+    try{
+      fmpCount();
+      const r=await fetch('https://financialmodelingprep.com/stable/quote-short?symbol='+encodeURIComponent(sym)+'&apikey='+fmpKey);
+      if(r.status===402||r.status===403){_fmpVolDead=true;sessionStorage.setItem('sv_fmpvol_dead','1');return;} // plan gate — give up silently for the session
+      if(!r.ok)continue;
+      const d=await r.json();const it=Array.isArray(d)?d[0]:d;
+      if(it&&it.volume&&Q[sym]&&!Q[sym].volume)Q[sym].volume=it.volume;
+    }catch(e){}
+  }
 }
 async function fetchQDirect(sym){
   if(fhPaused())return;
@@ -845,6 +894,7 @@ async function fetchQDirect(sym){
       if(q.c){
         Q[sym]={symbol:sym,price:q.c,open:q.o||Q[sym]?.open||0,high:q.h||Q[sym]?.high||0,low:q.l||Q[sym]?.low||0,prevClose:q.pc,change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,volume:q.v||Q[sym]?.volume||0,bid:q.c*(1-0.0005),ask:q.c*(1+0.0005),_fromWebull:Q[sym]?._fromWebull,_fromFmp:Q[sym]?._fromFmp,_ts:Date.now()};
         const sess=getSession();
+        checkPmhBreak(sym,q.c);
         if(sess==='pre'||sess==='mkt'){if(!pmHigh[sym]||q.h>pmHigh[sym])pmHigh[sym]=q.h;}
       }
     }catch(e){}
@@ -1376,6 +1426,7 @@ async function runWebullScan(){
         // Store turnover rate from Webull if available
         const tr=parseFloat(item.turnover_rate||item.turnover||0);
         if(tr>0&&scanCache[sym])scanCache[sym]={...scanCache[sym],turnoverRate:tr.toFixed(2)};
+        checkPmhBreak(sym,px);
         if(!pmHigh[sym]||px>pmHigh[sym])pmHigh[sym]=px;
         if(px>=minP&&px<=maxP&&chgPct>=minC&&!scanSyms.includes(sym)&&scanSyms.length<25){
           scanSyms.push(sym);saveScanSyms();
@@ -1474,6 +1525,7 @@ async function runFmpScan(){
         Q[sym]={symbol:sym,price:px,changePct:chgPct,volume:parseFloat(item.volume||0),open:Q[sym]?.open||0,high:Q[sym]?.high||0,low:Q[sym]?.low||0,
           prevClose:parseFloat(item.pre_close||px),_ts:Date.now(),_fromFmp:true};
       }
+      checkPmhBreak(sym,px);
       if(!pmHigh[sym]||px>pmHigh[sym])pmHigh[sym]=px;
       if(px>=minP&&px<=maxP&&chgPct>=minC&&!scanSyms.includes(sym)&&scanSyms.length<25){
         scanSyms.push(sym);saveScanSyms();
