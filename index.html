@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.23</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.24</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -838,6 +838,19 @@ async function fhFetch(path){
   }
   return fetch(FH_URL+path);
 }
+// A quote whose exchange timestamp predates today's 4:00 AM ET session start is
+// YESTERDAY'S data (Finnhub free tier serves stale closes in pre-market for
+// symbols not in today's live feeds). Stale rows must never rank or score.
+function isStaleQuote(sym){
+  const q=Q[sym];
+  if(!q)return false;
+  if(q._fromWebull||q._fromFmp)return false; // live gainer feeds are today's data by definition
+  if(!q.priceTs)return false;
+  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
+  const sessionStart=new Date(et);sessionStart.setHours(4,0,0,0);
+  const offset=et.getTime()-Date.now(); // ET-to-local drift of the trick above cancels out
+  return q.priceTs<(sessionStart.getTime()-offset);
+}
 // FMP direct (Starter plan) — float for P5 + volume/h-l-o backfill for non-Nasdaq rows
 // that Webull (Nasdaq-only) can never cover. Key lives ONLY in localStorage:
 //   localStorage.setItem('sv_fmp_key','YOUR_FMP_KEY')
@@ -906,7 +919,7 @@ async function fetchQDirect(sym){
       if(r.status===429||r.status===403){_badSyms[sym]=Date.now();if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-quote',r.status,FH_URL+'/quote?symbol='+sym,sym);return;}
       const q=await r.json();
       if(q.c){
-        Q[sym]={symbol:sym,price:q.c,open:q.o||Q[sym]?.open||0,high:q.h||Q[sym]?.high||0,low:q.l||Q[sym]?.low||0,prevClose:q.pc,change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,volume:q.v||Q[sym]?.volume||0,bid:q.c*(1-0.0005),ask:q.c*(1+0.0005),_fromWebull:Q[sym]?._fromWebull,_fromFmp:Q[sym]?._fromFmp,_ts:Date.now()};
+        Q[sym]={symbol:sym,price:q.c,open:q.o||Q[sym]?.open||0,high:q.h||Q[sym]?.high||0,low:q.l||Q[sym]?.low||0,prevClose:q.pc,change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,volume:q.v||Q[sym]?.volume||0,bid:q.c*(1-0.0005),ask:q.c*(1+0.0005),_fromWebull:Q[sym]?._fromWebull,_fromFmp:Q[sym]?._fromFmp,priceTs:q.t?q.t*1000:Date.now(),_ts:Date.now()};
         const sess=getSession();
         checkPmhBreak(sym,q.c);
         if(sess==='pre'||sess==='mkt'){if(!pmHigh[sym]||q.h>pmHigh[sym])pmHigh[sym]=q.h;}
@@ -1210,6 +1223,13 @@ async function pullWatchlistFromCloud(){
   const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
   if(!token||!uid)return;
   try{
+    // If the daily clear just ran, yesterday's cloud watchlist is contaminated —
+    // overwrite the cloud with the cleaned local list instead of merging it back in.
+    if(sessionStorage.getItem('sv_cleared_today')==='1'){
+      sessionStorage.removeItem('sv_cleared_today');
+      syncWatchlistToCloud();
+      return;
+    }
     const r=await sf('/rest/v1/profiles?select=watchlist&id=eq.'+uid,{headers:{'Authorization':'Bearer '+token}});
     const d=await r.json();const cloudList=d?.[0]?.watchlist;
     if(!Array.isArray(cloudList))return;
@@ -1248,6 +1268,7 @@ function liveScanUpdate(){
   const now=Date.now();
   scanSyms.forEach(sym=>{
     const q=Q[sym];if(!q?.price)return;
+    if(isStaleQuote(sym))return; // yesterday's data — never rank it
     const p1=q.price>=minP&&q.price<=maxP;
     const p2=(q.changePct||0)>=minC;
     const c=scanCache[sym]||{};
@@ -1644,6 +1665,7 @@ async function startDeepScan(){
   const candidates=[...scanSyms]
     .filter(sym=>{
       const q=Q[sym];if(!q?.price)return false;
+      if(isStaleQuote(sym))return false; // yesterday's data — don't burn API calls scoring ghosts
       return q.price>=1&&q.price<=20&&(q.changePct||0)>=minC;
     })
     .sort((a,b)=>{
@@ -2044,6 +2066,7 @@ async function init(){
   });
   localStorage.setItem('sv_last_clear_day',todayStr);
   if(staleBefore.length){
+    sessionStorage.setItem('sv_cleared_today','1'); // signal: overwrite cloud, don't re-merge yesterday's list
     scanSyms=scanSyms.filter(s=>!staleBefore.includes(s));
     staleBefore.forEach(s=>{delete scanCache[s];symMeta.delete(s);});
     showToast('🗑 Cleared '+staleBefore.length+' symbols from previous session');
