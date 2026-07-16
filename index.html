@@ -152,6 +152,7 @@ input,button,textarea{font-family:inherit}
 .scan-sym{font-weight:800;font-size:13px;letter-spacing:-.2px}
 .scan-sym.up{color:var(--gr)}.scan-sym.dn{color:var(--rd)}
 .src-badge{font-size:7px;font-weight:800;padding:1px 4px;border-radius:3px;letter-spacing:.05em;flex-shrink:0}
+.ctry-badge{font-size:10px;line-height:1;flex-shrink:0;cursor:help}
 .src-wb{background:#3b82f620;color:#60a5fa;border:1px solid #3b82f640}
 .src-sd{background:#8b5cf620;color:#a78bfa;border:1px solid #8b5cf640}
 .src-fp{background:#10b98120;color:#34d399;border:1px solid #10b98140}
@@ -395,7 +396,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.28</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.29</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -804,28 +805,52 @@ function minsIntoSession(){
 }
 function scoreP4(sym,minsOverride){
   const q=Q[sym],c=scanCache[sym]||{};
-  if(!q)return {pass:null,label:'—',bad:true};
+  if(!q)return {pass:null,label:'—',bad:false};
   const sess=getSession();
   const volFloor=sess==='mkt'?500000:100000;
   const rvT=sess==='pre'?2:sess==='aft'?1.5:5;
   const vol=q.volume||0;
   // Webull publishes its own 10-day RVOL — trust it over our computed one.
-  // Otherwise derive from the cached average. Either way the floor still applies.
+  // Only compute from the average when we actually have volume to divide.
   let rv=null;
   if(c.wbRvol>0)rv=c.wbRvol;
-  else if(c.avgVol>0){
+  else if(c.avgVol>0&&vol>0){
     const mins=minsOverride||minsIntoSession();
     rv=(vol/c.avgVol)*(390/mins);
   }
-  if(rv===null){ // no trustworthy ratio — fall back to raw volume alone
-    return {pass:vol?vol>=volFloor:null,label:'—',bad:true};
-  }
+  if(rv===null)return {pass:null,label:'—',bad:false}; // unknown, not zero — never fake a 0.0x
   const bad=rv>200; // implausible ratio — show but never trust
   const label=rv>=100?String(Math.round(rv)):rv.toFixed(1);
-  const pass=bad?vol>=volFloor*3:(rv>=rvT&&vol>=volFloor);
-  return {pass,label,bad};
+  // The absolute floor only applies when volume is known. Punishing a symbol for
+  // data we don't have is how every row went P4-grey with a real 18x RVOL.
+  const pass=vol>0
+    ? (bad?vol>=volFloor*3:(rv>=rvT&&vol>=volFloor))
+    : (bad?false:rv>=rvT);
+  return {pass,label,bad,unverified:vol===0};
 }
 function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
+// ═══ COUNTRY OF DOMICILE (v3.9.29) ═══
+// Where the company is actually based — a US-listed ticker is often a China/Israel/
+// Canada operator, which changes the risk profile (dilution, halts, reporting).
+// Cached forever in localStorage: a company's domicile doesn't change.
+let _ctryCache=JSON.parse(localStorage.getItem('sv_ctry_cache')||'{}');
+const FLAGS={US:'🇺🇸',CN:'🇨🇳',HK:'🇭🇰',TW:'🇹🇼',IL:'🇮🇱',CA:'🇨🇦',GB:'🇬🇧',SG:'🇸🇬',JP:'🇯🇵',KR:'🇰🇷',
+  IN:'🇮🇳',AU:'🇦🇺',DE:'🇩🇪',FR:'🇫🇷',NL:'🇳🇱',CH:'🇨🇭',SE:'🇸🇪',IE:'🇮🇪',BR:'🇧🇷',MX:'🇲🇽',
+  GR:'🇬🇷',CY:'🇨🇾',MY:'🇲🇾',ID:'🇮🇩',AE:'🇦🇪',KY:'🏝',VG:'🏝',BM:'🏝'};
+function flagFor(cc){return cc?(FLAGS[cc]||'🌐'):'';}
+async function getCountry(sym){
+  if(_ctryCache[sym]!==undefined)return _ctryCache[sym];
+  if(fhPaused())return null;
+  try{
+    const r=await fhFetch('/profile?symbol='+sym);
+    if(!r.ok)return null;
+    const d=await r.json();
+    const cc=(d&&d.country)?String(d.country).toUpperCase().slice(0,2):null;
+    _ctryCache[sym]=cc||'';
+    localStorage.setItem('sv_ctry_cache',JSON.stringify(_ctryCache));
+    return cc;
+  }catch(e){return null;}
+}
 const debouncedScanUpdate=debounce(()=>liveScanUpdate(),250);
 
 // ═══ SORT ═══
@@ -863,6 +888,7 @@ async function fhFetch(path){
       let ep='quote';
       if(path.startsWith('/news'))ep='company-news';
       else if(path.startsWith('/metric'))ep='stock/metric';
+      else if(path.startsWith('/profile'))ep='stock/profile2';
       const extra=ep==='stock/metric'?'&metric=all':'';
       const r=await fetch('https://finnhub.io/api/v1/'+ep+'?'+qs+extra+'&token='+key);
       if(r.status!==429&&r.status!==403)return r; // direct worked (or real error) — use it
@@ -1358,7 +1384,7 @@ function liveScanUpdate(){
     results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false,
       src:meta.source,rv,addedTs:meta.addedTs||meta.ts||0,floatValue:c.floatValue,
       pmh:pmHigh[sym]||0,newsHeadline:c.latestHeadline||'',
-      turnover:c.turnoverRate||0,halted:c.halted||false});
+      turnover:c.turnoverRate||0,halted:c.halted||false,ctry:c.ctry||''});
   });
   const countEl=document.getElementById('scanCount');
   if(countEl)countEl.textContent=results.length;
@@ -1429,6 +1455,7 @@ function liveScanUpdate(){
         +'<div class="scan-sym-row">'
           +'<button class="star-btn'+(isPinned?' starred':'')+'" onclick="event.stopPropagation();toggleStar(\''+r.sym+'\')" title="Pin symbol">'+(isPinned?'⭐':'☆')+'</button>'
           +'<span class="scan-sym '+(u?'up':'dn')+'">'+r.sym+'</span>'
+          +(r.ctry?'<span class="ctry-badge" title="'+r.ctry+'-based company">'+flagFor(r.ctry)+'</span>':'')
           +srcBadge
           +(r.halted?'<span class="halt-badge">HALT</span>':'')
           +(r.hasNews?'<span class="news-dot">🔥</span>':'')
@@ -1815,6 +1842,9 @@ async function startDeepScan(){
       }
       if(hitLimit)_deepBadSyms[sym]=Date.now();
       scanCache[sym]={...scanCache[sym],p3,p4,p5,hasNews,latestHeadline,ts:Date.now()};
+      // Country of domicile — one call per symbol, cached forever
+      if(_ctryCache[sym]===undefined)await getCountry(sym);
+      scanCache[sym]={...scanCache[sym],ctry:_ctryCache[sym]||''};
       const newScore=[p1,p2,p3===true,p4===true,p5===true].filter(Boolean).length;
       if(newScore>prevScore){
         if(newScore>=5){playPing('score5');showToast('🚀 '+sym+' just hit 5/5 — all pillars confirmed!');addLog('score5',sym,'Hit 5/5 — all pillars confirmed');}
