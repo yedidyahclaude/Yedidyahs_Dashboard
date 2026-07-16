@@ -395,7 +395,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.27</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.28</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -809,12 +809,17 @@ function scoreP4(sym,minsOverride){
   const volFloor=sess==='mkt'?500000:100000;
   const rvT=sess==='pre'?2:sess==='aft'?1.5:5;
   const vol=q.volume||0;
-  const avg=c.avgVol||0;
-  if(!avg){ // no trustworthy average — fall back to raw volume alone
-    return {pass:vol>=volFloor?true:(vol?false:null),label:'—',bad:true};
+  // Webull publishes its own 10-day RVOL — trust it over our computed one.
+  // Otherwise derive from the cached average. Either way the floor still applies.
+  let rv=null;
+  if(c.wbRvol>0)rv=c.wbRvol;
+  else if(c.avgVol>0){
+    const mins=minsOverride||minsIntoSession();
+    rv=(vol/c.avgVol)*(390/mins);
   }
-  const mins=minsOverride||minsIntoSession();
-  const rv=(vol/avg)*(390/mins);
+  if(rv===null){ // no trustworthy ratio — fall back to raw volume alone
+    return {pass:vol?vol>=volFloor:null,label:'—',bad:true};
+  }
   const bad=rv>200; // implausible ratio — show but never trust
   const label=rv>=100?String(Math.round(rv)):rv.toFixed(1);
   const pass=bad?vol>=volFloor*3:(rv>=rvT&&vol>=volFloor);
@@ -885,7 +890,7 @@ function isStaleQuote(sym){
 //   2. MARKET  — index/macro news tagged to every ticker ("Dow Gains Over 150 Points")
 //   3. ROUNDUP — one article tagged to many tickers; the news is about someone else
 //                (KUST scored 5/5 on "Why Aehr Test Systems Shares Are Trading Higher")
-const GENERIC_NEWS=/stocks? (are |that are )?moving|top gainers and losers|gap-ups and gap-downs|unusual volume|top (stock )?mov(ers|ements)|most active|which stocks are|what[\u2019']?s happening (on|in)|market is filled with|gapping stocks|earnings scheduled for|(mon|tues|wednes|thurs|fri)day[\u2019']?s (session|intraday|pre-?market|after)|let[\u2019']?s (take|have) a look|stocks? (that are )?in motion|get insights into|discover the (top|most)|wondering what|and other big stocks|shares? (are )?trading (higher|lower)|here are \d+ stocks|\d+ stocks moving/i;
+const GENERIC_NEWS=/stocks? (are |that are )?moving|top gainers and losers|gap-ups and gap-downs|unusual volume|top (stock )?mov(ers|ements)|most active|which stocks are|what[\u2019']?s (happening|going on)|market is filled with|gapping stocks|earnings scheduled for|(mon|tues|wednes|thurs|fri)day[\u2019']?s (session|intraday|pre-?market|after)|let[\u2019']?s (take|have) a look|stocks? (that are )?in motion|get insights into|discover the (top|most)|wondering what|and other big stocks|shares? (are )?trading (higher|lower)|here are \d+ stocks|\d+ stocks moving|in today[\u2019']?s (session|pre-?market|after)/i;
 const MARKET_NEWS=/\b(dow|s&p ?500|nasdaq composite|russell 2000|nyse composite)\b.{0,45}\b(gain|fall|rise|rises|drop|jump|slide|slides|point|close|closes|surge|tumble|rally|rallies)|^(dow|s&p|nasdaq|the markets?|us stocks|stocks) (gain|fall|rise|drop|jump|slide|clos|surge|tumble|rall)/i;
 function isRealCatalyst(a,sym){
   if(!a||!a.headline)return false;
@@ -1327,7 +1332,7 @@ function liveScanUpdate(){
     const q=Q[sym];if(!q?.price)return;
     if(isStaleQuote(sym))return; // yesterday's data — never rank it
     // P4 recomputed live — RVOL moves with the tape, so scores rise AND fall
-    if(scanCache[sym]&&scanCache[sym].ts){
+    if(scanCache[sym]){
       const rv=scoreP4(sym);
       scanCache[sym].p4=rv.pass;scanCache[sym].rvolValue=rv.label;scanCache[sym].rvolBad=rv.bad;
     }
@@ -1401,8 +1406,11 @@ function liveScanUpdate(){
       r.src==='fp'?'<span class="src-badge src-fp">FP</span>':
       r.src==='seed'?'<span class="src-badge src-sd">SD</span>':'';
     const rvNum=r.rv||0;
-    const rvClass=rvNum>=10?'fire':rvNum>=5?'hot':'';
-    const rvLabel=rvNum>0?rvNum.toFixed(1)+'x':'—';
+    const rvBad=scanCache[r.sym]?.rvolBad;
+    const rvClass=rvBad?'':rvNum>=10?'fire':rvNum>=5?'hot':'';
+    const rvRaw=scanCache[r.sym]?.rvolValue;
+    // Implausible ratios (broken 10-day averages) are shown but never dressed as fact
+    const rvLabel=rvRaw&&rvRaw!=='—'?rvRaw+'x'+(rvBad?'?':''):(rvNum>0?rvNum.toFixed(1)+'x':'—');
     const floatLabel=r.floatValue||'';
     const pmhStr=r.pmh>0?'H:$'+r.pmh.toFixed(2):'';
     const p3label=r.hasNews?'P3 🔥':'P3';
@@ -1549,9 +1557,13 @@ async function runWebullScan(){
           if(rv>0){
             const threshold=sess==='pre'?2:sess==='aft'?1.5:5;
             const wasBelow=!scanCache[sym]?.p4;
-            scanCache[sym]={...scanCache[sym],p4:rv>=threshold,rvolValue:rv.toFixed(1),_rvolFromWebull:true};
+            // Webull's own 10-day RVOL is the best source — but it must still go
+            // through scoreP4 so the absolute volume floor and sanity caps apply.
+            scanCache[sym]={...scanCache[sym],wbRvol:rv,_rvolFromWebull:true};
+            const sc=scoreP4(sym);
+            scanCache[sym]={...scanCache[sym],p4:sc.pass,rvolValue:sc.label,rvolBad:sc.bad};
             if(tr>0)scanCache[sym]={...scanCache[sym],turnoverRate:tr.toFixed(2)};
-            if(wasBelow&&rv>=threshold){
+            if(wasBelow&&sc.pass){
               const c=scanCache[sym];
               const sc=[true,true,c.p3===true,true,c.p5===true].filter(Boolean).length;
               if(sc>=5)playPing('score5');else if(sc>=4)playPing('score4');
