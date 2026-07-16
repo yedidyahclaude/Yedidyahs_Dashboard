@@ -152,7 +152,10 @@ input,button,textarea{font-family:inherit}
 .scan-sym{font-weight:800;font-size:13px;letter-spacing:-.2px}
 .scan-sym.up{color:var(--gr)}.scan-sym.dn{color:var(--rd)}
 .src-badge{font-size:7px;font-weight:800;padding:1px 4px;border-radius:3px;letter-spacing:.05em;flex-shrink:0}
-.ctry-badge{font-size:10px;line-height:1;flex-shrink:0;cursor:help}
+.ctry-badge{font-size:7px;font-weight:800;padding:1px 3px;border-radius:3px;letter-spacing:.04em;flex-shrink:0;cursor:help}
+.ctry-us{background:rgba(139,139,167,.15);color:var(--dim)}
+.ctry-cn{background:rgba(240,185,79,.18);color:var(--gold)}
+.ctry-x{background:rgba(66,212,244,.14);color:var(--cyan)}
 .src-wb{background:#3b82f620;color:#60a5fa;border:1px solid #3b82f640}
 .src-sd{background:#8b5cf620;color:#a78bfa;border:1px solid #8b5cf640}
 .src-fp{background:#10b98120;color:#34d399;border:1px solid #10b98140}
@@ -396,7 +399,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.29</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.30</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -623,7 +626,10 @@ const FH_URL='https://finnhub-proxy.yedidyah-claude.workers.dev';
 let Q={};
 let scanSyms=JSON.parse(localStorage.getItem('sv_scan_v1')||'[]');
 let scanCache={};
-let symMeta=new Map();
+// Persisted: source + age must survive a reload, or every symbol reverts to
+// "manual" with no badge and the daily-clear logic loses its timestamps.
+let symMeta=new Map(JSON.parse(localStorage.getItem('sv_meta_v1')||'[]'));
+function saveMeta(){try{localStorage.setItem('sv_meta_v1',JSON.stringify([...symMeta]));}catch(e){}}
 let failTimer={};
 let pmHigh={};
 let symNotes=JSON.parse(localStorage.getItem('sv_notes_v1')||'{}');
@@ -1346,6 +1352,7 @@ function renderScanTags(){
 
 function liveScanUpdate(){
   renderScanTags();
+  saveMeta(); // keep source badges + addedTs across reloads
   const minP=parseFloat(document.getElementById('f-minp').value)||1;
   const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
   const minC=parseFloat(document.getElementById('f-chg').value)||10;
@@ -1357,10 +1364,16 @@ function liveScanUpdate(){
   scanSyms.forEach(sym=>{
     const q=Q[sym];if(!q?.price)return;
     if(isStaleQuote(sym))return; // yesterday's data — never rank it
-    // P4 recomputed live — RVOL moves with the tape, so scores rise AND fall
+    // P4 recomputed live — RVOL moves with the tape, so scores rise AND fall.
+    // But NEVER wipe a known value just because volume went missing this cycle:
+    // that's what made RVOL appear then vanish on the next refresh.
     if(scanCache[sym]){
       const rv=scoreP4(sym);
-      scanCache[sym].p4=rv.pass;scanCache[sym].rvolValue=rv.label;scanCache[sym].rvolBad=rv.bad;
+      if(rv.label!=='—'){
+        scanCache[sym].p4=rv.pass;scanCache[sym].rvolValue=rv.label;scanCache[sym].rvolBad=rv.bad;
+      }else if(scanCache[sym].rvolValue===undefined){
+        scanCache[sym].p4=rv.pass;scanCache[sym].rvolValue='—';scanCache[sym].rvolBad=false;
+      }
     }
     const p1=q.price>=minP&&q.price<=maxP;
     const p2=(q.changePct||0)>=minC;
@@ -1455,7 +1468,7 @@ function liveScanUpdate(){
         +'<div class="scan-sym-row">'
           +'<button class="star-btn'+(isPinned?' starred':'')+'" onclick="event.stopPropagation();toggleStar(\''+r.sym+'\')" title="Pin symbol">'+(isPinned?'⭐':'☆')+'</button>'
           +'<span class="scan-sym '+(u?'up':'dn')+'">'+r.sym+'</span>'
-          +(r.ctry?'<span class="ctry-badge" title="'+r.ctry+'-based company">'+flagFor(r.ctry)+'</span>':'')
+          +(r.ctry?'<span class="ctry-badge ctry-'+(['CN','HK'].includes(r.ctry)?'cn':r.ctry==='US'?'us':'x')+'" title="'+r.ctry+'-domiciled company">'+r.ctry+'</span>':'')
           +srcBadge
           +(r.halted?'<span class="halt-badge">HALT</span>':'')
           +(r.hasNews?'<span class="news-dot">🔥</span>':'')
