@@ -399,7 +399,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.30</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.32</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -816,15 +816,23 @@ function scoreP4(sym,minsOverride){
   const volFloor=sess==='mkt'?500000:100000;
   const rvT=sess==='pre'?2:sess==='aft'?1.5:5;
   const vol=q.volume||0;
-  // Webull publishes its own 10-day RVOL — trust it over our computed one.
-  // Only compute from the average when we actually have volume to divide.
+  // Webull's relative_volume_10d is NOT session-normalised — it is raw cumulative
+  // volume / 10-day average DAILY volume. Pre-market it reads ~0.008 for nearly
+  // everything (verified against the live /gainers payload), which is what printed
+  // "0.0x" on every row. Values under 0.1 are that artifact, not a real ratio.
+  // Our own computation is likewise only valid during regular hours.
   let rv=null;
-  if(c.wbRvol>0)rv=c.wbRvol;
-  else if(c.avgVol>0&&vol>0){
+  if(c.wbRvol>0&&(sess==='mkt'||c.wbRvol>=0.1))rv=c.wbRvol;
+  else if(c.avgVol>0&&vol>0&&sess==='mkt'){
     const mins=minsOverride||minsIntoSession();
     rv=(vol/c.avgVol)*(390/mins);
   }
-  if(rv===null)return {pass:null,label:'—',bad:false}; // unknown, not zero — never fake a 0.0x
+  if(rv===null){
+    // No trustworthy ratio. Show the raw volume — "267K" tells you more than "—",
+    // and judge P4 on the absolute floor, which is what kills 1-share phantoms.
+    const lbl=vol>0?(vol>=1e6?(vol/1e6).toFixed(1)+'M':vol>=1e3?Math.round(vol/1e3)+'K':String(vol)):'—';
+    return {pass:vol>0?vol>=volFloor:null,label:lbl,bad:false,unverified:true,isVol:true};
+  }
   const bad=rv>200; // implausible ratio — show but never trust
   const label=rv>=100?String(Math.round(rv)):rv.toFixed(1);
   // The absolute floor only applies when volume is known. Punishing a symbol for
@@ -1370,9 +1378,9 @@ function liveScanUpdate(){
     if(scanCache[sym]){
       const rv=scoreP4(sym);
       if(rv.label!=='—'){
-        scanCache[sym].p4=rv.pass;scanCache[sym].rvolValue=rv.label;scanCache[sym].rvolBad=rv.bad;
+        scanCache[sym].p4=rv.pass;scanCache[sym].rvolValue=rv.label;scanCache[sym].rvolBad=rv.bad;scanCache[sym].rvolIsVol=rv.isVol||false;
       }else if(scanCache[sym].rvolValue===undefined){
-        scanCache[sym].p4=rv.pass;scanCache[sym].rvolValue='—';scanCache[sym].rvolBad=false;
+        scanCache[sym].p4=rv.pass;scanCache[sym].rvolValue='—';scanCache[sym].rvolBad=false;scanCache[sym].rvolIsVol=false;
       }
     }
     const p1=q.price>=minP&&q.price<=maxP;
@@ -1446,10 +1454,12 @@ function liveScanUpdate(){
       r.src==='seed'?'<span class="src-badge src-sd">SD</span>':'';
     const rvNum=r.rv||0;
     const rvBad=scanCache[r.sym]?.rvolBad;
-    const rvClass=rvBad?'':rvNum>=10?'fire':rvNum>=5?'hot':'';
+    const rvIsVol=scanCache[r.sym]?.rvolIsVol;
+    const rvClass=rvBad||rvIsVol?'':rvNum>=10?'fire':rvNum>=5?'hot':'';
     const rvRaw=scanCache[r.sym]?.rvolValue;
-    // Implausible ratios (broken 10-day averages) are shown but never dressed as fact
-    const rvLabel=rvRaw&&rvRaw!=='—'?rvRaw+'x'+(rvBad?'?':''):(rvNum>0?rvNum.toFixed(1)+'x':'—');
+    // When no trustworthy ratio exists we show raw volume ("267K vol"), never a
+    // fabricated multiplier. Implausible ratios get a dimmed "?".
+    const rvLabel=rvRaw&&rvRaw!=='—'?(rvIsVol?rvRaw+' vol':rvRaw+'x'+(rvBad?'?':'')):(rvNum>0?rvNum.toFixed(1)+'x':'—');
     const floatLabel=r.floatValue||'';
     const pmhStr=r.pmh>0?'H:$'+r.pmh.toFixed(2):'';
     const p3label=r.hasNews?'P3 🔥':'P3';
@@ -1573,6 +1583,12 @@ async function runWebullScan(){
         if(tr>0&&scanCache[sym])scanCache[sym]={...scanCache[sym],turnoverRate:tr.toFixed(2)};
         checkPmhBreak(sym,px);
         if(!pmHigh[sym]||px>pmHigh[sym])pmHigh[sym]=px;
+        // Symbols carried over from a previous session have no meta — stamp the
+        // real source on them, or they stay badge-less "manual" forever.
+        if(scanSyms.includes(sym)){
+          const m=symMeta.get(sym);
+          if(!m||m.source==='manual'||m.source==='seed')symMeta.set(sym,{ts:Date.now(),source:'wb',addedTs:m?.addedTs||Date.now()});
+        }
         if(px>=minP&&px<=maxP&&chgPct>=minC&&!scanSyms.includes(sym)&&scanSyms.length<25){
           scanSyms.push(sym);saveScanSyms();
           symMeta.set(sym,{ts:Date.now(),source:'wb',addedTs:Date.now()});
