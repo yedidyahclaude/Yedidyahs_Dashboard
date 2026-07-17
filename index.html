@@ -179,6 +179,8 @@ input,button,textarea{font-family:inherit}
 /* RVOL cell — now also shows volume bar */
 .scan-rvol-cell{display:flex;flex-direction:column;gap:2px;padding:0 4px}
 .scan-rvol{font-family:'DM Mono',monospace;font-size:11px;color:var(--mu)}
+.scan-flt{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);opacity:.75}
+.scan-flt.lowflt{color:var(--gold);opacity:1;font-weight:700}
 .scan-rvol.hot{color:var(--gold);font-weight:700}
 .scan-rvol.fire{color:var(--gr);font-weight:700}
 .vol-bar{height:3px;width:60px;background:var(--b2);border-radius:2px}
@@ -399,7 +401,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.32</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.33</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -489,7 +491,7 @@ input,button,textarea{font-family:inherit}
             <span class="sort-col" onclick="setSort('sym')">Symbol <span class="arr" id="arr-sym"></span></span>
             <span class="sort-col right" onclick="setSort('px')">Price <span class="arr" id="arr-px"></span></span>
             <span class="sort-col right" onclick="setSort('chg')">Change <span class="arr" id="arr-chg"></span></span>
-            <span class="sort-col" onclick="setSort('rvol')" style="padding-left:6px">RVOL · Float <span class="arr" id="arr-rvol"></span></span>
+            <span class="sort-col" onclick="setSort('rvol')" style="padding-left:6px">RVOL / Float <span class="arr" id="arr-rvol"></span></span>
             <span class="sort-col" style="padding-left:8px">News Catalyst</span>
             <span class="sort-col" onclick="setSort('score')" style="padding-left:6px">Pillars <span class="arr" id="arr-score"></span></span>
             <span class="sort-col right" onclick="setSort('score')">Score <span class="arr" id="arr-score2"></span></span>
@@ -1506,7 +1508,8 @@ function liveScanUpdate(){
       +'<span class="scan-px">$'+fmtP(r.q.price)+'</span>'
       +'<span class="scan-chg '+(u?'up':'dn')+'">'+(u?'+':'')+((r.q.changePct||0).toFixed(1))+'%</span>'
       +'<div class="scan-rvol-cell">'
-        +'<span class="scan-rvol '+rvClass+'">'+rvLabel+(floatLabel?' · '+floatLabel:'')+'</span>'
+        +'<span class="scan-rvol '+rvClass+'">'+rvLabel+'</span>'
+        +'<span class="scan-flt'+(r.p5===true?' lowflt':'')+'">'+(floatLabel?floatLabel:'float —')+'</span>'
         +(sinceOpenStr&&!r.newsHeadline
           ?'<span class="since-open '+(sinceOpen>=0?'pos':'neg')+'">'+sinceOpenStr+'</span>'
           :'<div class="vol-bar"><div class="vol-bar-fill" style="width:'+volPct+'%"></div></div>')
@@ -1870,6 +1873,19 @@ async function startDeepScan(){
         }catch(e){}});
       }
       if(hitLimit)_deepBadSyms[sym]=Date.now();
+      // Float must never depend on the Finnhub metric call surviving. Finnhub's
+      // free tier has no float data at all, so FMP is the real source — ask it
+      // directly whenever float is still unknown, whichever branch ran above.
+      if(scanCache[sym]?.floatValue===undefined||scanCache[sym]?.floatValue==='—'){
+        const fs=await getFloatFMP(sym);
+        if(fs){
+          const fm=fs/1e6;
+          if(fm>=0.05){p5=fm<10;scanCache[sym]={...scanCache[sym],floatValue:fm<0.1?'<0.1M':fm.toFixed(1)+'M'};}
+          else{p5=null;scanCache[sym]={...scanCache[sym],floatValue:'—'};}
+        }else if(scanCache[sym]?.floatValue===undefined){
+          scanCache[sym]={...scanCache[sym],floatValue:'—'};
+        }
+      }
       scanCache[sym]={...scanCache[sym],p3,p4,p5,hasNews,latestHeadline,ts:Date.now()};
       // Country of domicile — one call per symbol, cached forever
       if(_ctryCache[sym]===undefined)await getCountry(sym);
