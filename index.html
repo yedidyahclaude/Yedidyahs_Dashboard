@@ -321,6 +321,7 @@ input,button,textarea{font-family:inherit}
 </style>
 </head>
 <body>
+<div id="audioBanner" onclick="unlockAudio()" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--gold);color:#1a1a1a;padding:10px 16px;font-size:13px;font-weight:700;align-items:center;justify-content:center;gap:8px;cursor:pointer;box-shadow:0 2px 12px rgba(0,0,0,.4)">🔔 Click anywhere to enable sound alerts — they're muted until you do</div>
 
 <div id="loginWall">
   <div class="login-box">
@@ -401,7 +402,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.35</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.36</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -737,8 +738,18 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 // AudioContext is created on first tap/click (browser autoplay policy).
 let soundOn=localStorage.getItem('sv_sound')!=='0';
 let _actx=null;
+let _audioUnlocked=false;
 function _ctx(){if(!_actx){try{_actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}if(_actx&&_actx.state==='suspended')_actx.resume();return _actx;}
-document.addEventListener('pointerdown',()=>{_ctx();},{once:true});
+function unlockAudio(){_ctx();_audioUnlocked=true;const b=document.getElementById('audioBanner');if(b)b.style.display='none';try{playSound('new');}catch(e){}}
+document.addEventListener('pointerdown',()=>{if(!_audioUnlocked)unlockAudio();},{once:true});
+document.addEventListener('keydown',()=>{if(!_audioUnlocked)unlockAudio();},{once:true});
+// A fresh page load has audio blocked by the browser until the first interaction.
+// Loading at 4am and walking away = every ping silent. Nag until it's unlocked.
+setTimeout(()=>{
+  if(_audioUnlocked)return;
+  const b=document.getElementById('audioBanner');
+  if(b)b.style.display='flex';
+},2500);
 function tone(freq,start,dur,type='sine',vol=0.18){
   const c=_ctx();if(!c)return;
   try{
@@ -771,8 +782,22 @@ setTimeout(()=>{const b=document.getElementById('soundBtn');if(b)b.textContent=s
 // PMH breakout — fires ONCE per symbol per day, only during regular market hours,
 // the first time price crosses above the recorded pre-market high (key entry trigger).
 const _pmhAlerted={};
+// Standing-setup alert: a symbol sitting at 4/5 or 5/5 re-pings every 3 minutes,
+// so a strong setup that formed while you weren't watching can't stay silent.
+// (All other alerts fire only on transitions — that's why a mover added at 4am
+// and left alone made no sound afterward.)
+const _standingAlert={};
+function checkStandingSetup(sym,score){
+  if(score<4)return;
+  const now=Date.now();
+  if(_standingAlert[sym]&&now-_standingAlert[sym]<180000)return;
+  _standingAlert[sym]=now;
+  playPing(score>=5?'score5':'score4');
+  showToast((score>=5?'🚀 ':'⚡ ')+sym+' is '+score+'/5 right now'+(soundOn?'':' (🔕 sound off)'));
+}
 function checkPmhBreak(sym,px){
-  if(getSession()!=='mkt')return;
+  const sess=getSession();
+  if(sess!=='mkt'&&sess!=='pre')return; // pre-market breaks matter most for gappers
   if(!pmHigh[sym]||px<=pmHigh[sym]||_pmhAlerted[sym])return;
   _pmhAlerted[sym]=true;
   playPing('pmh');
@@ -1409,6 +1434,7 @@ function liveScanUpdate(){
     } else {delete failTimer[sym];}
     if(minRV>0&&rv>0&&rv<minRV)return;
     const score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
+    checkStandingSetup(sym,score); // re-ping any row sitting at 4/5+ even if it never transitioned
     const meta=symMeta.get(sym)||{source:'manual',addedTs:0,ts:0};
     results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false,
       src:meta.source,rv,addedTs:meta.addedTs||meta.ts||0,floatValue:c.floatValue,
