@@ -201,6 +201,8 @@ input,button,textarea{font-family:inherit}
 
 /* NEW flash */
 .scan-row-new{animation:flashNew 2s ease-out}
+.scan-row.hot-now{box-shadow:inset 3px 0 0 var(--gold),0 0 0 1px rgba(240,185,79,.2)}
+.scan-row.hot-now.score5,.scan-row.hot-now.score4{box-shadow:inset 3px 0 0 var(--gr),0 0 12px rgba(25,196,138,.25)}
 @keyframes flashNew{0%{background:#7c6aff28}100%{background:transparent}}
 
 /* ── NOTES MODAL ── */
@@ -402,7 +404,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.39</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.40</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -1510,23 +1512,27 @@ function liveScanUpdate(){
       case'chg':av=a.q.changePct||0;bv=b.q.changePct||0;break;
       case'rvol':av=a.rv||0;bv=b.rv||0;break;
       case'score':default:
-        // A move over 150% in one session is physically impossible — it's a
-        // reverse-split artifact (PRPL +2235%, BANL +1247%). Sink them below everything.
-        const aArt=(a.q.changePct||0)>150||a.splitFlag;
-        const bArt=(b.q.changePct||0)>150||b.splitFlag;
+        // A reverse-split artifact is an impossible % move WITH NO REAL VOLUME.
+        // A genuine monster runner (ZYBT +311% on 4.4M volume) has volume, so it
+        // is NOT an artifact — only sink the ones that are both extreme AND empty.
+        const aRealVol=(a.q._fromWebull||a.q._volFmp)&&(a.q.volume||0)>0;
+        const bRealVol=(b.q._fromWebull||b.q._volFmp)&&(b.q.volume||0)>0;
+        const aArt=((a.q.changePct||0)>150&&!aRealVol)||a.splitFlag;
+        const bArt=((b.q.changePct||0)>150&&!bRealVol)||b.splitFlag;
         if(aArt!==bArt)return aArt?1:-1;
-        // Real, session-aware volume ranks above no-volume rows.
-        const aVol=(a.q._fromWebull||a.q._volFmp)&&(a.q.volume||0)>0;
-        const bVol=(b.q._fromWebull||b.q._volFmp)&&(b.q.volume||0)>0;
-        if(aVol!==bVol)return aVol?-1:1;
+        // Real volume ranks above no-volume rows.
+        if(aRealVol!==bRealVol)return aRealVol?-1:1;
         if(sortMode==='score'){
           if(a.score!==b.score)return b.score-a.score;
           return (b.q.changePct||0)-(a.q.changePct||0);
         }
-        // HEAT mode (default): what's moving now floats up; score breaks ties.
-        const ah=heatScore(a.sym),bh=heatScore(b.sym);
-        if(Math.abs(ah-bh)>3)return bh-ah;
-        if(a.score!==b.score)return b.score-a.score;
+        // HEAT mode (default): a UNIFIED rank blending pillar score and live heat,
+        // so a hot 4/5 tops the board and a cold 2/5 sinks — they combine, not compete.
+        // Score is worth ~15 heat points each, so a 5/5 always outranks a 2/5 unless
+        // the 2/5 is truly exploding, and among equal movers the better setup wins.
+        const aRank=a.score*15+heatScore(a.sym);
+        const bRank=b.score*15+heatScore(b.sym);
+        if(Math.abs(aRank-bRank)>2)return bRank-aRank;
         return (b.q.changePct||0)-(a.q.changePct||0);
     }
     return sortDir*(bv-av);
@@ -1540,6 +1546,7 @@ function liveScanUpdate(){
   const pd=v=>v===true?'pass':v===false?'fail':'na';
   rows.innerHTML=displayResults.map(r=>{
     const u=(r.q.changePct||0)>=0;
+    const isHotNow=heatScore(r.sym)>=25&&((r.q._fromWebull||r.q._volFmp)&&(r.q.volume||0)>0);
     const sc=r.halted?'halted':r.score>=5?'score5':r.score>=4?'score4':'score3';
     const isFresh=now-r.addedTs<FRESH_MS;
     const isPinned=starredSyms.has(r.sym);
@@ -1568,7 +1575,7 @@ function liveScanUpdate(){
     const rangePct=dHigh>dLow?Math.round(((dPx-dLow)/(dHigh-dLow))*100):50;
     const rangePctClamped=Math.max(3,Math.min(97,rangePct));
     const volPct=rvNum>0?Math.min(100,Math.round((rvNum/10)*100)):30;
-    return '<div class="scan-row '+sc+(isFresh?' scan-row-new':'')+(isPinned?' pinned':'')+'" onclick="selectSym(\''+r.sym+'\')">'
+    return '<div class="scan-row '+sc+(isHotNow?' hot-now':'')+(isFresh?' scan-row-new':'')+(isPinned?' pinned':'')+'" onclick="selectSym(\''+r.sym+'\')">'
       +'<div class="scan-sym-cell">'
         +'<div class="scan-sym-row">'
           +'<button class="star-btn'+(isPinned?' starred':'')+'" onclick="event.stopPropagation();toggleStar(\''+r.sym+'\')" title="Pin symbol">'+(isPinned?'⭐':'☆')+'</button>'
