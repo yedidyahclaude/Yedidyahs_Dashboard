@@ -402,7 +402,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.36</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.37</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -782,18 +782,41 @@ setTimeout(()=>{const b=document.getElementById('soundBtn');if(b)b.textContent=s
 // PMH breakout — fires ONCE per symbol per day, only during regular market hours,
 // the first time price crosses above the recorded pre-market high (key entry trigger).
 const _pmhAlerted={};
-// Standing-setup alert: a symbol sitting at 4/5 or 5/5 re-pings every 3 minutes,
-// so a strong setup that formed while you weren't watching can't stay silent.
-// (All other alerts fire only on transitions — that's why a mover added at 4am
-// and left alone made no sound afterward.)
-const _standingAlert={};
-function checkStandingSetup(sym,score){
-  if(score<4)return;
+// ═══ ALERT SYSTEM (v3.9.37) — 4 sounds, each one meaning ═══
+// A setup only alerts if it has REAL volume — the same gate that keeps
+// fake-% artifacts out of the top ranking. No volume = no alert, ever.
+//   🎯 PMH break     — urgent double-ping, the entry trigger (checkPmhBreak)
+//   🚀 new 5/5       — jackpot arpeggio, once when it first hits 5
+//   ⚡ new 4/5       — two-note rise, once when it first hits 4 (or 4→5 upgrade)
+//   🔥 standing 4/5+ — soft blip every 2 min while it sits unactioned
+const _alertState={}; // sym -> {lastScore, lastStandingPing}
+function hasRealVolume(sym){
+  const q=Q[sym];
+  return !!q && (q._fromWebull||q._volFmp) && (q.volume||0)>0;
+}
+function checkSetupAlerts(sym,score){
+  // Only real-volume setups can make a sound
+  if(score<4||!hasRealVolume(sym)){
+    if(_alertState[sym])_alertState[sym].lastScore=score; // track, but stay silent
+    return;
+  }
   const now=Date.now();
-  if(_standingAlert[sym]&&now-_standingAlert[sym]<180000)return;
-  _standingAlert[sym]=now;
-  playPing(score>=5?'score5':'score4');
-  showToast((score>=5?'🚀 ':'⚡ ')+sym+' is '+score+'/5 right now'+(soundOn?'':' (🔕 sound off)'));
+  const st=_alertState[sym]||{lastScore:0,lastStandingPing:0};
+  // Transition up → immediate priority sound
+  if(score>st.lastScore){
+    playPing(score>=5?'score5':'score4');
+    showToast((score>=5?'🚀 ':'⚡ ')+sym+' is '+score+'/5 — real volume'+(soundOn?'':' (🔕)'));
+    addLog(score>=5?'score5':'score4',sym,'Reached '+score+'/5 with real volume');
+    st.lastStandingPing=now;
+  }
+  // Standing reminder every 2 min while it holds 4/5+
+  else if(now-st.lastStandingPing>=120000){
+    playPing('new'); // the soft blip
+    showToast('🔥 '+sym+' still '+score+'/5'+(soundOn?'':' (🔕)'));
+    st.lastStandingPing=now;
+  }
+  st.lastScore=score;
+  _alertState[sym]=st;
 }
 function checkPmhBreak(sym,px){
   const sess=getSession();
@@ -1434,7 +1457,7 @@ function liveScanUpdate(){
     } else {delete failTimer[sym];}
     if(minRV>0&&rv>0&&rv<minRV)return;
     const score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
-    checkStandingSetup(sym,score); // re-ping any row sitting at 4/5+ even if it never transitioned
+    checkSetupAlerts(sym,score); // volume-gated: real setups ping, artifacts stay silent
     const meta=symMeta.get(sym)||{source:'manual',addedTs:0,ts:0};
     results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false,
       src:meta.source,rv,addedTs:meta.addedTs||meta.ts||0,floatValue:c.floatValue,
@@ -1465,6 +1488,12 @@ function liveScanUpdate(){
       case'chg':av=a.q.changePct||0;bv=b.q.changePct||0;break;
       case'rvol':av=a.rv||0;bv=b.rv||0;break;
       case'score':default:
+        // Rows with real, session-aware volume always rank above no-volume rows.
+        // A +2235% artifact on zero volume (reverse-split / stale data) must never
+        // sit above a genuine +36% mover with real volume behind it.
+        const aVol=(a.q._fromWebull||a.q._volFmp)&&(a.q.volume||0)>0;
+        const bVol=(b.q._fromWebull||b.q._volFmp)&&(b.q.volume||0)>0;
+        if(aVol!==bVol)return aVol?-1:1;
         if(a.score!==b.score)return b.score-a.score;
         return (b.q.changePct||0)-(a.q.changePct||0);
     }
@@ -1628,8 +1657,6 @@ async function runWebullScan(){
           scanSyms.push(sym);saveScanSyms();
           symMeta.set(sym,{ts:Date.now(),source:'wb',addedTs:Date.now()});
           if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
-          const estScore=2+(chgPct>=20?1:0);
-          playPing(estScore>=4?'score4':'new');
           showToast('🔥 '+sym+' +'+chgPct.toFixed(1)+'% · $'+fmtP(px)+' · Webull');
           addLog('new',sym,'+'+chgPct.toFixed(1)+'% $'+fmtP(px)+' — Webull');
           liveScanUpdate();setTimeout(startDeepScan,500);
@@ -1669,7 +1696,7 @@ async function runWebullScan(){
           if(px>=minP&&px<=maxP&&chgPct>=minC&&!scanSyms.includes(sym)&&scanSyms.length<25){
             scanSyms.push(sym);saveScanSyms();
             symMeta.set(sym,{ts:Date.now(),source:'wb',addedTs:Date.now()});
-            playPing('new');showToast('📊 '+sym+' RVOL +'+chgPct.toFixed(1)+'%');
+            showToast('📊 '+sym+' RVOL +'+chgPct.toFixed(1)+'%');
             liveScanUpdate();setTimeout(startDeepScan,500);
           }
         }
@@ -1731,7 +1758,6 @@ async function runFmpScan(){
         scanSyms.push(sym);saveScanSyms();
         symMeta.set(sym,{ts:Date.now(),source:'fp',addedTs:Date.now()});
         if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
-        playPing('new');
         showToast('🟢 FMP: '+sym+' +'+chgPct.toFixed(1)+'% · $'+fmtP(px));
         addLog('new',sym,'+'+chgPct.toFixed(1)+'% $'+fmtP(px)+' — FMP (NYSE/NAS/AMEX)');
         liveScanUpdate();
@@ -1783,7 +1809,7 @@ async function runSeedScan(){
         scanSyms.push(sym);saveScanSyms();
         symMeta.set(sym,{ts:Date.now(),source:'seed',addedTs:Date.now()});
         if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
-        playPing('new');showToast('🔥 '+sym+' +'+((q.changePct||0).toFixed(1))+'% · Seed');
+        showToast('🔥 '+sym+' +'+((q.changePct||0).toFixed(1))+'% · Seed');
         liveScanUpdate();
       }
     }catch(e){}
@@ -1924,8 +1950,11 @@ async function startDeepScan(){
       scanCache[sym]={...scanCache[sym],ctry:_ctryCache[sym]||''};
       const newScore=[p1,p2,p3===true,p4===true,p5===true].filter(Boolean).length;
       if(newScore>prevScore){
-        if(newScore>=5){playPing('score5');showToast('🚀 '+sym+' just hit 5/5 — all pillars confirmed!');addLog('score5',sym,'Hit 5/5 — all pillars confirmed');}
-        else if(newScore>=4){playPing('score4');showToast('⚡ '+sym+' upgraded to '+newScore+'/5 — priority setup');addLog('score4',sym,'Upgraded to '+newScore+'/5');}
+        // Sound is handled by checkSetupAlerts (volume-gated) on the next render,
+        // so it can't double-ping and can't fire on a no-volume artifact. Keep the
+        // logs/toasts here for the timeline; 5/5 and 4/5 get a visual toast only.
+        if(newScore>=5){showToast('🚀 '+sym+' hit 5/5'+(hasRealVolume(sym)?'':' (no volume — muted)'));addLog('score5',sym,'Hit 5/5');}
+        else if(newScore>=4){showToast('⚡ '+sym+' now '+newScore+'/5'+(hasRealVolume(sym)?'':' (no volume — muted)'));addLog('score4',sym,'Upgraded to '+newScore+'/5');}
         else if(newScore===3&&prevScore<3){showToast('📈 '+sym+' now 3/5 — progressing');addLog('score3',sym,'Now 3/5');}
       }
     }catch(e){}
