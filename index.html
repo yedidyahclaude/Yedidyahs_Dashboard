@@ -401,7 +401,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.34</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.35</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -883,7 +883,7 @@ function updateSortArrows(){
 // ═══ FINNHUB API ═══
 const apiQueue=[];let apiRunning=false;
 function queueCall(fn){return new Promise((resolve,reject)=>{apiQueue.push({fn,resolve,reject});if(!apiRunning)drainQueue();});}
-async function drainQueue(){if(apiRunning)return;apiRunning=true;while(apiQueue.length){const{fn,resolve,reject}=apiQueue.shift();try{resolve(await fn());}catch(e){reject(e);}if(apiQueue.length)await new Promise(r=>setTimeout(r,1500));}apiRunning=false;}
+async function drainQueue(){if(apiRunning)return;apiRunning=true;while(apiQueue.length){const{fn,resolve,reject}=apiQueue.shift();try{resolve(await fn());}catch(e){reject(e);}if(apiQueue.length)await new Promise(r=>setTimeout(r,fhKeys.length>=3?400:1200));}apiRunning=false;}
 const _badSyms={};const _deepBadSyms={};
 // Finnhub circuit breaker — same pattern as FMP + Supabase breakers.
 // 5+ rate-limit responses within 60s = pause ALL Finnhub calls for 60s so key windows reset.
@@ -1790,7 +1790,7 @@ let _lastDeepScan=0;
 async function startDeepScan(){
   if(!appReady||scanDeepRunning)return;
   // Rate limit: deep scan can only run once every 3 minutes max
-  if(Date.now()-_lastDeepScan<180000){return;}
+  if(Date.now()-_lastDeepScan<90000){return;} // 90s — fast enough that partial rows fill in quickly
   _lastDeepScan=Date.now();
   scanDeepRunning=true;
   const statusEl=document.getElementById('scanStatus');
@@ -1814,18 +1814,18 @@ async function startDeepScan(){
       if(scoreB!==scoreA)return scoreB-scoreA;
       return (Q[b]?.changePct||0)-(Q[a]?.changePct||0);
     })
-    .slice(0,20); // cap at 20 — with 3 keys = 180 calls/min, 20 symbols = 40 calls max
+    .slice(0,15); // top 15 by score — every on-screen row gets fully scored each cycle
 
   await fmpVolumeBackfill(candidates.filter(s=>Q[s]&&!Q[s]._fromWebull&&(!Q[s].volume||Q[s]._volFmp))); // NYSE/AMEX only — Webull covers the restes FMP-sourced volumes every 5 min
 
   for(const sym of candidates){
-    if(fhPaused())break; // circuit breaker open — stop deep scan, next cycle retries
+    if(fhPaused()){await new Promise(r=>setTimeout(r,1500));if(fhPaused())continue;} // pause, don't abandon the rest of the list
     try{
       if(!Q[sym]||!Q[sym].high)await fetchQ(sym);const q=Q[sym];if(!q?.price)continue;
       const p1=q.price>=1&&q.price<=20,p2=(q.changePct||0)>=minC;if(!p1||!p2)continue;
       // 3min cache — P4 is live-recomputed every render, so this only gates the
       // API-costly parts (news + metric). Was 10min, which froze scores mid-move.
-      const cached=scanCache[sym]||{};if(Date.now()-(cached.ts||0)<180000)continue;
+      const cached=scanCache[sym]||{};if(Date.now()-(cached.ts||0)<90000)continue;
       if(_deepBadSyms[sym]&&Date.now()-_deepBadSyms[sym]<600000)continue;
       let hasNews=cached.hasNews??false,p3=cached.p3??null,p4=cached.p4??null,p5=cached.p5??null;
       let latestHeadline=cached.latestHeadline||'';
