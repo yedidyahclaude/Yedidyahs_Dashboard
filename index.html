@@ -402,7 +402,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.37</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.38</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -431,6 +431,7 @@ input,button,textarea{font-family:inherit}
           </div>
           <div class="scan-hdr-right">
             <div id="sectorAlert" style="display:none" class="sector-alert"></div>
+            <button class="copy-syms-btn" id="sortModeBtn" onclick="toggleSortMode()" title="Toggle: Heat (most active first) or Score (5→1)" style="margin-right:6px">🔥 Heat</button>
             <button class="copy-syms-btn" onclick="copySymbols()" title="Copy all passing symbols to clipboard">📋 Copy All</button>
             <span class="scan-status" id="scanStatus">Starting…</span>
           </div>
@@ -603,7 +604,7 @@ async function trySignup(){
 }
 function showSignup(){document.getElementById('loginForm').style.display='none';document.getElementById('signupForm').style.display='flex';}
 function showLogin(){document.getElementById('signupForm').style.display='none';document.getElementById('loginForm').style.display='flex';document.getElementById('loginErr').style.display='none';}
-function showApp(){document.getElementById('loginWall').style.display='none';document.getElementById('mainApp').style.display='flex';setTimeout(init,50);}
+function showApp(){document.getElementById('loginWall').style.display='none';document.getElementById('mainApp').style.display='flex';const b=document.getElementById('sortModeBtn');if(b)b.textContent=sortMode==='heat'?'🔥 Heat':'🏆 Score';setTimeout(init,50);}
 function checkAuth(){if(sessionStorage.getItem('sv_token')){showApp();return true;}document.getElementById('loginWall').style.display='flex';return false;}
 function logout(){sessionStorage.clear();location.reload();}
 
@@ -662,6 +663,8 @@ let _lastWebullCall=0;
 let fhWS=null;
 let _wsGaveUp=false;
 let sortCol='score';
+let sortMode=localStorage.getItem('sv_sortmode')||'heat'; // 'heat' = most active first, 'score' = 5→1
+function toggleSortMode(){sortMode=sortMode==='heat'?'score':'heat';localStorage.setItem('sv_sortmode',sortMode);const b=document.getElementById('sortModeBtn');if(b)b.textContent=sortMode==='heat'?'🔥 Heat':'🏆 Score';liveScanUpdate();}
 let sortDir=-1;
 let pulseOpen=true;
 
@@ -858,6 +861,20 @@ function minsIntoSession(){
   const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
   const open=new Date(et);open.setHours(9,30,0,0);
   return Math.max(1,(et-open)/60000);
+}
+// ═══ HEAT SCORE (v3.9.38) — ranks by what's moving RIGHT NOW ═══
+// Blend of three signals, any one lifts a stock, all three send it to the top:
+// recent price velocity, volume surge in the last minute, and breaking highs.
+// Score becomes a tiebreaker so a fresh 3/5 breakout beats a stale 4/5.
+function heatScore(sym){
+  const q=Q[sym];if(!q||!q.price)return 0;
+  let heat=0;
+  if(q._pxAgo&&q._pxAgo>0){const vel=(q.price-q._pxAgo)/q._pxAgo*100;if(vel>0)heat+=Math.min(vel*8,60);}
+  if(q._volAgo!=null&&q.volume>q._volAgo){const added=q.volume-q._volAgo;if(added>50000)heat+=Math.min(added/50000*6,30);}
+  const hod=pmHigh[sym]||q.high;
+  if(hod&&q.price>=hod*0.98)heat+=20;
+  heat+=Math.min((q.changePct||0)/5,8);
+  return heat;
 }
 function scoreP4(sym,minsOverride){
   const q=Q[sym],c=scanCache[sym]||{};
@@ -1072,7 +1089,12 @@ async function fetchQDirect(sym){
       if(r.status===429||r.status===403){_badSyms[sym]=Date.now();if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-quote',r.status,FH_URL+'/quote?symbol='+sym,sym);return;}
       const q=await r.json();
       if(q.c){
-        Q[sym]={symbol:sym,price:q.c,open:q.o||Q[sym]?.open||0,high:q.h||Q[sym]?.high||0,low:q.l||Q[sym]?.low||0,prevClose:q.pc,change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,volume:q.v||Q[sym]?.volume||0,bid:q.c*(1-0.0005),ask:q.c*(1+0.0005),_fromWebull:Q[sym]?._fromWebull,_fromFmp:Q[sym]?._fromFmp,priceTs:q.t?q.t*1000:Date.now(),_ts:Date.now()};
+        const wbPx=Q[sym]?._fromWebull?Q[sym].price:null;
+        // Split-artifact guard: Webull's /gainers API sometimes serves un-split-adjusted
+        // prices (BIYA showed $4.14 API vs $7.97 real). Finnhub is split-adjusted. When
+        // they diverge >15%, trust Finnhub's price/% and flag the row as suspect.
+        const splitMismatch=wbPx&&q.c&&Math.abs(q.c-wbPx)/Math.max(q.c,wbPx)>0.15;
+        Q[sym]={symbol:sym,price:q.c,open:q.o||Q[sym]?.open||0,high:q.h||Q[sym]?.high||0,low:q.l||Q[sym]?.low||0,prevClose:q.pc,change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,volume:q.v||Q[sym]?.volume||0,bid:q.c*(1-0.0005),ask:q.c*(1+0.0005),_fromWebull:Q[sym]?._fromWebull,_fromFmp:Q[sym]?._fromFmp,wbRvol:Q[sym]?.wbRvol||0,_pxAgo:Q[sym]?._pxAgo,_pxAgoTs:Q[sym]?._pxAgoTs,_volAgo:Q[sym]?._volAgo,_volAgoTs:Q[sym]?._volAgoTs,_splitFlag:splitMismatch||Q[sym]?._splitFlag,priceTs:q.t?q.t*1000:Date.now(),_ts:Date.now()};
         const sess=getSession();
         checkPmhBreak(sym,q.c);
         if(sess==='pre'||sess==='mkt'){if(!pmHigh[sym]||q.h>pmHigh[sym])pmHigh[sym]=q.h;}
@@ -1462,7 +1484,7 @@ function liveScanUpdate(){
     results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false,
       src:meta.source,rv,addedTs:meta.addedTs||meta.ts||0,floatValue:c.floatValue,
       pmh:pmHigh[sym]||0,newsHeadline:c.latestHeadline||'',
-      turnover:c.turnoverRate||0,halted:c.halted||false,ctry:c.ctry||''});
+      turnover:c.turnoverRate||0,halted:c.halted||false,ctry:c.ctry||'',splitFlag:q._splitFlag||false});
   });
   const countEl=document.getElementById('scanCount');
   if(countEl)countEl.textContent=results.length;
@@ -1488,12 +1510,17 @@ function liveScanUpdate(){
       case'chg':av=a.q.changePct||0;bv=b.q.changePct||0;break;
       case'rvol':av=a.rv||0;bv=b.rv||0;break;
       case'score':default:
-        // Rows with real, session-aware volume always rank above no-volume rows.
-        // A +2235% artifact on zero volume (reverse-split / stale data) must never
-        // sit above a genuine +36% mover with real volume behind it.
+        // Real volume always ranks above no-volume artifacts (BIYA/PRPL split ghosts).
         const aVol=(a.q._fromWebull||a.q._volFmp)&&(a.q.volume||0)>0;
         const bVol=(b.q._fromWebull||b.q._volFmp)&&(b.q.volume||0)>0;
         if(aVol!==bVol)return aVol?-1:1;
+        if(sortMode==='score'){
+          if(a.score!==b.score)return b.score-a.score;
+          return (b.q.changePct||0)-(a.q.changePct||0);
+        }
+        // HEAT mode (default): what's moving now floats up; score breaks ties.
+        const ah=heatScore(a.sym),bh=heatScore(b.sym);
+        if(Math.abs(ah-bh)>3)return bh-ah;
         if(a.score!==b.score)return b.score-a.score;
         return (b.q.changePct||0)-(a.q.changePct||0);
     }
@@ -1541,6 +1568,7 @@ function liveScanUpdate(){
         +'<div class="scan-sym-row">'
           +'<button class="star-btn'+(isPinned?' starred':'')+'" onclick="event.stopPropagation();toggleStar(\''+r.sym+'\')" title="Pin symbol">'+(isPinned?'⭐':'☆')+'</button>'
           +'<span class="scan-sym '+(u?'up':'dn')+'">'+r.sym+'</span>'
+          +(r.splitFlag?'<span title="Webull &amp; Finnhub prices disagree — possible split artifact, using Finnhub price" style="color:var(--gold);font-size:11px;cursor:help">⚠</span>':'')
           +(r.ctry?'<span class="ctry-badge ctry-'+(['CN','HK'].includes(r.ctry)?'cn':r.ctry==='US'?'us':'x')+'" title="'+r.ctry+'-domiciled company">'+r.ctry+'</span>':'')
           +srcBadge
           +(r.halted?'<span class="halt-badge">HALT</span>':'')
@@ -1640,7 +1668,13 @@ async function runWebullScan(){
           if(!wasHalted){playPing('halt');showToast('🛑 '+sym+' — TRADING HALT DETECTED');}
         }
         if(!Q[sym]||Date.now()-(Q[sym]._ts||0)>20000){
-          Q[sym]={symbol:sym,price:px,changePct:chgPct,volume:vol,open:Q[sym]?.open||0,high:Q[sym]?.high||0,low:Q[sym]?.low||0,prevClose:item.pre_close?parseFloat(item.pre_close):px,_ts:Date.now(),_fromWebull:true};
+          const prev=Q[sym];
+          // Track a 60-second-ago price so heat ranking can measure recent acceleration
+          let pxAgo=prev?._pxAgo,pxAgoTs=prev?._pxAgoTs;
+          if(!pxAgoTs||Date.now()-pxAgoTs>60000){pxAgo=prev?.price||px;pxAgoTs=Date.now();}
+          const volAgo=(!prev?._volAgoTs||Date.now()-prev._volAgoTs>60000)?(prev?.volume||vol):prev._volAgo;
+          const volAgoTs=(!prev?._volAgoTs||Date.now()-prev._volAgoTs>60000)?Date.now():prev._volAgoTs;
+          Q[sym]={symbol:sym,price:px,changePct:chgPct,volume:vol,open:Q[sym]?.open||0,high:Q[sym]?.high||0,low:Q[sym]?.low||0,prevClose:item.pre_close?parseFloat(item.pre_close):px,wbRvol:Q[sym]?.wbRvol||0,_pxAgo:pxAgo,_pxAgoTs:pxAgoTs,_volAgo:volAgo,_volAgoTs:volAgoTs,_ts:Date.now(),_fromWebull:true};
         }
         // Store turnover rate from Webull if available
         const tr=parseFloat(item.turnover_rate||item.turnover||0);
