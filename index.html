@@ -402,7 +402,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.38</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.39</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -1510,7 +1510,12 @@ function liveScanUpdate(){
       case'chg':av=a.q.changePct||0;bv=b.q.changePct||0;break;
       case'rvol':av=a.rv||0;bv=b.rv||0;break;
       case'score':default:
-        // Real volume always ranks above no-volume artifacts (BIYA/PRPL split ghosts).
+        // A move over 150% in one session is physically impossible — it's a
+        // reverse-split artifact (PRPL +2235%, BANL +1247%). Sink them below everything.
+        const aArt=(a.q.changePct||0)>150||a.splitFlag;
+        const bArt=(b.q.changePct||0)>150||b.splitFlag;
+        if(aArt!==bArt)return aArt?1:-1;
+        // Real, session-aware volume ranks above no-volume rows.
         const aVol=(a.q._fromWebull||a.q._volFmp)&&(a.q.volume||0)>0;
         const bVol=(b.q._fromWebull||b.q._volFmp)&&(b.q.volume||0)>0;
         if(aVol!==bVol)return aVol?-1:1;
@@ -1895,12 +1900,16 @@ async function startDeepScan(){
     })
     .sort((a,b)=>{
       const ca=scanCache[a]||{},cb=scanCache[b]||{};
+      // Never-scored symbols go FIRST — a brand-new mover must get scored (and
+      // split-price-corrected) this cycle, not sit unscored behind old rows.
+      const aNew=ca.ts?0:1,bNew=cb.ts?0:1;
+      if(aNew!==bNew)return bNew-aNew;
       const scoreA=[true,true,ca.p3===true,ca.p4===true,ca.p5===true].filter(Boolean).length;
       const scoreB=[true,true,cb.p3===true,cb.p4===true,cb.p5===true].filter(Boolean).length;
       if(scoreB!==scoreA)return scoreB-scoreA;
       return (Q[b]?.changePct||0)-(Q[a]?.changePct||0);
     })
-    .slice(0,15); // top 15 by score — every on-screen row gets fully scored each cycle
+    .slice(0,15); // top 15 — new movers first, then by score
 
   await fmpVolumeBackfill(candidates.filter(s=>Q[s]&&!Q[s]._fromWebull&&(!Q[s].volume||Q[s]._volFmp))); // NYSE/AMEX only — Webull covers the restes FMP-sourced volumes every 5 min
 
