@@ -404,7 +404,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.41</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.42</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -776,7 +776,8 @@ function playSound(type){
   switch(type){
     case 'score5':tone(523,0,.14);tone(659,.12,.14);tone(784,.24,.14);tone(1047,.36,.32);break;      // 🚀 rising C-E-G-C arpeggio — jackpot
     case 'score4':tone(392,0,.12,'triangle');tone(523,.13,.24,'triangle');break;                     // ⚡ two-note rise — priority
-    case 'pmh':tone(1319,0,.09,'square',0.12);tone(1319,.14,.09,'square',0.12);break;                // 🎯 urgent double ping — PMH breakout
+    case 'pmh':tone(1319,0,.09,'square',0.12);tone(1319,.14,.09,'square',0.12);break;
+    case 'spike':tone(659,0,.08,'square',0.12);tone(988,.09,.14,'square',0.13);break;                // 🎯 urgent double ping — PMH breakout
     case 'halt':tone(220,0,.28,'sawtooth',0.14);tone(165,.26,.36,'sawtooth',0.14);break;             // 🛑 low descending — warning
     default:tone(880,0,.08,'sine',0.11);                                                              // 🔥 soft blip — new symbol
   }
@@ -816,8 +817,8 @@ function recordAlert(kind,sym,detail){
 function renderAlertHistory(){
   const el=document.getElementById('ps-alert-list');if(!el)return;
   if(!alertHistory.length){el.innerHTML='<div style="color:var(--dim)">No alerts yet this session.</div>';return;}
-  const icon={pmh:'🎯',score5:'🚀',score4:'⚡',standing:'🔥'};
-  const col={pmh:'var(--cyan)',score5:'var(--gr)',score4:'var(--gold)',standing:'var(--gold)'};
+  const icon={pmh:'🎯',score5:'🚀',score4:'⚡',standing:'🔥',spike:'⚡',hod:'📈'};
+  const col={pmh:'var(--cyan)',score5:'var(--gr)',score4:'var(--gold)',standing:'var(--gold)',spike:'var(--gold)',hod:'var(--cyan)'};
   el.innerHTML=alertHistory.map(a=>
     '<div style="display:flex;gap:6px;align-items:baseline;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer" onclick="selectSym(\''+a.sym+'\')">'
     +'<span>'+(icon[a.kind]||'🔔')+'</span>'
@@ -828,28 +829,44 @@ function renderAlertHistory(){
   ).join('');
 }
 function checkSetupAlerts(sym,score){
-  // Only real-volume setups can make a sound
-  if(score<4||!hasRealVolume(sym)){
-    if(_alertState[sym])_alertState[sym].lastScore=score; // track, but stay silent
-    return;
-  }
+  const q=Q[sym];
+  if(!q||!hasRealVolume(sym)){if(_alertState[sym])_alertState[sym].lastScore=score;return;}
   const now=Date.now();
-  const st=_alertState[sym]||{lastScore:0,lastStandingPing:0};
-  // Transition up → immediate priority sound
-  if(score>st.lastScore){
+  const st=_alertState[sym]||{lastScore:0,lastAlertPx:0,lastHod:0,lastSpikeTs:0};
+
+  // ── EVENT 1: score climbs to 4/5 or 5/5 (a real setup formed) ──
+  if(score>=4&&score>st.lastScore){
     playPing(score>=5?'score5':'score4');
-    showToast((score>=5?'🚀 ':'⚡ ')+sym+' is '+score+'/5 — real volume'+(soundOn?'':' (🔕)'));
-    addLog(score>=5?'score5':'score4',sym,'Reached '+score+'/5 with real volume');
-    recordAlert(score>=5?'score5':'score4',sym,'hit '+score+'/5 · $'+(Q[sym]?.price||0).toFixed(2)+' '+((Q[sym]?.changePct||0)>=0?'+':'')+(Q[sym]?.changePct||0).toFixed(0)+'%');
-    st.lastStandingPing=now;
+    showToast((score>=5?'🚀 ':'⚡ ')+sym+' is '+score+'/5'+(soundOn?'':' (🔕)'));
+    addLog(score>=5?'score5':'score4',sym,'Reached '+score+'/5');
+    recordAlert(score>=5?'score5':'score4',sym,'hit '+score+'/5 · $'+q.price.toFixed(2)+' '+((q.changePct||0)>=0?'+':'')+(q.changePct||0).toFixed(0)+'%');
+    st.lastAlertPx=q.price;
   }
-  // Standing reminder every 2 min while it holds 4/5+
-  else if(now-st.lastStandingPing>=120000){
-    playPing('new'); // the soft blip
-    showToast('🔥 '+sym+' still '+score+'/5'+(soundOn?'':' (🔕)'));
-    recordAlert('standing',sym,'still '+score+'/5 · $'+(Q[sym]?.price||0).toFixed(2));
-    st.lastStandingPing=now;
+  // ── EVENT 2: fast price spike — pings on ANY score, like Ross's momentum alert ──
+  // Uses the 60s-ago price captured for heat. A quick pop is news even at 2/5.
+  else if(q._pxAgo&&q._pxAgo>0){
+    const spikePct=(q.price-q._pxAgo)/q._pxAgo*100;
+    const bigSpike=spikePct>=4; // ~4%+ in ~1 min = a real move
+    const cooled=now-st.lastSpikeTs>=180000; // don't spam the same spike; 3-min gap
+    if(bigSpike&&cooled&&q.price>st.lastAlertPx*1.005){
+      playPing('spike');
+      showToast('⚡ '+sym+' spiking +'+spikePct.toFixed(1)+'% fast · '+score+'/5'+(soundOn?'':' (🔕)'));
+      addLog('spike',sym,'Spiked +'+spikePct.toFixed(1)+'% ('+score+'/5)');
+      recordAlert('spike',sym,'spiked +'+spikePct.toFixed(1)+'% · $'+q.price.toFixed(2)+' · '+score+'/5');
+      st.lastSpikeTs=now;st.lastAlertPx=q.price;
+    }
   }
+  // ── EVENT 3: new high of day (breakout continuation) ──
+  const hod=q.high||0;
+  if(hod>0&&hod>st.lastHod&&st.lastHod>0&&q.price>=hod*0.999&&hasRealVolume(sym)){
+    if(now-st.lastSpikeTs>=60000){ // don't double-fire with a spike
+      playPing('pmh');
+      showToast('📈 '+sym+' new HOD $'+hod.toFixed(2)+' · '+score+'/5'+(soundOn?'':' (🔕)'));
+      recordAlert('hod',sym,'new HOD $'+hod.toFixed(2)+' · '+score+'/5');
+      st.lastSpikeTs=now;
+    }
+  }
+  if(hod>st.lastHod)st.lastHod=hod;
   st.lastScore=score;
   _alertState[sym]=st;
 }
@@ -1500,8 +1517,11 @@ function liveScanUpdate(){
     const c=scanCache[sym]||{};
     const rv=parseFloat(c.rvolValue)||0;
     if(!p1||!p2){
-      // Only auto-remove if we have real price data — API failure (price=0) should not remove symbols
-      if(q&&q.price>0){
+      const _m=symMeta.get(sym);
+      const isManual=_m&&_m.source==='manual';
+      // Manual adds are pinned by the user — never auto-remove, even below threshold.
+      // Only auto-remove feed-added symbols, and only with real price data.
+      if(q&&q.price>0&&!isManual){
         if(!failTimer[sym])failTimer[sym]=now;
         if(now-failTimer[sym]>autoRmMs){
           addLog('rm',sym,'Auto-removed after '+autoRmMins+'min below threshold');
