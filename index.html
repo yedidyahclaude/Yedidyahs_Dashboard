@@ -216,7 +216,26 @@ input,button,textarea{font-family:inherit}
 .held-tag{font-size:8px;font-weight:800;color:var(--ac2);background:rgba(124,106,255,.14);
   padding:2px 8px;border-radius:8px 8px 0 0;letter-spacing:.05em;display:flex;align-items:center;gap:5px;text-transform:uppercase}
 .held-x{margin-left:auto;cursor:pointer;font-size:11px;color:var(--dim);padding:0 2px}
-.held-x:hover{color:var(--dn)}
+.held-x:hover{color:var(--rd)}
+/* ── MOMENTUM ROWS (right column) — compact, spike-focused ── */
+.mo-row{background:linear-gradient(100deg,rgba(240,185,79,.05),rgba(255,255,255,.015));
+  border:1px solid rgba(240,185,79,.12);border-radius:9px;padding:8px 11px;margin-bottom:6px;cursor:pointer;transition:.12s}
+.mo-row:hover{border-color:rgba(240,185,79,.4);transform:translateX(-2px)}
+.mo-row.athod{border-color:rgba(25,196,138,.45);box-shadow:0 0 10px rgba(25,196,138,.15)}
+.mo-top{display:flex;align-items:baseline;gap:8px}
+.mo-sym{font-size:16px;font-weight:800;letter-spacing:-.02em}
+.mo-flame{font-size:12px}
+.mo-px{margin-left:auto;font-size:14px;font-weight:700;color:var(--tx);font-family:ui-monospace,monospace}
+.mo-chg{font-size:15px;font-weight:800;font-family:ui-monospace,monospace;min-width:62px;text-align:right}
+.mo-chg.up{color:var(--gr)}.mo-chg.dn{color:var(--rd)}
+.mo-bot{display:flex;align-items:center;gap:9px;margin-top:5px;font-size:10px}
+.mo-vel{font-weight:800;font-family:ui-monospace,monospace}
+.mo-vel.up{color:var(--gr)}.mo-vel.dn{color:var(--rd)}
+.mo-vol{color:var(--mu)}
+.mo-hod{color:var(--gr);font-weight:800}
+.mo-score{margin-left:auto;font-size:10px;font-weight:800;padding:1px 7px;border-radius:5px;background:rgba(255,255,255,.06);color:var(--mu)}
+.mo-score.s4{background:rgba(240,185,79,.2);color:var(--gold)}
+.mo-score.s3{background:rgba(124,106,255,.18);color:var(--ac2)}
 .split-col .scan-row{margin-bottom:5px}
 @media(max-width:900px){.split-wrap{grid-template-columns:1fr}}
 .scan-row.hot-now{box-shadow:inset 3px 0 0 var(--gold),0 0 0 1px rgba(240,185,79,.2)}
@@ -422,7 +441,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.48</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.49</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -689,7 +708,7 @@ let fhWS=null;
 let _wsGaveUp=false;
 let sortCol='score';
 let sortMode=localStorage.getItem('sv_sortmode')||'heat'; // 'heat' = most active first, 'score' = 5→1
-let splitView=localStorage.getItem('sv_splitview')==='1';
+let splitView=localStorage.getItem('sv_splitview')!=='0'; // default ON
 let splitSwap=localStorage.getItem('sv_splitswap')==='1';
 // Symbols clicked/searched are HELD in the Setups (left) column for 3 min, even
 // at 0/5 — so a momentum pick you're watching stays visible while its setup forms.
@@ -1767,8 +1786,32 @@ function renderSplitView(results,maxShow,pd){
       +'<div class="held-tag">📌 watching '+(mins>0?mins+'m':'')+'<span class="held-x" onclick="releaseHold(\''+r.sym+'\',event)">✕</span></div>'
       +base+'</div>';
   };
-  const left=setups.length?setups.map(buildSetupRow).join(''):'<div class="split-empty">Click a mover to watch it here</div>';
-  const right=movers.length?movers.map(r=>buildRow(r,pd)).join(''):'<div class="split-empty">No active movers yet</div>';
+  const buildMomentumRow=r=>{
+    const q=r.q;
+    const u=(q.changePct||0)>=0;
+    const heat=heatScore(r.sym);
+    let vel=0;if(q._pxAgo&&q._pxAgo>0)vel=(q.price-q._pxAgo)/q._pxAgo*100;
+    const velStr=vel>=0.5?'▲'+vel.toFixed(1)+'%/min':vel<=-0.5?'▼'+Math.abs(vel).toFixed(1)+'%/min':'';
+    const volLabel=(q.volume>0)?(q.volume>=1e6?(q.volume/1e6).toFixed(1)+'M':q.volume>=1e3?Math.round(q.volume/1e3)+'K':q.volume+''):'—';
+    const hod=q.high||0;const nearHod=hod>0&&q.price>=hod*0.995;
+    const flame=heat>=40?'🔥🔥':heat>=25?'🔥':'';
+    const scoreDot=r.score>=4?'<span class="mo-score s4">'+r.score+'/5</span>':r.score>=3?'<span class="mo-score s3">'+r.score+'/5</span>':'<span class="mo-score">'+r.score+'/5</span>';
+    return '<div class="mo-row'+(nearHod?' athod':'')+'" onclick="selectSym(\''+r.sym+'\')">'
+      +'<div class="mo-top">'
+        +'<span class="mo-sym">'+r.sym+'</span>'+(flame?'<span class="mo-flame">'+flame+'</span>':'')
+        +'<span class="mo-px">$'+q.price.toFixed(2)+'</span>'
+        +'<span class="mo-chg '+(u?'up':'dn')+'">'+(u?'+':'')+(q.changePct||0).toFixed(1)+'%</span>'
+      +'</div>'
+      +'<div class="mo-bot">'
+        +(velStr?'<span class="mo-vel '+(vel>=0?'up':'dn')+'">'+velStr+'</span>':'')
+        +'<span class="mo-vol">Vol '+volLabel+'</span>'
+        +(nearHod?'<span class="mo-hod">◆ HOD</span>':'')
+        +scoreDot
+      +'</div>'
+      +'</div>';
+  };
+  const left=setups.length?setups.map(buildSetupRow).join(''):'<div class="split-empty">Click a mover to watch it here 👉</div>';
+  const right=movers.length?movers.map(buildMomentumRow).join(''):'<div class="split-empty">No active movers yet</div>';
   const leftLbl=splitSwap?'⚡ Momentum':'🎯 Setups';
   const rightLbl=splitSwap?'🎯 Setups':'⚡ Momentum';
   const leftHtml=splitSwap?right:left;
