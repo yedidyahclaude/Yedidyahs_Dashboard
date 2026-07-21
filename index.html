@@ -404,7 +404,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.43</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.44</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -1785,11 +1785,9 @@ async function runWebullScan(){
             const sc=scoreP4(sym);
             scanCache[sym]={...scanCache[sym],p4:sc.pass,rvolValue:sc.label,rvolBad:sc.bad};
             if(tr>0)scanCache[sym]={...scanCache[sym],turnoverRate:tr.toFixed(2)};
-            if(wasBelow&&sc.pass){
-              const c=scanCache[sym];
-              const sc=[true,true,c.p3===true,true,c.p5===true].filter(Boolean).length;
-              if(sc>=5)playPing('score5');else if(sc>=4)playPing('score4');
-            }
+            // (Alert firing removed here — ALL alerts route through checkSetupAlerts
+            //  in the render loop, which has the per-symbol cooldown. This legacy
+            //  path fired every 60s Webull refresh with no dedup — the AMC spammer.)
           }
         }
         if(!seenSyms.has(sym)){
