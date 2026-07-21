@@ -404,7 +404,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.40</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.41</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -540,6 +540,10 @@ input,button,textarea{font-family:inherit}
       <div class="pulse-section">
         <div class="pulse-section-title">🔥 Best Setups</div>
         <div id="ps-best-list"></div>
+      </div>
+      <div class="pulse-section">
+        <div class="pulse-section-title">🔔 Recent Alerts</div>
+        <div id="ps-alert-list" style="font-size:10px;line-height:1.5"></div>
       </div>
       <div class="pulse-section">
         <div class="pulse-section-title">📝 My Notes</div>
@@ -799,6 +803,30 @@ function hasRealVolume(sym){
   const q=Q[sym];
   return !!q && (q._fromWebull||q._volFmp) && (q.volume||0)>0;
 }
+// ═══ ALERT HISTORY — rolling record of what pinged, so a missed sound/ping is
+// still visible in the sidebar. Persists for the session.
+let alertHistory=JSON.parse(sessionStorage.getItem('sv_alert_hist')||'[]');
+function recordAlert(kind,sym,detail){
+  const et=new Date().toLocaleTimeString('en-US',{hour12:false,timeZone:'America/New_York'});
+  alertHistory.unshift({t:et,kind,sym,detail});
+  if(alertHistory.length>15)alertHistory.pop();
+  try{sessionStorage.setItem('sv_alert_hist',JSON.stringify(alertHistory));}catch(e){}
+  renderAlertHistory();
+}
+function renderAlertHistory(){
+  const el=document.getElementById('ps-alert-list');if(!el)return;
+  if(!alertHistory.length){el.innerHTML='<div style="color:var(--dim)">No alerts yet this session.</div>';return;}
+  const icon={pmh:'🎯',score5:'🚀',score4:'⚡',standing:'🔥'};
+  const col={pmh:'var(--cyan)',score5:'var(--gr)',score4:'var(--gold)',standing:'var(--gold)'};
+  el.innerHTML=alertHistory.map(a=>
+    '<div style="display:flex;gap:6px;align-items:baseline;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer" onclick="selectSym(\''+a.sym+'\')">'
+    +'<span>'+(icon[a.kind]||'🔔')+'</span>'
+    +'<span style="font-weight:800;color:'+(col[a.kind]||'var(--txt)')+'">'+a.sym+'</span>'
+    +'<span style="color:var(--mu);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+a.detail+'</span>'
+    +'<span style="color:var(--dim);font-family:monospace;font-size:9px">'+a.t.slice(0,5)+'</span>'
+    +'</div>'
+  ).join('');
+}
 function checkSetupAlerts(sym,score){
   // Only real-volume setups can make a sound
   if(score<4||!hasRealVolume(sym)){
@@ -812,12 +840,14 @@ function checkSetupAlerts(sym,score){
     playPing(score>=5?'score5':'score4');
     showToast((score>=5?'🚀 ':'⚡ ')+sym+' is '+score+'/5 — real volume'+(soundOn?'':' (🔕)'));
     addLog(score>=5?'score5':'score4',sym,'Reached '+score+'/5 with real volume');
+    recordAlert(score>=5?'score5':'score4',sym,'hit '+score+'/5 · $'+(Q[sym]?.price||0).toFixed(2)+' '+((Q[sym]?.changePct||0)>=0?'+':'')+(Q[sym]?.changePct||0).toFixed(0)+'%');
     st.lastStandingPing=now;
   }
   // Standing reminder every 2 min while it holds 4/5+
   else if(now-st.lastStandingPing>=120000){
     playPing('new'); // the soft blip
     showToast('🔥 '+sym+' still '+score+'/5'+(soundOn?'':' (🔕)'));
+    recordAlert('standing',sym,'still '+score+'/5 · $'+(Q[sym]?.price||0).toFixed(2));
     st.lastStandingPing=now;
   }
   st.lastScore=score;
@@ -831,6 +861,7 @@ function checkPmhBreak(sym,px){
   playPing('pmh');
   showToast('🎯 '+sym+' broke pre-market high $'+pmHigh[sym].toFixed(2));
   addLog('pmh',sym,'Broke PMH $'+pmHigh[sym].toFixed(2));
+  recordAlert('pmh',sym,'broke PMH $'+pmHigh[sym].toFixed(2));
 }
 function playPing(type='new'){
   playSound(type);
@@ -1188,6 +1219,7 @@ function togglePulse(){
 }
 function updatePulse(){
   if(!pulseOpen)return;
+  renderAlertHistory();
   const minP=parseFloat(document.getElementById('f-minp')?.value)||1;
   const maxP=parseFloat(document.getElementById('f-maxp')?.value)||20;
   const minC=parseFloat(document.getElementById('f-chg')?.value)||10;
