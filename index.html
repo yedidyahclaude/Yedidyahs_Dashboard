@@ -201,6 +201,24 @@ input,button,textarea{font-family:inherit}
 
 /* NEW flash */
 .scan-row-new{animation:flashNew 2s ease-out}
+/* ── SPLIT VIEW ── */
+.split-wrap{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 2px}
+.split-col{min-width:0;background:rgba(255,255,255,.012);border-radius:10px;padding:4px}
+.split-hd{position:sticky;top:0;z-index:5;font-size:11px;font-weight:800;letter-spacing:.04em;
+  padding:8px 10px;margin-bottom:4px;border-radius:8px;backdrop-filter:blur(8px);cursor:pointer;
+  display:flex;align-items:center;gap:6px;text-transform:uppercase}
+.split-hd.left{background:linear-gradient(90deg,rgba(25,196,138,.14),transparent);color:var(--gr)}
+.split-hd.right{background:linear-gradient(90deg,rgba(240,185,79,.14),transparent);color:var(--gold)}
+.split-hd::after{content:'⇄ swap';margin-left:auto;font-size:8px;opacity:.5;font-weight:600;letter-spacing:.02em}
+.split-hd:hover::after{opacity:.9}
+.split-empty{padding:32px 16px;text-align:center;color:var(--dim);font-size:11px}
+.held-row{position:relative;border-radius:10px;box-shadow:0 0 0 1.5px var(--ac);margin-bottom:6px}
+.held-tag{font-size:8px;font-weight:800;color:var(--ac2);background:rgba(124,106,255,.14);
+  padding:2px 8px;border-radius:8px 8px 0 0;letter-spacing:.05em;display:flex;align-items:center;gap:5px;text-transform:uppercase}
+.held-x{margin-left:auto;cursor:pointer;font-size:11px;color:var(--dim);padding:0 2px}
+.held-x:hover{color:var(--dn)}
+.split-col .scan-row{margin-bottom:5px}
+@media(max-width:900px){.split-wrap{grid-template-columns:1fr}}
 .scan-row.hot-now{box-shadow:inset 3px 0 0 var(--gold),0 0 0 1px rgba(240,185,79,.2)}
 .scan-row.hot-now.score5,.scan-row.hot-now.score4{box-shadow:inset 3px 0 0 var(--gr),0 0 12px rgba(25,196,138,.25)}
 @keyframes flashNew{0%{background:#7c6aff28}100%{background:transparent}}
@@ -404,7 +422,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.44</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.46</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -433,6 +451,7 @@ input,button,textarea{font-family:inherit}
           </div>
           <div class="scan-hdr-right">
             <div id="sectorAlert" style="display:none" class="sector-alert"></div>
+            <button class="copy-syms-btn" id="splitBtn" onclick="toggleSplit()" title="Split into Setups + Momentum columns" style="margin-right:6px">▤ List</button>
             <button class="copy-syms-btn" id="sortModeBtn" onclick="toggleSortMode()" title="Toggle: Heat (most active first) or Score (5→1)" style="margin-right:6px">🔥 Heat</button>
             <button class="copy-syms-btn" onclick="copySymbols()" title="Copy all passing symbols to clipboard">📋 Copy All</button>
             <span class="scan-status" id="scanStatus">Starting…</span>
@@ -610,7 +629,7 @@ async function trySignup(){
 }
 function showSignup(){document.getElementById('loginForm').style.display='none';document.getElementById('signupForm').style.display='flex';}
 function showLogin(){document.getElementById('signupForm').style.display='none';document.getElementById('loginForm').style.display='flex';document.getElementById('loginErr').style.display='none';}
-function showApp(){document.getElementById('loginWall').style.display='none';document.getElementById('mainApp').style.display='flex';const b=document.getElementById('sortModeBtn');if(b)b.textContent=sortMode==='heat'?'🔥 Heat':'🏆 Score';setTimeout(init,50);}
+function showApp(){document.getElementById('loginWall').style.display='none';document.getElementById('mainApp').style.display='flex';const b=document.getElementById('sortModeBtn');if(b)b.textContent=sortMode==='heat'?'🔥 Heat':'🏆 Score';const sb=document.getElementById('splitBtn');if(sb){sb.textContent=splitView?'▣ Split':'▤ List';sb.classList.toggle('on',splitView);}setTimeout(init,50);}
 function checkAuth(){if(sessionStorage.getItem('sv_token')){showApp();return true;}document.getElementById('loginWall').style.display='flex';return false;}
 function logout(){sessionStorage.clear();location.reload();}
 
@@ -670,6 +689,17 @@ let fhWS=null;
 let _wsGaveUp=false;
 let sortCol='score';
 let sortMode=localStorage.getItem('sv_sortmode')||'heat'; // 'heat' = most active first, 'score' = 5→1
+let splitView=localStorage.getItem('sv_splitview')==='1';
+let splitSwap=localStorage.getItem('sv_splitswap')==='1';
+// Symbols clicked/searched are HELD in the Setups (left) column for 3 min, even
+// at 0/5 — so a momentum pick you're watching stays visible while its setup forms.
+const HOLD_MS=180000;
+let heldSyms={}; // sym -> expiry timestamp
+function holdSym(sym){heldSyms[sym]=Date.now()+HOLD_MS;liveScanUpdate();}
+function releaseHold(sym,e){if(e)e.stopPropagation();delete heldSyms[sym];liveScanUpdate();}
+function isHeld(sym){return heldSyms[sym]&&heldSyms[sym]>Date.now();}
+function toggleSplit(){splitView=!splitView;localStorage.setItem('sv_splitview',splitView?'1':'0');const b=document.getElementById('splitBtn');if(b){b.textContent=splitView?'▣ Split':'▤ List';b.classList.toggle('on',splitView);}liveScanUpdate();}
+function swapSplit(){splitSwap=!splitSwap;localStorage.setItem('sv_splitswap',splitSwap?'1':'0');liveScanUpdate();}
 function toggleSortMode(){sortMode=sortMode==='heat'?'score':'heat';localStorage.setItem('sv_sortmode',sortMode);const b=document.getElementById('sortModeBtn');if(b)b.textContent=sortMode==='heat'?'🔥 Heat':'🏆 Score';liveScanUpdate();}
 let sortDir=-1;
 let pulseOpen=true;
@@ -1294,6 +1324,7 @@ setInterval(()=>{if(pulseOpen)updatePulse();},10000);
 // ═══ SYMBOL MANAGEMENT ═══
 async function selectSym(sym){
   sym=sym.toUpperCase().trim();if(!sym)return;
+  holdSym(sym); // hold on the Setups column for 3 min, even at 0/5
   // Copy to clipboard silently on every click
   navigator.clipboard.writeText(sym).catch(()=>{});
   if(sym.includes('.')&&sym!=='BTC/USD'&&sym!=='ETH/USD'){showToast('🚫 Non-US ticker — not supported');return;}
@@ -1602,7 +1633,19 @@ function liveScanUpdate(){
   const hiddenCount=results.length-displayResults.length;
   if(countEl&&hiddenCount>0)countEl.textContent=displayResults.length+'/'+results.length;
   const pd=v=>v===true?'pass':v===false?'fail':'na';
-  rows.innerHTML=displayResults.map(r=>{
+  const sortBarEl=document.getElementById('sortBar');
+  if(sortBarEl)sortBarEl.style.display=splitView?'none':'';
+  if(splitView){
+    renderSplitView(results,maxShow,pd);
+  } else {
+    rows.innerHTML=displayResults.map(r=>buildRow(r,pd)).join('');
+  }
+  updateCPPrice();
+  if(pulseOpen)updatePulse();
+  checkSectors(results);
+}
+function buildRow(r,pd){
+  {
     const u=(r.q.changePct||0)>=0;
     const isHotNow=heatScore(r.sym)>=25&&((r.q._fromWebull||r.q._volFmp)&&(r.q.volume||0)>0);
     const sc=r.halted?'halted':r.score>=5?'score5':r.score>=4?'score4':'score3';
@@ -1689,10 +1732,51 @@ function liveScanUpdate(){
       +'<span class="scan-score">'+r.score+'/5</span>'
       +'<div style="grid-column:1/-1;height:5px"></div>'
       +'</div>';
-  }).join('');
-  updateCPPrice();
-  if(pulseOpen)updatePulse();
-  checkSectors(results);
+  }
+}
+function renderSplitView(results,maxShow,pd){
+  const rows=document.getElementById('scanRows');
+  const held=Object.keys(heldSyms).filter(isHeld);
+  // A held symbol may not be in `results` yet (brand-new, 0/5, still loading).
+  // Synthesize a minimal row object for any held symbol that has a quote.
+  const resultSyms=new Set(results.map(r=>r.sym));
+  const heldExtra=held.filter(s=>!resultSyms.has(s)&&Q[s]&&Q[s].price).map(s=>{
+    const q=Q[s],c=scanCache[s]||{};
+    const score=[q.price>=1&&q.price<=20,(q.changePct||0)>=0,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
+    const meta=symMeta.get(s)||{source:'manual',addedTs:0,ts:0};
+    return {sym:s,q,p1:q.price>=1&&q.price<=20,p2:true,p3:c.p3,p4:c.p4,p5:c.p5,score,
+      hasNews:c.hasNews||false,src:meta.source,rv:parseFloat(c.rvolValue)||0,addedTs:meta.addedTs||0,
+      floatValue:c.floatValue,pmh:pmHigh[s]||0,newsHeadline:c.latestHeadline||'',turnover:0,halted:false,ctry:c.ctry||'',splitFlag:false};
+  });
+  const allResults=[...results,...heldExtra];
+  // LEFT = Setups: held picks (any score) first, then 3/5+ by score.
+  const heldRows=allResults.filter(r=>held.includes(r.sym));
+  const scoreRows=allResults.filter(r=>r.score>=3&&!held.includes(r.sym))
+    .sort((a,b)=>b.score-a.score||heatScore(b.sym)-heatScore(a.sym)||(b.q.changePct||0)-(a.q.changePct||0));
+  const setups=[...heldRows.sort((a,b)=>heldSyms[b.sym]-heldSyms[a.sym]),...scoreRows].slice(0,maxShow);
+  // RIGHT = Momentum by heat (real movers).
+  const movers=results.filter(r=>(r.q._fromWebull||r.q._volFmp)&&(r.q.volume||0)>0)
+    .sort((a,b)=>heatScore(b.sym)-heatScore(a.sym)||(b.q.changePct||0)-(a.q.changePct||0))
+    .slice(0,maxShow);
+  const buildSetupRow=r=>{
+    const base=buildRow(r,pd);
+    if(!held.includes(r.sym))return base;
+    // Prepend a "held" ribbon with a dismiss X onto held rows
+    const mins=Math.ceil((heldSyms[r.sym]-Date.now())/60000);
+    return '<div class="held-row">'
+      +'<div class="held-tag">📌 watching '+(mins>0?mins+'m':'')+'<span class="held-x" onclick="releaseHold(\''+r.sym+'\',event)">✕</span></div>'
+      +base+'</div>';
+  };
+  const left=setups.length?setups.map(buildSetupRow).join(''):'<div class="split-empty">Click a mover to watch it here</div>';
+  const right=movers.length?movers.map(r=>buildRow(r,pd)).join(''):'<div class="split-empty">No active movers yet</div>';
+  const leftLbl=splitSwap?'⚡ Momentum':'🎯 Setups';
+  const rightLbl=splitSwap?'🎯 Setups':'⚡ Momentum';
+  const leftHtml=splitSwap?right:left;
+  const rightHtml=splitSwap?left:right;
+  rows.innerHTML='<div class="split-wrap">'
+    +'<div class="split-col"><div class="split-hd left" onclick="swapSplit()">'+leftLbl+'</div>'+leftHtml+'</div>'
+    +'<div class="split-col"><div class="split-hd right" onclick="swapSplit()">'+rightLbl+'</div>'+rightHtml+'</div>'
+    +'</div>';
 }
 
 // ═══ WEBULL LIVE SCAN — 100 symbols ═══
