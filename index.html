@@ -441,7 +441,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.49</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.51</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -709,6 +709,7 @@ let _wsGaveUp=false;
 let sortCol='score';
 let sortMode=localStorage.getItem('sv_sortmode')||'heat'; // 'heat' = most active first, 'score' = 5→1
 let splitView=localStorage.getItem('sv_splitview')!=='0'; // default ON
+const _momentumSticky={}; // sym -> expiry: keeps a spiker on the momentum board a few cycles
 let splitSwap=localStorage.getItem('sv_splitswap')==='1';
 // Symbols clicked/searched are HELD in the Setups (left) column for 3 min, even
 // at 0/5 — so a momentum pick you're watching stays visible while its setup forms.
@@ -1067,8 +1068,11 @@ function fhPaused(){return Date.now()<_fhPausedUntil;}
 let fhKeys=JSON.parse(localStorage.getItem('sv_fh_keys')||'[]');let _fhKeyIdx=0;
 function fhNextKey(){if(!Array.isArray(fhKeys)||!fhKeys.length)return null;const k=fhKeys[_fhKeyIdx%fhKeys.length];_fhKeyIdx++;return k;}
 async function fhFetch(path){
-  const key=fhNextKey();
-  if(key){
+  // Try direct Finnhub with up to 2 attempts — CORS/network blips are often
+  // transient, and a single retry recovers most of them before we fall to proxy.
+  for(let attempt=0;attempt<2;attempt++){
+    const key=fhNextKey();
+    if(!key)break;
     try{
       const qs=path.split('?')[1]||'';
       let ep='quote';
@@ -1077,11 +1081,20 @@ async function fhFetch(path){
       else if(path.startsWith('/profile'))ep='stock/profile2';
       const extra=ep==='stock/metric'?'&metric=all':'';
       const r=await fetch('https://finnhub.io/api/v1/'+ep+'?'+qs+extra+'&token='+key);
-      if(r.status!==429&&r.status!==403)return r; // direct worked (or real error) — use it
-      // direct rate-limited — fall through to proxy (KV cache may still have it)
-    }catch(e){}
+      if(r.status!==429&&r.status!==403)return r; // direct worked (or real error)
+      // rate-limited on this key — the loop retries with the NEXT rotating key
+    }catch(e){
+      // CORS/network throw — brief pause, then retry with a different key
+      if(attempt===0)await new Promise(res=>setTimeout(res,150));
+    }
   }
-  return fetch(FH_URL+path);
+  // All direct attempts failed — fall back to the proxy (KV cache may have it)
+  try{
+    const pr=await fetch(FH_URL+path);
+    if(pr.ok)return pr;
+  }catch(e){}
+  // Both paths failed — return a benign empty response so callers don't crash
+  return new Response('null',{status:200,headers:{'Content-Type':'application/json'}});
 }
 // A quote whose exchange timestamp predates today's 4:00 AM ET session start is
 // YESTERDAY'S data (Finnhub free tier serves stale closes in pre-market for
@@ -1771,11 +1784,33 @@ function renderSplitView(results,maxShow,pd){
   // LEFT = Setups: held picks (any score) first, then 3/5+ by score.
   const heldRows=allResults.filter(r=>held.includes(r.sym));
   const scoreRows=allResults.filter(r=>r.score>=3&&!held.includes(r.sym))
-    .sort((a,b)=>b.score-a.score||heatScore(b.sym)-heatScore(a.sym)||(b.q.changePct||0)-(a.q.changePct||0));
+    .sort((a,b)=>b.score-a.score||(b.q.changePct||0)-(a.q.changePct||0));
   const setups=[...heldRows.sort((a,b)=>heldSyms[b.sym]-heldSyms[a.sym]),...scoreRows].slice(0,maxShow);
-  // RIGHT = Momentum by heat (real movers).
-  const movers=results.filter(r=>(r.q._fromWebull||r.q._volFmp)&&(r.q.volume||0)>0)
-    .sort((a,b)=>heatScore(b.sym)-heatScore(a.sym)||(b.q.changePct||0)-(a.q.changePct||0))
+  // RIGHT = Momentum: ONLY stocks actually spiking now — not everything with volume.
+  // A stock qualifies if it has real recent velocity OR a genuine volume surge OR is
+  // breaking highs. Once it qualifies it becomes STICKY for ~3 render cycles (~45s)
+  // so it doesn't blink out the moment its 1-second heat dips — it holds, then fades.
+  const nowT=Date.now();
+  results.forEach(r=>{
+    const q=r.q;if(!q||!q.price)return;
+    const hasVol=(q._fromWebull||q._volFmp)&&(q.volume||0)>0;
+    if(!hasVol)return;
+    let vel=0;if(q._pxAgo&&q._pxAgo>0)vel=(q.price-q._pxAgo)/q._pxAgo*100;
+    const volSurge=(q._volAgo!=null&&q.volume-q._volAgo>50000);
+    const hod=q.high||0;const nearHod=hod>0&&q.price>=hod*0.995;
+    const heat=heatScore(r.sym);
+    // Genuine momentum: fast up-move, a volume surge, breaking highs, or hot heat.
+    const spiking=vel>=1.5||volSurge||nearHod||heat>=25;
+    if(spiking)_momentumSticky[r.sym]=nowT+45000; // stays on the board 45s after last spike
+  });
+  const movers=results.filter(r=>_momentumSticky[r.sym]&&_momentumSticky[r.sym]>nowT&&(r.q.volume||0)>0)
+    .sort((a,b)=>{
+      // Stable-ish sort: bucket by heat tier so small heat wiggles don't reshuffle
+      // the whole list every render. Within a tier, order by % change.
+      const ha=Math.floor(heatScore(a.sym)/15),hb=Math.floor(heatScore(b.sym)/15);
+      if(ha!==hb)return hb-ha;
+      return (b.q.changePct||0)-(a.q.changePct||0);
+    })
     .slice(0,maxShow);
   const buildSetupRow=r=>{
     const base=buildRow(r,pd);
