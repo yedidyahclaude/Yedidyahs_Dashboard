@@ -404,7 +404,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.42</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.43</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -832,16 +832,22 @@ function checkSetupAlerts(sym,score){
   const q=Q[sym];
   if(!q||!hasRealVolume(sym)){if(_alertState[sym])_alertState[sym].lastScore=score;return;}
   const now=Date.now();
-  const st=_alertState[sym]||{lastScore:0,lastAlertPx:0,lastHod:0,lastSpikeTs:0};
+  const st=_alertState[sym]||{lastScore:0,lastAlertedScore:0,lastScoreAlertTs:0,lastAlertPx:0,lastHod:0,lastSpikeTs:0};
 
-  // ── EVENT 1: score climbs to 4/5 or 5/5 (a real setup formed) ──
-  if(score>=4&&score>st.lastScore){
+  // ── EVENT 1: score reaches a NEW higher level (a real setup formed) ──
+  // Guard against P4/volume-gate flicker bouncing score 3↔4↔3: only fire when we
+  // reach a score we haven't already alerted, AND enforce a 10-min cooldown per
+  // symbol so a transient dip-and-recover can't re-trigger the same alert.
+  if(score>=4 && score>st.lastAlertedScore && now-st.lastScoreAlertTs>=600000){
     playPing(score>=5?'score5':'score4');
     showToast((score>=5?'🚀 ':'⚡ ')+sym+' is '+score+'/5'+(soundOn?'':' (🔕)'));
     addLog(score>=5?'score5':'score4',sym,'Reached '+score+'/5');
     recordAlert(score>=5?'score5':'score4',sym,'hit '+score+'/5 · $'+q.price.toFixed(2)+' '+((q.changePct||0)>=0?'+':'')+(q.changePct||0).toFixed(0)+'%');
-    st.lastAlertPx=q.price;
+    st.lastAlertPx=q.price;st.lastAlertedScore=score;st.lastScoreAlertTs=now;
   }
+  // If the score genuinely drops and stays down, re-arm so a later climb can alert
+  // again — but only after it's been below 4 for a real stretch, not a 1-tick blip.
+  if(score<4 && now-st.lastScoreAlertTs>=300000){st.lastAlertedScore=0;}
   // ── EVENT 2: fast price spike — pings on ANY score, like Ross's momentum alert ──
   // Uses the 60s-ago price captured for heat. A quick pop is news even at 2/5.
   else if(q._pxAgo&&q._pxAgo>0){
