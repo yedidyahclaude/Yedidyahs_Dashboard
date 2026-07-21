@@ -422,7 +422,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.46</span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.47</span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -1649,7 +1649,7 @@ function buildRow(r,pd){
     const u=(r.q.changePct||0)>=0;
     const isHotNow=heatScore(r.sym)>=25&&((r.q._fromWebull||r.q._volFmp)&&(r.q.volume||0)>0);
     const sc=r.halted?'halted':r.score>=5?'score5':r.score>=4?'score4':'score3';
-    const isFresh=now-r.addedTs<FRESH_MS;
+    const isFresh=(Date.now())-r.addedTs<FRESH_MS;
     const isPinned=starredSyms.has(r.sym);
     const pending=r.p3===null&&r.p4===null&&r.p5===null;
     const srcBadge=r.src==='wb'?'<span class="src-badge src-wb">WB</span>':
