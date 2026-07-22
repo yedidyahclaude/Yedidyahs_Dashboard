@@ -449,7 +449,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.52</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.53</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
     <div class="clock-center">
@@ -1807,14 +1807,15 @@ function renderSplitView(results,maxShow,pd){
     const volSurge=(q._volAgo!=null&&q.volume-q._volAgo>50000);
     const hod=q.high||0;const nearHod=hod>0&&q.price>=hod*0.995;
     const heat=heatScore(r.sym);
-    // Genuine momentum: fast up-move, a volume surge, breaking highs, or hot heat.
-    const spiking=vel>=1.5||volSurge||nearHod||heat>=25;
-    if(spiking)_momentumSticky[r.sym]=nowT+45000; // stays on the board 45s after last spike
+    const bigMover=(q.changePct||0)>=10; // up 10%+ on the day = a momentum name, period
+    // A stock belongs on Momentum if it's up big today OR actively moving now.
+    const spiking=bigMover||vel>=1.5||volSurge||nearHod||heat>=25;
+    if(spiking)_momentumSticky[r.sym]=nowT+45000;
   });
   const movers=results.filter(r=>_momentumSticky[r.sym]&&_momentumSticky[r.sym]>nowT&&(r.q.volume||0)>0)
     .sort((a,b)=>{
-      // Stable-ish sort: bucket by heat tier so small heat wiggles don't reshuffle
-      // the whole list every render. Within a tier, order by % change.
+      // Sort by live heat tier first (what's moving NOW rises), then by day % change
+      // so the biggest movers lead when nothing is actively spiking.
       const ha=Math.floor(heatScore(a.sym)/15),hb=Math.floor(heatScore(b.sym)/15);
       if(ha!==hb)return hb-ha;
       return (b.q.changePct||0)-(a.q.changePct||0);
