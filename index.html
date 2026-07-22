@@ -449,7 +449,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.56</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.57</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
@@ -1384,8 +1384,8 @@ async function selectSym(sym,promote){
   const minP=parseFloat(document.getElementById('f-minp').value)||1;
   const maxP=parseFloat(document.getElementById('f-maxp').value)||10;
   const minC=parseFloat(document.getElementById('f-chg').value)||10;
-  if(q?.price&&(q.price<minP||q.price>maxP))showToast('📊 '+sym+' — outside price range');
-  else if(q?.price&&(q.changePct||0)<minC)showToast('📊 '+sym+' — under min % change');
+  if(q?.price&&(q.price<minP||q.price>maxP))showToast('📈 Added '+sym+' (outside your price range — watching anyway)');
+  else if(q?.price&&(q.changePct||0)<minC)showToast('📈 Added '+sym+' (under % threshold — watching anyway)');
   else showToast('📈 Added '+sym+' to scanner');
   addLog('new',sym,'Manually added');
   liveScanUpdate();openChartPanel(sym);
@@ -1600,30 +1600,40 @@ function liveScanUpdate(){
     if(!p1||!p2){
       const _m=symMeta.get(sym);
       const isManual=_m&&_m.source==='manual';
-      // Manual adds are pinned by the user — never auto-remove, even below threshold.
-      // Only auto-remove feed-added symbols, and only with real price data.
-      if(q&&q.price>0&&!isManual){
-        if(!failTimer[sym])failTimer[sym]=now;
-        if(now-failTimer[sym]>autoRmMs){
-          addLog('rm',sym,'Auto-removed after '+autoRmMins+'min below threshold');
-          scanSyms=scanSyms.filter(s=>s!==sym);
-          saveScanSyms();delete scanCache[sym];symMeta.delete(sym);
+      // Manual adds ALWAYS show (user chose them) — fall through to display even
+      // below threshold. Only feed-added symbols get hidden + auto-removed.
+      if(!isManual){
+        if(q&&q.price>0){
+          if(!failTimer[sym])failTimer[sym]=now;
+          if(now-failTimer[sym]>autoRmMs){
+            addLog('rm',sym,'Auto-removed after '+autoRmMins+'min below threshold');
+            scanSyms=scanSyms.filter(s=>s!==sym);
+            saveScanSyms();delete scanCache[sym];symMeta.delete(sym);
+          }
         }
+        return; // feed symbol below threshold — don't display
       }
-      return;
+      // manual add: fall through, it displays with whatever score it has
     } else {delete failTimer[sym];}
-    if(minRV>0&&rv>0&&rv<minRV)return;
+    if(minRV>0&&rv>0&&rv<minRV){const _m2=symMeta.get(sym);if(!(_m2&&_m2.source==='manual'))return;}
     let score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
-    // STALE-RUNNER GUARD: a stock in the feed showing a big % from a PRIOR session
-    // (ran yesterday, still flagged today) with no current movement isn't a live
-    // setup — cap it at 2/5 so it can't top the board.
+    // STALE-RUNNER GUARD: a stock showing a big % from a PRIOR session (ran
+    // yesterday, still flagged today) with no current movement isn't a live setup.
+    // CRITICAL: only judge staleness when we ACTUALLY HAVE velocity data. If _pxAgo
+    // hasn't loaded yet (first cycles), we do NOT know velocity — treating missing
+    // data as "zero velocity" was capping fresh stocks to 2/5 and making them flicker.
     {
       const _sess=getSession();
-      let _rv=0;if(q._pxAgo&&q._pxAgo>0)_rv=Math.abs((q.price-q._pxAgo)/q._pxAgo*100);
-      const _vn=q.volume||0;
-      if((q.changePct||0)>=20&&_rv<0.3&&_vn>0&&_vn<200000&&(_sess==='pre'||_sess==='aft')){
-        score=Math.min(score,2);c._staleRunner=true;
-      } else { c._staleRunner=false; }
+      const haveVelData=q._pxAgo!=null&&q._pxAgo>0&&q._pxAgoTs&&(Date.now()-q._pxAgoTs)>=45000;
+      if(haveVelData){
+        const _rv=Math.abs((q.price-q._pxAgo)/q._pxAgo*100);
+        const _vn=q.volume||0;
+        // Only demote if we have real proof it's dead: measured flat velocity over a
+        // real window AND thin volume AND a big headline %.
+        if((q.changePct||0)>=20&&_rv<0.3&&_vn>0&&_vn<100000&&(_sess==='pre'||_sess==='aft')){
+          score=Math.min(score,2);c._staleRunner=true;
+        } else { c._staleRunner=false; }
+      } else { c._staleRunner=false; } // no velocity data yet — don't penalize
     }
     checkSetupAlerts(sym,score); // volume-gated: real setups ping, artifacts stay silent
     const meta=symMeta.get(sym)||{source:'manual',addedTs:0,ts:0};
@@ -1832,8 +1842,11 @@ function renderSplitView(results,maxShow,pd){
     const newHod=hod>0&&hod>prevHod&&q.price>=hod*0.998; // HOD Momo event
     if(hod>prevHod)_lastHod[r.sym]=hod;
     const runningUp=vel>=1.0||volSurge; // Running Up event (quick move, pre-HOD)
-    // Fire on either event → sit for the full window.
-    if(newHod||runningUp)_momentumSticky[r.sym]=nowT+MOMO_SIT_MS;
+    // A stock is a MOMENTUM name if it's a real gapper (Ross's core: up 10%+ with
+    // real volume) — that's the baseline the board should always show. Live events
+    // (new HOD, quick move) REFRESH its timer so active ones stay longer.
+    const isGapper=(q.changePct||0)>=10&&(q.volume||0)>=10000;
+    if(isGapper||newHod||runningUp)_momentumSticky[r.sym]=nowT+MOMO_SIT_MS;
   });
   const movers=results.filter(r=>_momentumSticky[r.sym]&&_momentumSticky[r.sym]>nowT&&(r.q.volume||0)>0)
     .sort((a,b)=>{
