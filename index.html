@@ -449,7 +449,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.55</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.56</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
@@ -487,7 +487,7 @@ input,button,textarea{font-family:inherit}
 
         <div class="scan-filters" id="scanFilters" style="display:none">
           <div class="flt-g"><span class="flt-l">Min Price</span><input class="flt-i" type="number" value="1" step="0.5" id="f-minp"/></div>
-          <div class="flt-g"><span class="flt-l">Max Price</span><input class="flt-i" type="number" value="20" id="f-maxp"/></div>
+          <div class="flt-g"><span class="flt-l">Max Price</span><input class="flt-i" type="number" value="10" id="f-maxp"/></div>
           <div class="flt-divider"></div>
           <div class="flt-g"><span class="flt-l">Min % Change</span><input class="flt-i" type="number" value="10" id="f-chg"/></div>
           <div class="flt-g"><span class="flt-l">Min RVOL</span><input class="flt-i" type="number" value="2" step="0.5" id="f-rvol"/></div>
@@ -719,6 +719,7 @@ let sortMode=localStorage.getItem('sv_sortmode')||'heat'; // 'heat' = most activ
 let splitView=localStorage.getItem('sv_splitview')!=='0'; // default ON
 const _momentumSticky={}; // sym -> expiry: keeps a spiker on the momentum board a few cycles
 const _setupSticky={}; // sym -> expiry: keeps a 3/5+ setup on the left board a few cycles
+const _lastHod={}; // sym -> last seen high-of-day, for detecting NEW HOD events (Ross's HOD Momo)
 let splitSwap=localStorage.getItem('sv_splitswap')==='1';
 // Symbols clicked/searched are HELD in the Setups (left) column for 3 min, even
 // at 0/5 — so a momentum pick you're watching stays visible while its setup forms.
@@ -1315,7 +1316,7 @@ function updatePulse(){
   if(!pulseOpen)return;
   renderAlertHistory();
   const minP=parseFloat(document.getElementById('f-minp')?.value)||1;
-  const maxP=parseFloat(document.getElementById('f-maxp')?.value)||20;
+  const maxP=parseFloat(document.getElementById('f-maxp')?.value)||10;
   const minC=parseFloat(document.getElementById('f-chg')?.value)||10;
   let passing=0,five=0,four=0,chgSum=0,chgCount=0,topSym='—',topChg=-999;
   const best=[];
@@ -1381,7 +1382,7 @@ async function selectSym(sym,promote){
   }
   const q=Q[sym];
   const minP=parseFloat(document.getElementById('f-minp').value)||1;
-  const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
+  const maxP=parseFloat(document.getElementById('f-maxp').value)||10;
   const minC=parseFloat(document.getElementById('f-chg').value)||10;
   if(q?.price&&(q.price<minP||q.price>maxP))showToast('📊 '+sym+' — outside price range');
   else if(q?.price&&(q.changePct||0)<minC)showToast('📊 '+sym+' — under min % change');
@@ -1571,7 +1572,7 @@ function liveScanUpdate(){
   renderScanTags();
   saveMeta(); // keep source badges + addedTs across reloads
   const minP=parseFloat(document.getElementById('f-minp').value)||1;
-  const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
+  const maxP=parseFloat(document.getElementById('f-maxp').value)||10;
   const minC=parseFloat(document.getElementById('f-chg').value)||10;
   const minRV=parseFloat(document.getElementById('f-rvol')?.value)||0;
   const autoRmMins=parseFloat(document.getElementById('f-autorm')?.value)||5;
@@ -1814,21 +1815,25 @@ function renderSplitView(results,maxShow,pd){
     .sort((a,b)=>b.score-a.score||(b.q.changePct||0)-(a.q.changePct||0));
   const setups=[...heldRows.sort((a,b)=>heldSyms[b.sym]-heldSyms[a.sym]),...scoreRows].slice(0,maxShow);
   // RIGHT = Momentum: ONLY stocks actually spiking now — not everything with volume.
-  // A stock qualifies if it has real recent velocity OR a genuine volume surge OR is
-  // breaking highs. Once it qualifies it becomes STICKY for ~3 render cycles (~45s)
-  // so it doesn't blink out the moment its 1-second heat dips — it holds, then fades.
+  // ── EVENT-DRIVEN MOMENTUM (mirrors Ross's two scanners) ──
+  // Ross runs two momentum scanners: HOD Momo (fires on a NEW high-of-day) and
+  // Running Up (fires on a quick % move even before a new HOD). We combine them:
+  // a stock FIRES onto the board on either event, then SITS for 3 minutes (like an
+  // alert that stays up), refreshing its timer on each new event. It only drops off
+  // once it's been quiet for the full window — fire-and-sit, not live-flicker.
+  const MOMO_SIT_MS=180000; // 3 min, matching how Ross's alerts stay visible
   results.forEach(r=>{
     const q=r.q;if(!q||!q.price)return;
-    const hasVol=(q._fromWebull||q._volFmp)&&(q.volume||0)>0;
-    if(!hasVol)return;
+    const hasVol=(q._fromWebull||q._volFmp)&&(q.volume||0)>0;if(!hasVol)return;
     let vel=0;if(q._pxAgo&&q._pxAgo>0)vel=(q.price-q._pxAgo)/q._pxAgo*100;
     const volSurge=(q._volAgo!=null&&q.volume-q._volAgo>50000);
-    const hod=q.high||0;const nearHod=hod>0&&q.price>=hod*0.995;
-    const heat=heatScore(r.sym);
-    const bigMover=(q.changePct||0)>=10; // up 10%+ on the day = a momentum name, period
-    // A stock belongs on Momentum if it's up big today OR actively moving now.
-    const spiking=bigMover||vel>=1.5||volSurge||nearHod||heat>=25;
-    if(spiking)_momentumSticky[r.sym]=nowT+45000;
+    const hod=q.high||0;
+    const prevHod=_lastHod[r.sym]||0;
+    const newHod=hod>0&&hod>prevHod&&q.price>=hod*0.998; // HOD Momo event
+    if(hod>prevHod)_lastHod[r.sym]=hod;
+    const runningUp=vel>=1.0||volSurge; // Running Up event (quick move, pre-HOD)
+    // Fire on either event → sit for the full window.
+    if(newHod||runningUp)_momentumSticky[r.sym]=nowT+MOMO_SIT_MS;
   });
   const movers=results.filter(r=>_momentumSticky[r.sym]&&_momentumSticky[r.sym]>nowT&&(r.q.volume||0)>0)
     .sort((a,b)=>{
@@ -1896,7 +1901,7 @@ async function runWebullScan(){
   const sess=getSession();
   const minC=sess==='pre'||sess==='aft'?5:10;
   const minP=parseFloat(document.getElementById('f-minp').value)||1;
-  const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
+  const maxP=parseFloat(document.getElementById('f-maxp').value)||10;
   try{
     // Bumped to 100 — catches twice as many movers
     // Sequential, not parallel — Webull rate limits per-second, simultaneous
@@ -2018,7 +2023,7 @@ async function runFmpScan(){
   const sess=getSession();
   const minC=sess==='pre'||sess==='aft'?5:10;
   const minP=parseFloat(document.getElementById('f-minp').value)||1;
-  const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
+  const maxP=parseFloat(document.getElementById('f-maxp').value)||10;
   try{
     const resp=await fetch(WORKER_URL+'/fmp-gainers').catch(()=>null);
     if(resp&&!resp.ok)logErrorToServer('fmp-gainers',resp.status,WORKER_URL+'/fmp-gainers','');
@@ -2084,7 +2089,7 @@ async function runSeedScan(){
   const sess=getSession();
   const minC=sess==='pre'||sess==='aft'?5:10;
   const minP=parseFloat(document.getElementById('f-minp').value)||1;
-  const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
+  const maxP=parseFloat(document.getElementById('f-maxp').value)||10;
   const batch=[];
   for(let i=0;i<8;i++){
     const sym=SEED_UNIVERSE[_uniIdx%SEED_UNIVERSE.length];
@@ -2349,7 +2354,7 @@ function addClaudeMsg(role,text){
 }
 function buildScannerSnapshot(){
   const minP=parseFloat(document.getElementById('f-minp').value)||1;
-  const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
+  const maxP=parseFloat(document.getElementById('f-maxp').value)||10;
   const minC=parseFloat(document.getElementById('f-chg').value)||10;
   const lines=scanSyms.map(sym=>{
     const q=Q[sym];if(!q?.price)return sym+': no data';
@@ -2401,7 +2406,7 @@ function copySym(sym){
 }
 function copySymbols(){
   const minP=parseFloat(document.getElementById('f-minp').value)||1;
-  const maxP=parseFloat(document.getElementById('f-maxp').value)||20;
+  const maxP=parseFloat(document.getElementById('f-maxp').value)||10;
   const minC=parseFloat(document.getElementById('f-chg').value)||10;
   const passing=scanSyms.filter(sym=>{
     const q=Q[sym];if(!q?.price)return false;
