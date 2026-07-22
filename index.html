@@ -462,7 +462,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.58</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.59</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
@@ -733,6 +733,7 @@ let splitView=localStorage.getItem('sv_splitview')!=='0'; // default ON
 const _momentumSticky={}; // sym -> expiry: keeps a spiker on the momentum board a few cycles
 const _setupSticky={}; // sym -> expiry: keeps a 3/5+ setup on the left board a few cycles
 const _lastHod={}; // sym -> last seen high-of-day, for detecting NEW HOD events (Ross's HOD Momo)
+const _lastGoodRow={}; // sym -> last successfully-scored row, kept across transient data gaps
 let splitSwap=localStorage.getItem('sv_splitswap')==='1';
 // Symbols clicked/searched are HELD in the Setups (left) column for 3 min, even
 // at 0/5 — so a momentum pick you're watching stays visible while its setup forms.
@@ -1593,7 +1594,16 @@ function liveScanUpdate(){
   const results=[];
   const now=Date.now();
   scanSyms.forEach(sym=>{
-    const q=Q[sym];if(!q?.price)return;
+    const q=Q[sym];
+    // PERSISTENCE: if this symbol has no fresh quote THIS cycle but we scored it
+    // recently, keep showing its last-known-good row instead of dropping it. This
+    // is what stops the whole-board flicker — a transient data gap no longer wipes
+    // the stock from Setups / Momentum / Top Gainers.
+    if(!q?.price){
+      const last=_lastGoodRow[sym];
+      if(last&&now-last._rowTs<60000){results.push(last);}
+      return;
+    }
     if(isStaleQuote(sym))return; // yesterday's data — never rank it
     // P4 recomputed live — RVOL moves with the tape, so scores rise AND fall.
     // But NEVER wipe a known value just because volume went missing this cycle:
@@ -1648,10 +1658,12 @@ function liveScanUpdate(){
     }
     checkSetupAlerts(sym,score); // volume-gated: real setups ping, artifacts stay silent
     const meta=symMeta.get(sym)||{source:'manual',addedTs:0,ts:0};
-    results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false,formerRunner:c._formerRunner||false,
+    const _row={sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false,formerRunner:c._formerRunner||false,
       src:meta.source,rv,addedTs:meta.addedTs||meta.ts||0,floatValue:c.floatValue,
       pmh:pmHigh[sym]||0,newsHeadline:c.latestHeadline||'',
-      turnover:c.turnoverRate||0,halted:c.halted||false,ctry:c.ctry||'',splitFlag:q._splitFlag||false});
+      turnover:c.turnoverRate||0,halted:c.halted||false,ctry:c.ctry||'',splitFlag:q._splitFlag||false,_rowTs:now};
+    results.push(_row);
+    _lastGoodRow[sym]=_row; // remember for persistence if data blips next cycle
   });
   const countEl=document.getElementById('scanCount');
   if(countEl)countEl.textContent=results.length;
