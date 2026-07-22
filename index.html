@@ -152,6 +152,7 @@ input,button,textarea{font-family:inherit}
 .scan-sym{font-weight:800;font-size:13px;letter-spacing:-.2px}
 .scan-sym.up{color:var(--gr)}.scan-sym.dn{color:var(--rd)}
 .src-badge{font-size:7px;font-weight:800;padding:1px 4px;border-radius:3px;letter-spacing:.05em;flex-shrink:0}
+.fr-badge{background:rgba(240,150,79,.18);color:#f0964f;border:1px solid rgba(240,150,79,.35)}
 .ctry-badge{font-size:7px;font-weight:800;padding:1px 3px;border-radius:3px;letter-spacing:.04em;flex-shrink:0;cursor:help}
 .ctry-us{background:rgba(139,139,167,.15);color:var(--dim)}
 .ctry-cn{background:rgba(240,185,79,.18);color:var(--gold)}
@@ -217,6 +218,18 @@ input,button,textarea{font-family:inherit}
   padding:2px 8px;border-radius:8px 8px 0 0;letter-spacing:.05em;display:flex;align-items:center;gap:5px;text-transform:uppercase}
 .held-x{margin-left:auto;cursor:pointer;font-size:11px;color:var(--dim);padding:0 2px}
 .held-x:hover{color:var(--rd)}
+/* ── TOP GAINERS box (under Momentum) ── */
+.tg-box{margin-top:14px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px}
+.tg-hd{font-size:11px;font-weight:800;letter-spacing:.04em;padding:6px 10px;color:var(--gr);text-transform:uppercase}
+.tg-sub{font-size:8px;opacity:.6;font-weight:600}
+.tg-row{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;transition:.1s}
+.tg-row:hover{background:rgba(255,255,255,.04)}
+.tg-sym{font-weight:800;min-width:52px}
+.tg-fr{color:#f0964f;font-size:10px}
+.tg-px{color:var(--mu);font-family:ui-monospace,monospace;font-size:11px;margin-left:auto}
+.tg-vol{color:var(--mu);font-size:10px;min-width:46px;text-align:right}
+.tg-chg{font-weight:800;font-family:ui-monospace,monospace;min-width:56px;text-align:right}
+.tg-chg.up{color:var(--gr)}.tg-chg.dn{color:var(--rd)}
 /* ── MOMENTUM ROWS (right column) — compact, spike-focused ── */
 .mo-row{background:linear-gradient(100deg,rgba(240,185,79,.05),rgba(255,255,255,.015));
   border:1px solid rgba(240,185,79,.12);border-radius:9px;padding:8px 11px;margin-bottom:6px;cursor:pointer;transition:.12s}
@@ -449,7 +462,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.57</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.58</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
@@ -1617,27 +1630,25 @@ function liveScanUpdate(){
     } else {delete failTimer[sym];}
     if(minRV>0&&rv>0&&rv<minRV){const _m2=symMeta.get(sym);if(!(_m2&&_m2.source==='manual'))return;}
     let score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
-    // STALE-RUNNER GUARD: a stock showing a big % from a PRIOR session (ran
-    // yesterday, still flagged today) with no current movement isn't a live setup.
-    // CRITICAL: only judge staleness when we ACTUALLY HAVE velocity data. If _pxAgo
-    // hasn't loaded yet (first cycles), we do NOT know velocity — treating missing
-    // data as "zero velocity" was capping fresh stocks to 2/5 and making them flicker.
+    // FORMER RUNNER (Ross's way): a stock showing a big % that actually came from a
+    // PRIOR session — ran yesterday, still flagged today, but flat now. Ross's HOD
+    // scanner LABELS these "former runner" rather than hiding them, so the trader
+    // knows the history. We flag it (shown as a ⚠ badge) but DON'T hack the score.
     {
       const _sess=getSession();
       const haveVelData=q._pxAgo!=null&&q._pxAgo>0&&q._pxAgoTs&&(Date.now()-q._pxAgoTs)>=45000;
+      // Judge only with real data. Former runner = big headline %, but measured flat
+      // in the current session AND thin current volume. During regular hours a stock
+      // that's genuinely still trading (higher volume) is NOT flagged.
+      const _vn=q.volume||0;
       if(haveVelData){
         const _rv=Math.abs((q.price-q._pxAgo)/q._pxAgo*100);
-        const _vn=q.volume||0;
-        // Only demote if we have real proof it's dead: measured flat velocity over a
-        // real window AND thin volume AND a big headline %.
-        if((q.changePct||0)>=20&&_rv<0.3&&_vn>0&&_vn<100000&&(_sess==='pre'||_sess==='aft')){
-          score=Math.min(score,2);c._staleRunner=true;
-        } else { c._staleRunner=false; }
-      } else { c._staleRunner=false; } // no velocity data yet — don't penalize
+        c._formerRunner=((q.changePct||0)>=20&&_rv<0.3&&_vn>0&&_vn<150000);
+      } else { c._formerRunner=false; } // no velocity data yet — don't label
     }
     checkSetupAlerts(sym,score); // volume-gated: real setups ping, artifacts stay silent
     const meta=symMeta.get(sym)||{source:'manual',addedTs:0,ts:0};
-    results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false,
+    results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false,formerRunner:c._formerRunner||false,
       src:meta.source,rv,addedTs:meta.addedTs||meta.ts||0,floatValue:c.floatValue,
       pmh:pmHigh[sym]||0,newsHeadline:c.latestHeadline||'',
       turnover:c.turnoverRate||0,halted:c.halted||false,ctry:c.ctry||'',splitFlag:q._splitFlag||false});
@@ -1720,6 +1731,7 @@ function buildRow(r,pd){
     const srcBadge=r.src==='wb'?'<span class="src-badge src-wb">WB</span>':
       r.src==='fp'?'<span class="src-badge src-fp">FP</span>':
       r.src==='seed'?'<span class="src-badge src-sd">SD</span>':'';
+    const frBadge=r.formerRunner?'<span class="src-badge fr-badge" title="Former runner — this % is from a prior session, flat now">⚠ FORMER</span>':'';
     const rvNum=r.rv||0;
     const rvBad=scanCache[r.sym]?.rvolBad;
     const rvIsVol=scanCache[r.sym]?.rvolIsVol;
@@ -1748,7 +1760,7 @@ function buildRow(r,pd){
           +'<span class="scan-sym '+(u?'up':'dn')+'">'+r.sym+'</span>'
           +(r.splitFlag?'<span title="Webull &amp; Finnhub prices disagree — possible split artifact, using Finnhub price" style="color:var(--gold);font-size:11px;cursor:help">⚠</span>':'')
           +(r.ctry?'<span class="ctry-badge ctry-'+(['CN','HK'].includes(r.ctry)?'cn':r.ctry==='US'?'us':'x')+'" title="'+r.ctry+'-domiciled company">'+r.ctry+'</span>':'')
-          +srcBadge
+          +srcBadge+frBadge
           +(r.halted?'<span class="halt-badge">HALT</span>':'')
           +(r.hasNews?'<span class="news-dot">🔥</span>':'')
           +(pmhStr?'<span class="pmh-badge">'+pmhStr+'</span>':'')
@@ -1820,8 +1832,12 @@ function renderSplitView(results,maxShow,pd){
   // Setup stickiness — mirror the momentum side. When a stock reaches 3/5+, it
   // stays on the Setups board for ~30s even if its score briefly dips (from a data
   // blip or P4 volume-gate flicker). Stops the left side from blinking in and out.
-  allResults.forEach(r=>{if(r.score>=3)_setupSticky[r.sym]=nowT+30000;});
-  const scoreRows=allResults.filter(r=>(r.score>=3||(_setupSticky[r.sym]&&_setupSticky[r.sym]>nowT&&r.score>=2))&&!held.includes(r.sym))
+  // ── SETUP MEMBERSHIP (Warrior's List scanner is a STABLE list, refreshed ~30s,
+  // not re-judged every render). Once a stock qualifies (3/5+), it's a MEMBER and
+  // stays on the board for 40s even if a data blip drops its score for a cycle.
+  // This is the ONE persistence layer — it's what stops the whole-list flicker.
+  allResults.forEach(r=>{if(r.score>=3)_setupSticky[r.sym]=nowT+40000;});
+  const scoreRows=allResults.filter(r=>(r.score>=3||(_setupSticky[r.sym]&&_setupSticky[r.sym]>nowT))&&!held.includes(r.sym))
     .sort((a,b)=>b.score-a.score||(b.q.changePct||0)-(a.q.changePct||0));
   const setups=[...heldRows.sort((a,b)=>heldSyms[b.sym]-heldSyms[a.sym]),...scoreRows].slice(0,maxShow);
   // RIGHT = Momentum: ONLY stocks actually spiking now — not everything with volume.
@@ -1892,13 +1908,33 @@ function renderSplitView(results,maxShow,pd){
   };
   const left=setups.length?setups.map(buildSetupRow).join(''):'<div class="split-empty">Click a mover to watch it here 👉</div>';
   const right=movers.length?movers.map(buildMomentumRow).join(''):'<div class="split-empty">No active movers yet</div>';
+  // ── TOP GAINERS (Ross's Top Gainers scanner) — the 10 biggest % gainers under $20
+  // with real volume, sorted by % change. Ross starts his day here, then shifts focus
+  // to HOD Momo. This is a simple, always-populated list of the day's movers.
+  const topGainers=allResults
+    .filter(r=>r.q&&r.q.price>0&&r.q.price<=20&&(r.q.changePct||0)>=5&&(r.q.volume||0)>=5000)
+    .sort((a,b)=>(b.q.changePct||0)-(a.q.changePct||0))
+    .slice(0,10);
+  const tgHtml=topGainers.length?topGainers.map(r=>{
+    const q=r.q,u=(q.changePct||0)>=0;
+    const volLabel=(q.volume>0)?(q.volume>=1e6?(q.volume/1e6).toFixed(1)+'M':q.volume>=1e3?Math.round(q.volume/1e3)+'K':q.volume+''):'—';
+    return '<div class="tg-row" onclick="selectSym(\''+r.sym+'\',true)">'
+      +'<span class="tg-sym">'+r.sym+'</span>'
+      +(r.formerRunner?'<span class="tg-fr" title="Former runner">⚠</span>':'')
+      +'<span class="tg-px">$'+q.price.toFixed(2)+'</span>'
+      +'<span class="tg-vol">'+volLabel+'</span>'
+      +'<span class="tg-chg '+(u?'up':'dn')+'">'+(u?'+':'')+(q.changePct||0).toFixed(1)+'%</span>'
+      +'</div>';
+  }).join(''):'<div class="split-empty">No gainers yet</div>';
   const leftLbl=splitSwap?'⚡ Momentum':'🎯 Setups';
   const rightLbl=splitSwap?'🎯 Setups':'⚡ Momentum';
   const leftHtml=splitSwap?right:left;
   const rightHtml=splitSwap?left:right;
   rows.innerHTML='<div class="split-wrap">'
     +'<div class="split-col"><div class="split-hd left" onclick="swapSplit()">'+leftLbl+'</div>'+leftHtml+'</div>'
-    +'<div class="split-col"><div class="split-hd right" onclick="swapSplit()">'+rightLbl+'</div>'+rightHtml+'</div>'
+    +'<div class="split-col"><div class="split-hd right" onclick="swapSplit()">'+rightLbl+'</div>'+rightHtml
+      +'<div class="tg-box"><div class="tg-hd">📈 Top Gainers <span class="tg-sub">under $20</span></div>'+tgHtml+'</div>'
+    +'</div>'
     +'</div>';
 }
 
