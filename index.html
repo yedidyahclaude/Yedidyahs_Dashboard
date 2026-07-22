@@ -449,9 +449,9 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.53</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.55</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
-    <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s);}}"/>
+    <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
       <span id="htime" class="cls-color">—</span>
       <span class="sess cls" id="sessbdg">—</span>
@@ -718,6 +718,7 @@ let sortCol='score';
 let sortMode=localStorage.getItem('sv_sortmode')||'heat'; // 'heat' = most active first, 'score' = 5→1
 let splitView=localStorage.getItem('sv_splitview')!=='0'; // default ON
 const _momentumSticky={}; // sym -> expiry: keeps a spiker on the momentum board a few cycles
+const _setupSticky={}; // sym -> expiry: keeps a 3/5+ setup on the left board a few cycles
 let splitSwap=localStorage.getItem('sv_splitswap')==='1';
 // Symbols clicked/searched are HELD in the Setups (left) column for 3 min, even
 // at 0/5 — so a momentum pick you're watching stays visible while its setup forms.
@@ -1362,9 +1363,11 @@ function updatePulse(){
 setInterval(()=>{if(pulseOpen)updatePulse();},10000);
 
 // ═══ SYMBOL MANAGEMENT ═══
-async function selectSym(sym){
+async function selectSym(sym,promote){
   sym=sym.toUpperCase().trim();if(!sym)return;
-  holdSym(sym); // hold on the Setups column for 3 min, even at 0/5
+  // Only PROMOTE to Setups (pin to top 3min) from search or Momentum — clicking a
+  // row already in Setups just selects it, doesn't re-add or jump it to the top.
+  if(promote)holdSym(sym);
   // Copy to clipboard silently on every click
   navigator.clipboard.writeText(sym).catch(()=>{});
   if(sym.includes('.')&&sym!=='BTC/USD'&&sym!=='ETH/USD'){showToast('🚫 Non-US ticker — not supported');return;}
@@ -1609,7 +1612,18 @@ function liveScanUpdate(){
       return;
     } else {delete failTimer[sym];}
     if(minRV>0&&rv>0&&rv<minRV)return;
-    const score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
+    let score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
+    // STALE-RUNNER GUARD: a stock in the feed showing a big % from a PRIOR session
+    // (ran yesterday, still flagged today) with no current movement isn't a live
+    // setup — cap it at 2/5 so it can't top the board.
+    {
+      const _sess=getSession();
+      let _rv=0;if(q._pxAgo&&q._pxAgo>0)_rv=Math.abs((q.price-q._pxAgo)/q._pxAgo*100);
+      const _vn=q.volume||0;
+      if((q.changePct||0)>=20&&_rv<0.3&&_vn>0&&_vn<200000&&(_sess==='pre'||_sess==='aft')){
+        score=Math.min(score,2);c._staleRunner=true;
+      } else { c._staleRunner=false; }
+    }
     checkSetupAlerts(sym,score); // volume-gated: real setups ping, artifacts stay silent
     const meta=symMeta.get(sym)||{source:'manual',addedTs:0,ts:0};
     results.push({sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false,
@@ -1776,6 +1790,7 @@ function buildRow(r,pd){
 }
 function renderSplitView(results,maxShow,pd){
   const rows=document.getElementById('scanRows');
+  const nowT=Date.now();
   const held=Object.keys(heldSyms).filter(isHeld);
   // A held symbol may not be in `results` yet (brand-new, 0/5, still loading).
   // Synthesize a minimal row object for any held symbol that has a quote.
@@ -1791,14 +1806,17 @@ function renderSplitView(results,maxShow,pd){
   const allResults=[...results,...heldExtra];
   // LEFT = Setups: held picks (any score) first, then 3/5+ by score.
   const heldRows=allResults.filter(r=>held.includes(r.sym));
-  const scoreRows=allResults.filter(r=>r.score>=3&&!held.includes(r.sym))
+  // Setup stickiness — mirror the momentum side. When a stock reaches 3/5+, it
+  // stays on the Setups board for ~30s even if its score briefly dips (from a data
+  // blip or P4 volume-gate flicker). Stops the left side from blinking in and out.
+  allResults.forEach(r=>{if(r.score>=3)_setupSticky[r.sym]=nowT+30000;});
+  const scoreRows=allResults.filter(r=>(r.score>=3||(_setupSticky[r.sym]&&_setupSticky[r.sym]>nowT&&r.score>=2))&&!held.includes(r.sym))
     .sort((a,b)=>b.score-a.score||(b.q.changePct||0)-(a.q.changePct||0));
   const setups=[...heldRows.sort((a,b)=>heldSyms[b.sym]-heldSyms[a.sym]),...scoreRows].slice(0,maxShow);
   // RIGHT = Momentum: ONLY stocks actually spiking now — not everything with volume.
   // A stock qualifies if it has real recent velocity OR a genuine volume surge OR is
   // breaking highs. Once it qualifies it becomes STICKY for ~3 render cycles (~45s)
   // so it doesn't blink out the moment its 1-second heat dips — it holds, then fades.
-  const nowT=Date.now();
   results.forEach(r=>{
     const q=r.q;if(!q||!q.price)return;
     const hasVol=(q._fromWebull||q._volFmp)&&(q.volume||0)>0;
@@ -1840,7 +1858,7 @@ function renderSplitView(results,maxShow,pd){
     const hod=q.high||0;const nearHod=hod>0&&q.price>=hod*0.995;
     const flame=heat>=40?'🔥🔥':heat>=25?'🔥':'';
     const scoreDot=r.score>=4?'<span class="mo-score s4">'+r.score+'/5</span>':r.score>=3?'<span class="mo-score s3">'+r.score+'/5</span>':'<span class="mo-score">'+r.score+'/5</span>';
-    return '<div class="mo-row'+(nearHod?' athod':'')+'" onclick="selectSym(\''+r.sym+'\')">'
+    return '<div class="mo-row'+(nearHod?' athod':'')+'" onclick="selectSym(\''+r.sym+'\',true)">'
       +'<div class="mo-top">'
         +'<span class="mo-sym">'+r.sym+'</span>'+(flame?'<span class="mo-flame">'+flame+'</span>':'')
         +'<span class="mo-px">$'+q.price.toFixed(2)+'</span>'
