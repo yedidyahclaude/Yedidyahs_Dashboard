@@ -481,7 +481,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.67</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.68</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
@@ -1304,9 +1304,13 @@ async function fetchQDirect(sym){
   // $3.37 and the stock was actually DOWN today). Finnhub's `pc` is the real
   // previous close, and it only changes once a day — so one fetch per symbol per
   // day is enough to correct every percentage on the board.
-  const needTruePc=!(Q[sym]?._truePc>0);
-  if(!needTruePc&&Q[sym]?._fromWebull&&Date.now()-(Q[sym]._ts||0)<120000)return;
-  if(!needTruePc&&Q[sym]?._fromFmp&&Date.now()-(Q[sym]._ts||0)<120000)return;
+  // Skip Finnhub when we already have fresh Webull/FMP data. (An earlier version
+  // bypassed this whenever a symbol lacked a true previous close — but if the
+  // Finnhub call itself failed, the symbol still lacked it next cycle, so it
+  // re-fetched forever and rate-limited every key. The /pm-quotes feed now
+  // supplies the true previous close from FMP, so this bypass isn't needed.)
+  if(Q[sym]?._fromWebull&&Date.now()-(Q[sym]._ts||0)<120000)return;
+  if(Q[sym]?._fromFmp&&Date.now()-(Q[sym]._ts||0)<120000)return;
   return queueCall(async()=>{
     try{
       const r=await fhFetch('/quote?symbol='+sym);
