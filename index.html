@@ -122,7 +122,7 @@ input,button,textarea{font-family:inherit}
 
 /* ── TAGS ── */
 .scan-tags-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.scan-tags{display:flex;flex-wrap:wrap;gap:4px;flex:1}
+.scan-tags{display:flex;flex-wrap:wrap;gap:4px;flex:1;max-height:62px;overflow-y:auto;align-content:flex-start}
 .tag{display:inline-flex;align-items:center;gap:3px;background:var(--s3);border:1px solid var(--b2);border-radius:20px;padding:2px 8px 2px 10px;font-size:10px;color:var(--mu);font-weight:500}
 .tag button{background:none;border:none;color:var(--dim);cursor:pointer;font-size:11px;line-height:1;padding:0 1px;transition:color .15s}
 .tag button:hover{color:var(--rd)}
@@ -203,8 +203,19 @@ input,button,textarea{font-family:inherit}
 /* NEW flash */
 .scan-row-new{animation:flashNew 2s ease-out}
 /* ── SPLIT VIEW ── */
-.split-wrap{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 2px}
-.split-col{min-width:0;background:rgba(255,255,255,.012);border-radius:10px;padding:4px}
+/* ── ONE-SCREEN LAYOUT ──
+   The page itself never scrolls. #scanRows fills the remaining height and each
+   panel (Setups / Momentum / Top Gainers) scrolls inside its own box. */
+#scanRows{flex:1;min-height:0;overflow-y:auto}
+#scanRows.split-mode{overflow:hidden}
+.split-wrap{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 2px;height:100%;min-height:0}
+.split-col{min-width:0;background:rgba(255,255,255,.012);border-radius:10px;padding:4px;
+  display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.split-scroll{flex:1;min-height:0;overflow-y:auto;padding-right:3px}
+/* Slim scrollbars so the panes don't eat width */
+.split-scroll::-webkit-scrollbar,.tg-box::-webkit-scrollbar{width:7px}
+.split-scroll::-webkit-scrollbar-thumb,.tg-box::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:4px}
+.split-scroll::-webkit-scrollbar-track,.tg-box::-webkit-scrollbar-track{background:transparent}
 .split-hd{position:sticky;top:0;z-index:5;font-size:11px;font-weight:800;letter-spacing:.04em;
   padding:8px 10px;margin-bottom:4px;border-radius:8px;backdrop-filter:blur(8px);cursor:pointer;
   display:flex;align-items:center;gap:6px;text-transform:uppercase}
@@ -218,9 +229,13 @@ input,button,textarea{font-family:inherit}
   padding:2px 8px;border-radius:8px 8px 0 0;letter-spacing:.05em;display:flex;align-items:center;gap:5px;text-transform:uppercase}
 .held-x{margin-left:auto;cursor:pointer;font-size:11px;color:var(--dim);padding:0 2px}
 .held-x:hover{color:var(--rd)}
+/* News panel sits BELOW the scanner. In split view it's constrained to the left
+   (Setups) column so it reads as "news for the setup you're looking at". */
+#newsPanel{margin-top:12px;flex:0 0 auto}
+@media(min-width:901px){#newsPanel.under-setups{max-width:calc(50% - 5px)}}
 /* ── TOP GAINERS box (under Momentum) ── */
-.tg-box{margin-top:14px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px}
-.tg-hd{font-size:11px;font-weight:800;letter-spacing:.04em;padding:6px 10px;color:var(--gr);text-transform:uppercase}
+.tg-box{flex:0 0 auto;max-height:210px;overflow-y:auto;margin-top:10px;border-top:1px solid rgba(255,255,255,.06);padding-top:6px}
+.tg-hd{position:sticky;top:0;background:var(--s1);z-index:2;font-size:11px;font-weight:800;letter-spacing:.04em;padding:6px 10px;color:var(--gr);text-transform:uppercase}
 .tg-sub{font-size:8px;opacity:.6;font-weight:600}
 .tg-row{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;transition:.1s}
 .tg-row:hover{background:rgba(255,255,255,.04)}
@@ -462,7 +477,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.63</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.65</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
@@ -514,13 +529,6 @@ input,button,textarea{font-family:inherit}
           </div>
         </div>
 
-        <div id="newsPanel">
-          <div class="news-hdr">
-            <span>📰 News — <span id="newsPanelSym" class="news-sym-label">select a row</span></span>
-            <button class="tb-btn" style="padding:3px 8px;font-size:10px" onclick="closeNewsPanel()">✕</button>
-          </div>
-          <div class="news-list" id="newsList"><div class="news-empty">Click a row to load headlines</div></div>
-        </div>
 
         <div id="claudePanel">
           <div class="claude-key-row" id="claudeKeyRow">
@@ -565,6 +573,13 @@ input,button,textarea{font-family:inherit}
             <div class="t">Scanning the market…</div>
             <div class="d">Webull live scan running. Watching 100 top movers across the entire market.</div>
           </div>
+        <div id="newsPanel">
+          <div class="news-hdr">
+            <span>📰 News — <span id="newsPanelSym" class="news-sym-label">select a row</span></span>
+            <button class="tb-btn" style="padding:3px 8px;font-size:10px" onclick="closeNewsPanel()">✕</button>
+          </div>
+          <div class="news-list" id="newsList"><div class="news-empty">Click a row to load headlines</div></div>
+        </div>
         </div>
 
       </div>
@@ -928,7 +943,11 @@ const _pmhAlerted={};
 const _alertState={}; // sym -> {lastScore, lastStandingPing}
 function hasRealVolume(sym){
   const q=Q[sym];
-  return !!q && (q._fromWebull||q._volFmp) && (q.volume||0)>0;
+  // Accept volume from ANY genuine source. This previously required _fromWebull
+  // or _volFmp — but _volFmp was never set anywhere, so every FMP- and
+  // pre-market-truth-sourced symbol silently failed the gate and could never
+  // alert. That's why 4/5 setups were firing no pings.
+  return !!q && (q._fromWebull||q._fromFmp||q._volFmp||q._pmTruth) && (q.volume||0)>0;
 }
 // ═══ ALERT HISTORY — rolling record of what pinged, so a missed sound/ping is
 // still visible in the sidebar. Persists for the session.
@@ -1788,6 +1807,9 @@ function liveScanUpdate(){
   const pd=v=>v===true?'pass':v===false?'fail':'na';
   const sortBarEl=document.getElementById('sortBar');
   if(sortBarEl)sortBarEl.style.display=splitView?'none':'';
+  const npEl=document.getElementById('newsPanel');
+  if(npEl)npEl.classList.toggle('under-setups',splitView);
+  if(rows)rows.classList.toggle('split-mode',splitView);
   if(splitView){
     renderSplitView(results,maxShow,pd);
   } else {
@@ -2013,8 +2035,10 @@ function renderSplitView(results,maxShow,pd){
   const leftHtml=splitSwap?right:left;
   const rightHtml=splitSwap?left:right;
   rows.innerHTML='<div class="split-wrap">'
-    +'<div class="split-col"><div class="split-hd left" onclick="swapSplit()">'+leftLbl+'</div>'+leftHtml+'</div>'
-    +'<div class="split-col"><div class="split-hd right" onclick="swapSplit()">'+rightLbl+'</div>'+rightHtml
+    +'<div class="split-col"><div class="split-hd left" onclick="swapSplit()">'+leftLbl+'</div>'
+      +'<div class="split-scroll">'+leftHtml+'</div></div>'
+    +'<div class="split-col"><div class="split-hd right" onclick="swapSplit()">'+rightLbl+'</div>'
+      +'<div class="split-scroll">'+rightHtml+'</div>'
       +'<div class="tg-box"><div class="tg-hd">📈 Top Gainers <span class="tg-sub">under $20 · min '+Math.round(_tgFloor/1000)+'K vol</span></div>'+tgHtml+'</div>'
     +'</div>'
     +'</div>';
@@ -2750,7 +2774,7 @@ async function init(){
   // Correct every price/% with real extended-hours data during pre/after market.
   // 60s cadence keeps FMP usage modest (one batched call per cycle).
   setTimeout(refreshPreMarketTruth,3000);
-  setInterval(()=>{if(appReady)refreshPreMarketTruth();},60000);
+  setInterval(()=>{if(appReady)refreshPreMarketTruth();},30000);
 }
 
 window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
