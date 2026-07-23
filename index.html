@@ -462,7 +462,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.59</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.60</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
@@ -1236,7 +1236,7 @@ async function fetchQDirect(sym){
         // prices (BIYA showed $4.14 API vs $7.97 real). Finnhub is split-adjusted. When
         // they diverge >15%, trust Finnhub's price/% and flag the row as suspect.
         const splitMismatch=wbPx&&q.c&&Math.abs(q.c-wbPx)/Math.max(q.c,wbPx)>0.15;
-        Q[sym]={symbol:sym,price:q.c,open:q.o||Q[sym]?.open||0,high:q.h||Q[sym]?.high||0,low:q.l||Q[sym]?.low||0,prevClose:q.pc,change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,volume:q.v||Q[sym]?.volume||0,bid:q.c*(1-0.0005),ask:q.c*(1+0.0005),_fromWebull:Q[sym]?._fromWebull,_fromFmp:Q[sym]?._fromFmp,wbRvol:Q[sym]?.wbRvol||0,_pxAgo:Q[sym]?._pxAgo,_pxAgoTs:Q[sym]?._pxAgoTs,_volAgo:Q[sym]?._volAgo,_volAgoTs:Q[sym]?._volAgoTs,_splitFlag:splitMismatch||Q[sym]?._splitFlag,priceTs:q.t?q.t*1000:Date.now(),_ts:Date.now()};
+        Q[sym]={symbol:sym,price:q.c,open:q.o||Q[sym]?.open||0,high:q.h||Q[sym]?.high||0,low:q.l||Q[sym]?.low||0,prevClose:q.pc,change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,volume:Math.max(q.v||0,Q[sym]?.volume||0),bid:q.c*(1-0.0005),ask:q.c*(1+0.0005),_fromWebull:Q[sym]?._fromWebull,_fromFmp:Q[sym]?._fromFmp,wbRvol:Q[sym]?.wbRvol||0,_pxAgo:Q[sym]?._pxAgo,_pxAgoTs:Q[sym]?._pxAgoTs,_volAgo:Q[sym]?._volAgo,_volAgoTs:Q[sym]?._volAgoTs,_splitFlag:splitMismatch||Q[sym]?._splitFlag,priceTs:q.t?q.t*1000:Date.now(),_ts:Date.now()};
         const sess=getSession();
         checkPmhBreak(sym,q.c);
         if(sess==='pre'||sess==='mkt'){if(!pmHigh[sym]||q.h>pmHigh[sym])pmHigh[sym]=q.h;}
@@ -1862,7 +1862,7 @@ function renderSplitView(results,maxShow,pd){
   const MOMO_SIT_MS=180000; // 3 min, matching how Ross's alerts stay visible
   results.forEach(r=>{
     const q=r.q;if(!q||!q.price)return;
-    const hasVol=(q._fromWebull||q._volFmp)&&(q.volume||0)>0;if(!hasVol)return;
+    const hasVol=(q.volume||0)>0;if(!hasVol)return; // any real volume qualifies
     let vel=0;if(q._pxAgo&&q._pxAgo>0)vel=(q.price-q._pxAgo)/q._pxAgo*100;
     const volSurge=(q._volAgo!=null&&q.volume-q._volAgo>50000);
     const hod=q.high||0;
