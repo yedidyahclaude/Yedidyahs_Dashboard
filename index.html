@@ -462,7 +462,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.60</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.61</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
@@ -1653,7 +1653,13 @@ function liveScanUpdate(){
       const _vn=q.volume||0;
       if(haveVelData){
         const _rv=Math.abs((q.price-q._pxAgo)/q._pxAgo*100);
-        c._formerRunner=((q.changePct||0)>=20&&_rv<0.3&&_vn>0&&_vn<150000);
+        // A real former runner RAN and FADED: it's well below its high of day, flat
+        // now, and barely trading. A stock sitting AT its high is the opposite of
+        // stale — never flag it. (The old check flagged anything under 150K volume,
+        // which in pre-market is nearly every stock.)
+        const _hod=q.high||0;
+        const faded=_hod>0&&q.price<_hod*0.75; // dropped 25%+ off its high
+        c._formerRunner=(faded&&(q.changePct||0)>=20&&_rv<0.3&&_vn>0&&_vn<50000);
       } else { c._formerRunner=false; } // no velocity data yet — don't label
     }
     checkSetupAlerts(sym,score); // volume-gated: real setups ping, artifacts stay silent
@@ -1873,7 +1879,11 @@ function renderSplitView(results,maxShow,pd){
     // A stock is a MOMENTUM name if it's a real gapper (Ross's core: up 10%+ with
     // real volume) — that's the baseline the board should always show. Live events
     // (new HOD, quick move) REFRESH its timer so active ones stay longer.
-    const isGapper=(q.changePct||0)>=10&&(q.volume||0)>=10000;
+    // TRADEABLE FLOOR: a stock that's traded 9K-20K shares isn't a momentum name,
+    // it's noise with a big percentage on almost no activity. Ross wouldn't touch
+    // it — you can't get in or out. Require real volume before it counts as a mover.
+    const _vFloor=(typeof getSession==='function'&&getSession()==='mkt')?100000:50000;
+    const isGapper=(q.changePct||0)>=10&&(q.volume||0)>=_vFloor;
     if(isGapper||newHod||runningUp)_momentumSticky[r.sym]=nowT+MOMO_SIT_MS;
   });
   const movers=results.filter(r=>_momentumSticky[r.sym]&&_momentumSticky[r.sym]>nowT&&(r.q.volume||0)>0)
@@ -1923,8 +1933,9 @@ function renderSplitView(results,maxShow,pd){
   // ── TOP GAINERS (Ross's Top Gainers scanner) — the 10 biggest % gainers under $20
   // with real volume, sorted by % change. Ross starts his day here, then shifts focus
   // to HOD Momo. This is a simple, always-populated list of the day's movers.
+  const _tgFloor=(typeof getSession==='function'&&getSession()==='mkt')?100000:50000;
   const topGainers=allResults
-    .filter(r=>r.q&&r.q.price>0&&r.q.price<=20&&(r.q.changePct||0)>=5&&(r.q.volume||0)>=5000)
+    .filter(r=>r.q&&r.q.price>0&&r.q.price<=20&&(r.q.changePct||0)>=5&&(r.q.volume||0)>=_tgFloor)
     .sort((a,b)=>(b.q.changePct||0)-(a.q.changePct||0))
     .slice(0,10);
   const tgHtml=topGainers.length?topGainers.map(r=>{
@@ -1945,7 +1956,7 @@ function renderSplitView(results,maxShow,pd){
   rows.innerHTML='<div class="split-wrap">'
     +'<div class="split-col"><div class="split-hd left" onclick="swapSplit()">'+leftLbl+'</div>'+leftHtml+'</div>'
     +'<div class="split-col"><div class="split-hd right" onclick="swapSplit()">'+rightLbl+'</div>'+rightHtml
-      +'<div class="tg-box"><div class="tg-hd">📈 Top Gainers <span class="tg-sub">under $20</span></div>'+tgHtml+'</div>'
+      +'<div class="tg-box"><div class="tg-hd">📈 Top Gainers <span class="tg-sub">under $20 · min '+Math.round(_tgFloor/1000)+'K vol</span></div>'+tgHtml+'</div>'
     +'</div>'
     +'</div>';
 }
