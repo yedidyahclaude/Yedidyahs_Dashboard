@@ -1,2713 +1,563 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"/>
-<title>Yedidyah's Dashboard</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%237c6aff'/><text x='50%' y='54%' dominant-baseline='middle' text-anchor='middle' font-size='18' font-family='Arial' font-weight='bold' fill='white'>Y</text></svg>"/>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<style>
-:root{
-  --bg:#07080f;--s1:#0c0d1a;--s2:#11131f;--s3:#161829;
-  --b1:#1c1f30;--b2:#2a2d44;--b3:#363a58;
-  --tx:#eef0fa;--mu:#8a8fae;--dim:#5a5f7a;
-  --ac:#7c6aff;--ac2:#9d8fff;--ac3:#c4baff;
-  --gr:#19c48a;--rd:#f0506e;--gold:#f0b94f;--sky:#38bdf8;
-}
-*{margin:0;padding:0;box-sizing:border-box}
-html,body{height:100%;background:var(--bg);color:var(--tx);font-family:'Inter',sans-serif;overflow:hidden}
-input,button,textarea{font-family:inherit}
-::-webkit-scrollbar{width:6px;height:6px}
-::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:var(--b2);border-radius:4px}
-::-webkit-scrollbar-thumb:hover{background:var(--b3)}
+/**
+ * Yedidyah's Dashboard — Webull API Proxy Worker v2
+ * Fixed: added market_session parameter so gainers returns pre-market data
+ * Fixed: change_ratio normalization (decimal -> percent)
+ */
 
-/* ── LOGIN ── */
-#loginWall{position:fixed;inset:0;background:radial-gradient(ellipse at 30% 20%,#15172c 0%,var(--bg) 65%);display:flex;align-items:center;justify-content:center;z-index:100}
-.login-box{background:var(--s2);border:1px solid var(--b1);border-radius:20px;padding:40px;width:360px;box-shadow:0 24px 64px #0008}
-.login-logo{font-size:22px;font-weight:900;letter-spacing:-.5px;margin-bottom:6px}
-.login-logo span{color:var(--ac2)}
-.login-sub{font-size:12px;color:var(--mu);margin-bottom:28px}
-.login-box input{width:100%;background:var(--s1);border:1px solid var(--b2);border-radius:10px;color:var(--tx);padding:12px 14px;font-size:14px;margin-bottom:10px;outline:none;transition:border-color .15s}
-.login-box input:focus{border-color:var(--ac)}
-.login-btn{width:100%;background:linear-gradient(135deg,var(--ac),#5b4dcc);border:none;border-radius:10px;color:#fff;font-weight:700;font-size:14px;padding:13px;cursor:pointer;margin-top:4px;transition:opacity .15s}
-.login-btn:hover{opacity:.9}.login-btn:disabled{opacity:.5}
-.login-err{color:var(--rd);font-size:12px;margin-top:10px;display:none}
-.login-msg{font-size:12px;margin-top:10px;display:none}
-.login-switch{text-align:center;font-size:12px;color:var(--mu);margin-top:20px}
-.login-switch a{color:var(--ac2);cursor:pointer}
+const WEBULL_HOST = 'api.webull.com';
+const WEBULL_BASE = `https://${WEBULL_HOST}`;
 
-/* ── TOPBAR ── */
-#mainApp{display:none;flex-direction:column;height:100vh}
-.topbar{display:flex;align-items:center;gap:10px;padding:0 16px;background:var(--s1);border-bottom:1px solid var(--b1);flex-shrink:0;height:52px}
-.brand{font-size:15px;font-weight:900;white-space:nowrap;letter-spacing:-.3px;flex-shrink:0}
-.brand span{color:var(--ac2)}
-.brand-sub{font-size:9px;color:var(--dim);font-weight:500;letter-spacing:.08em;text-transform:uppercase;margin-top:1px}
-#si{flex:1;min-width:0;background:var(--s2);border:1px solid var(--b2);border-radius:8px;color:var(--tx);padding:7px 12px;font-size:13px;outline:none;transition:border-color .15s}
-#si:focus{border-color:var(--ac)}
-.clock-center{position:absolute;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;pointer-events:none}
-#htime{font-size:20px;font-weight:900;font-family:'DM Mono',monospace;letter-spacing:.04em;line-height:1}
-#htime.pre-color{color:var(--gold)}
-#htime.mkt-color{color:var(--gr)}
-#htime.aft-color{color:var(--ac2)}
-#htime.cls-color{color:var(--mu)}
-.sess{font-size:8px;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:.08em;text-transform:uppercase;margin-top:2px}
-.sess.pre{background:#f0b94f18;color:var(--gold);border:1px solid #f0b94f30}
-.sess.mkt{background:#19c48a18;color:var(--gr);border:1px solid #19c48a30}
-.sess.aft{background:#7c6aff18;color:var(--ac2);border:1px solid #7c6aff30}
-.sess.cls{background:#5a5f7a18;color:var(--dim);border:1px solid #5a5f7a30}
-.topbar-right{display:flex;align-items:center;gap:8px;margin-left:auto;flex-shrink:0}
-.tb-btn{background:none;border:1px solid var(--b2);border-radius:7px;color:var(--mu);font-size:11px;font-weight:600;padding:6px 11px;cursor:pointer;transition:all .15s;white-space:nowrap}
-.tb-btn:hover{color:var(--tx);border-color:var(--ac);background:var(--s2)}
-.tb-btn.active{color:var(--ac2);border-color:var(--ac);background:#7c6aff12}
-
-/* ── LAYOUT — two-column when pulse panel open ── */
-.main{flex:1;min-height:0;display:flex;flex-direction:row}
-.scanner-col{flex:1;min-width:0;display:flex;flex-direction:column}
-.scanner-wrap{flex:1;min-height:0;display:flex;flex-direction:column;padding:12px 14px;gap:8px}
-
-/* ── MARKET PULSE PANEL ── */
-#pulsePanel{display:none;flex-direction:column;width:220px;flex-shrink:0;background:var(--s1);border-left:1px solid var(--b1);overflow-y:auto}
-.pulse-hdr{padding:10px 12px;border-bottom:1px solid var(--b1);font-size:11px;font-weight:700;color:var(--ac2);display:flex;align-items:center;justify-content:space-between}
-.pulse-section{padding:10px 12px;border-bottom:1px solid var(--b1)}
-.pulse-section-title{font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
-.pulse-stat{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
-.pulse-stat-label{font-size:10px;color:var(--mu)}
-.pulse-stat-val{font-size:11px;font-weight:700;font-family:'DM Mono',monospace}
-.pulse-top-sym{display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--b1);cursor:pointer}
-.pulse-top-sym:hover{opacity:.8}
-.pulse-top-sym:last-child{border-bottom:none}
-.pulse-sym-name{font-size:11px;font-weight:800;color:var(--gr)}
-.pulse-sym-chg{font-size:10px;font-weight:700;font-family:'DM Mono',monospace;color:var(--gr)}
-.pulse-sym-score{font-size:9px;color:var(--mu);font-family:'DM Mono',monospace}
-
-/* ── SCAN HEADER ── */
-.scan-hdr{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.scan-title{display:flex;align-items:center;gap:8px}
-.scan-title h2{font-size:14px;font-weight:800;letter-spacing:-.2px}
-.scan-count{font-size:10px;font-weight:700;background:var(--ac);color:#fff;padding:2px 7px;border-radius:20px;min-width:20px;text-align:center}
-.scan-hdr-right{display:flex;align-items:center;gap:6px}
-.scan-status{font-size:10px;color:var(--dim);font-family:'DM Mono',monospace}
-
-/* ── FILTERS ── */
-.scan-filters{display:flex;gap:8px;flex-wrap:wrap;background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:10px 12px;align-items:flex-end}
-.flt-g{display:flex;flex-direction:column;gap:3px}
-.flt-l{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
-.flt-i{width:68px;background:var(--s1);border:1px solid var(--b2);border-radius:7px;color:var(--tx);padding:6px 8px;font-size:12px;outline:none;transition:border-color .15s}
-.flt-i:focus{border-color:var(--ac)}
-.flt-divider{width:1px;height:32px;background:var(--b1);margin:0 4px}
-.sess-threshold{display:flex;flex-direction:column;gap:3px;margin-left:auto}
-.thresh-val{font-size:13px;font-weight:800;font-family:'DM Mono',monospace;padding:4px 10px;border-radius:6px;border:1px solid}
-.thresh-val.pre{color:var(--gold);background:#f0b94f12;border-color:#f0b94f30}
-.thresh-val.mkt{color:var(--gr);background:#19c48a12;border-color:#19c48a30}
-.thresh-val.aft{color:var(--ac2);background:#7c6aff12;border-color:#7c6aff30}
-.thresh-val.cls{color:var(--dim);background:#5a5f7a12;border-color:#5a5f7a30}
-
-/* ── SORT BAR ── */
-.sort-bar{display:grid;grid-template-columns:190px 76px 76px 110px 1fr 116px 48px;gap:0;padding:0 14px;border-bottom:1px solid var(--b1)}
-.sort-col{font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;padding:7px 0;cursor:pointer;user-select:none;display:flex;align-items:center;gap:3px;transition:color .15s}
-.sort-col:hover{color:var(--mu)}
-.sort-col.active{color:var(--ac2)}
-.sort-col .arr{font-size:8px;opacity:.7}
-.sort-col.right{justify-content:flex-end}
-
-/* ── QUICK-ADD ── */
-.scan-add{display:flex;gap:6px}
-.scan-add input{flex:1;background:var(--s2);border:1px solid var(--b2);border-radius:8px;color:var(--tx);padding:8px 12px;font-size:13px;outline:none;text-transform:uppercase;transition:border-color .15s}
-.scan-add input:focus{border-color:var(--ac)}
-.scan-add input::placeholder{text-transform:none}
-.scan-add button{background:var(--ac);border:none;border-radius:8px;color:#fff;font-weight:700;padding:8px 16px;cursor:pointer;font-size:13px;transition:opacity .15s}
-.scan-add button:hover{opacity:.85}
-
-/* ── TAGS ── */
-.scan-tags-wrap{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-.scan-tags{display:flex;flex-wrap:wrap;gap:4px;flex:1}
-.tag{display:inline-flex;align-items:center;gap:3px;background:var(--s3);border:1px solid var(--b2);border-radius:20px;padding:2px 8px 2px 10px;font-size:10px;color:var(--mu);font-weight:500}
-.tag button{background:none;border:none;color:var(--dim);cursor:pointer;font-size:11px;line-height:1;padding:0 1px;transition:color .15s}
-.tag button:hover{color:var(--rd)}
-.tags-clear{font-size:10px;color:var(--dim);cursor:pointer;white-space:nowrap;padding:2px 6px;border-radius:5px;border:1px solid var(--b1)}
-.tags-clear:hover{color:var(--rd);border-color:var(--rd)}
-
-/* ── SCANNER LIST ── */
-.scan-list{flex:1;min-height:0;overflow-y:auto;background:var(--s2);border:1px solid var(--b1);border-radius:10px;display:flex;flex-direction:column}
-.scan-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;padding:40px 20px;color:var(--mu)}
-.scan-empty .ic{font-size:28px;margin-bottom:10px}
-.scan-empty .t{font-weight:700;color:var(--tx);margin-bottom:5px;font-size:14px}
-.scan-empty .d{font-size:12px;line-height:1.6;text-align:center;max-width:300px}
-
-/* ── SCAN ROW ── */
-/* ── SCAN ROW — 7 columns: sym | px | chg | rvol | headline | pills | score ── */
-.scan-row{display:grid;grid-template-columns:190px 76px 76px 110px 1fr 116px 48px;grid-template-rows:auto auto;align-items:center;gap:0;padding:6px 14px 0 14px;border-bottom:1px solid var(--b1);cursor:pointer;transition:background .12s;position:relative}
-.scan-row:hover{background:var(--s3)}
-.scan-row:last-child{border-bottom:none}
-.scan-row.score5{border-left:2px solid var(--gr)}
-.scan-row.score4{border-left:2px solid var(--gold)}
-.scan-row.score3{border-left:2px solid var(--b3)}
-.scan-row.halted{border-left:2px solid var(--rd);opacity:.75}
-
-/* Symbol cell */
-.scan-sym-cell{display:flex;flex-direction:column;align-items:flex-start;gap:1px;min-width:0}
-.scan-sym-row{display:flex;align-items:center;gap:5px}
-.scan-sym{font-weight:800;font-size:13px;letter-spacing:-.2px}
-.scan-sym.up{color:var(--gr)}.scan-sym.dn{color:var(--rd)}
-.src-badge{font-size:7px;font-weight:800;padding:1px 4px;border-radius:3px;letter-spacing:.05em;flex-shrink:0}
-.fr-badge{background:rgba(240,150,79,.18);color:#f0964f;border:1px solid rgba(240,150,79,.35)}
-.ctry-badge{font-size:7px;font-weight:800;padding:1px 3px;border-radius:3px;letter-spacing:.04em;flex-shrink:0;cursor:help}
-.ctry-us{background:rgba(139,139,167,.15);color:var(--dim)}
-.ctry-cn{background:rgba(240,185,79,.18);color:var(--gold)}
-.ctry-x{background:rgba(66,212,244,.14);color:var(--cyan)}
-.src-wb{background:#3b82f620;color:#60a5fa;border:1px solid #3b82f640}
-.src-sd{background:#8b5cf620;color:#a78bfa;border:1px solid #8b5cf640}
-.src-fp{background:#10b98120;color:#34d399;border:1px solid #10b98140}
-.news-dot{font-size:10px;flex-shrink:0}
-.pmh-badge{font-size:9px;font-weight:700;color:var(--sky);font-family:'DM Mono',monospace;flex-shrink:0;opacity:.8}
-.halt-badge{font-size:7px;font-weight:800;padding:1px 4px;border-radius:3px;background:#f0506e22;color:var(--rd);border:1px solid #f0506e40;flex-shrink:0;animation:haltPulse 1.2s ease-in-out infinite}
-@keyframes haltPulse{0%,100%{opacity:1}50%{opacity:.4}}
-/* News headline — full-width centered subtitle under the main row data */
-.row-headline-bar{grid-column:1/-1;padding:0 14px 5px 14px;font-size:10px;color:var(--mu);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.4;border-bottom:1px solid var(--b1);margin-top:-4px}
-/* Day range bar */
-.range-bar-wrap{display:flex;align-items:center;gap:4px;margin-top:2px}
-.range-bar{height:3px;width:90px;background:var(--b2);border-radius:2px;position:relative;flex-shrink:0}
-.range-bar-fill{position:absolute;top:0;height:100%;background:var(--ac2);border-radius:2px;min-width:3px}
-.range-label{font-size:8px;color:var(--dim);font-family:'DM Mono',monospace}
-
-/* Price / change cells */
-.scan-px{font-family:'DM Mono',monospace;font-size:12px;color:var(--tx);font-weight:500}
-.scan-chg{font-family:'DM Mono',monospace;font-size:12px;font-weight:700}
-.scan-chg.up{color:var(--gr)}.scan-chg.dn{color:var(--rd)}
-
-/* RVOL cell — now also shows volume bar */
-.scan-rvol-cell{display:flex;flex-direction:column;gap:2px;padding:0 4px}
-.scan-rvol{font-family:'DM Mono',monospace;font-size:11px;color:var(--mu)}
-.scan-flt{font-family:'DM Mono',monospace;font-size:10px;color:var(--dim);opacity:.75}
-.scan-flt.lowflt{color:var(--gold);opacity:1;font-weight:700}
-.scan-rvol.hot{color:var(--gold);font-weight:700}
-.scan-rvol.fire{color:var(--gr);font-weight:700}
-.vol-bar{height:3px;width:60px;background:var(--b2);border-radius:2px}
-.vol-bar-fill{height:100%;background:var(--ac);border-radius:2px;max-width:100%}
-
-/* Pills */
-.scan-pills{display:flex;gap:3px;align-items:center}
-.pill{font-size:8px;font-weight:800;padding:2px 5px;border-radius:4px;letter-spacing:.03em;transition:all .2s}
-.pill.pass{background:#19c48a18;color:var(--gr);border:1px solid #19c48a35}
-.pill.fail{background:#f0506e18;color:var(--rd);border:1px solid #f0506e35}
-.pill.na{background:var(--s1);color:var(--dim);border:1px solid var(--b1)}
-
-/* Score */
-.scan-score{font-size:11px;font-weight:800;text-align:right;font-family:'DM Mono',monospace}
-.score5 .scan-score{color:var(--gr)}
-.score4 .scan-score{color:var(--gold)}
-.score3 .scan-score{color:var(--mu)}
-
-/* NEW flash */
-.scan-row-new{animation:flashNew 2s ease-out}
-/* ── SPLIT VIEW ── */
-.split-wrap{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 2px}
-.split-col{min-width:0;background:rgba(255,255,255,.012);border-radius:10px;padding:4px}
-.split-hd{position:sticky;top:0;z-index:5;font-size:11px;font-weight:800;letter-spacing:.04em;
-  padding:8px 10px;margin-bottom:4px;border-radius:8px;backdrop-filter:blur(8px);cursor:pointer;
-  display:flex;align-items:center;gap:6px;text-transform:uppercase}
-.split-hd.left{background:linear-gradient(90deg,rgba(25,196,138,.14),transparent);color:var(--gr)}
-.split-hd.right{background:linear-gradient(90deg,rgba(240,185,79,.14),transparent);color:var(--gold)}
-.split-hd::after{content:'⇄ swap';margin-left:auto;font-size:8px;opacity:.5;font-weight:600;letter-spacing:.02em}
-.split-hd:hover::after{opacity:.9}
-.split-empty{padding:32px 16px;text-align:center;color:var(--dim);font-size:11px}
-.held-row{position:relative;border-radius:10px;box-shadow:0 0 0 1.5px var(--ac);margin-bottom:6px}
-.held-tag{font-size:8px;font-weight:800;color:var(--ac2);background:rgba(124,106,255,.14);
-  padding:2px 8px;border-radius:8px 8px 0 0;letter-spacing:.05em;display:flex;align-items:center;gap:5px;text-transform:uppercase}
-.held-x{margin-left:auto;cursor:pointer;font-size:11px;color:var(--dim);padding:0 2px}
-.held-x:hover{color:var(--rd)}
-/* ── TOP GAINERS box (under Momentum) ── */
-.tg-box{margin-top:14px;border-top:1px solid rgba(255,255,255,.06);padding-top:8px}
-.tg-hd{font-size:11px;font-weight:800;letter-spacing:.04em;padding:6px 10px;color:var(--gr);text-transform:uppercase}
-.tg-sub{font-size:8px;opacity:.6;font-weight:600}
-.tg-row{display:flex;align-items:center;gap:8px;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;transition:.1s}
-.tg-row:hover{background:rgba(255,255,255,.04)}
-.tg-sym{font-weight:800;min-width:52px}
-.tg-fr{color:#f0964f;font-size:10px}
-.tg-px{color:var(--mu);font-family:ui-monospace,monospace;font-size:11px;margin-left:auto}
-.tg-vol{color:var(--mu);font-size:10px;min-width:46px;text-align:right}
-.tg-chg{font-weight:800;font-family:ui-monospace,monospace;min-width:56px;text-align:right}
-.tg-chg.up{color:var(--gr)}.tg-chg.dn{color:var(--rd)}
-/* ── MOMENTUM ROWS (right column) — compact, spike-focused ── */
-.mo-row{background:linear-gradient(100deg,rgba(240,185,79,.05),rgba(255,255,255,.015));
-  border:1px solid rgba(240,185,79,.12);border-radius:9px;padding:8px 11px;margin-bottom:6px;cursor:pointer;transition:.12s}
-.mo-row:hover{border-color:rgba(240,185,79,.4);transform:translateX(-2px)}
-.mo-row.athod{border-color:rgba(25,196,138,.45);box-shadow:0 0 10px rgba(25,196,138,.15)}
-.mo-top{display:flex;align-items:baseline;gap:8px}
-.mo-sym{font-size:16px;font-weight:800;letter-spacing:-.02em}
-.mo-flame{font-size:12px}
-.mo-px{margin-left:auto;font-size:14px;font-weight:700;color:var(--tx);font-family:ui-monospace,monospace}
-.mo-chg{font-size:15px;font-weight:800;font-family:ui-monospace,monospace;min-width:62px;text-align:right}
-.mo-chg.up{color:var(--gr)}.mo-chg.dn{color:var(--rd)}
-.mo-bot{display:flex;align-items:center;gap:9px;margin-top:5px;font-size:10px}
-.mo-vel{font-weight:800;font-family:ui-monospace,monospace}
-.mo-vel.up{color:var(--gr)}.mo-vel.dn{color:var(--rd)}
-.mo-vol{color:var(--mu)}
-.mo-hod{color:var(--gr);font-weight:800}
-.mo-score{margin-left:auto;font-size:10px;font-weight:800;padding:1px 7px;border-radius:5px;background:rgba(255,255,255,.06);color:var(--mu)}
-.mo-score.s4{background:rgba(240,185,79,.2);color:var(--gold)}
-.mo-score.s3{background:rgba(124,106,255,.18);color:var(--ac2)}
-.split-col .scan-row{margin-bottom:5px}
-@media(max-width:900px){.split-wrap{grid-template-columns:1fr}}
-.scan-row.hot-now{box-shadow:inset 3px 0 0 var(--gold),0 0 0 1px rgba(240,185,79,.2)}
-.scan-row.hot-now.score5,.scan-row.hot-now.score4{box-shadow:inset 3px 0 0 var(--gr),0 0 12px rgba(25,196,138,.25)}
-@keyframes flashNew{0%{background:#7c6aff28}100%{background:transparent}}
-
-/* ── NOTES MODAL ── */
-#notesModal{display:none;position:fixed;inset:0;background:#0009;z-index:300;align-items:center;justify-content:center}
-.notes-box{background:var(--s2);border:1px solid var(--b2);border-radius:14px;padding:20px;width:360px;box-shadow:0 24px 64px #0008}
-.notes-box h3{font-size:14px;font-weight:800;margin-bottom:12px;color:var(--ac2)}
-.notes-box textarea{width:100%;background:var(--s1);border:1px solid var(--b2);border-radius:8px;color:var(--tx);padding:10px 12px;font-size:13px;outline:none;resize:vertical;min-height:80px;line-height:1.5}
-.notes-box textarea:focus{border-color:var(--ac)}
-.notes-btns{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
-
-/* ── NEWS PANEL ── */
-#newsPanel{display:none;flex-direction:column;background:var(--s2);border:1px solid var(--b1);border-radius:10px;max-height:160px;overflow:hidden}
-.news-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--b1);flex-shrink:0}
-.news-hdr span{font-size:11px;font-weight:700;color:var(--ac2)}
-.news-sym-label{font-size:10px;color:var(--mu)}
-.news-list{overflow-y:auto;flex:1}
-.news-item{padding:7px 12px;border-bottom:1px solid var(--b1);cursor:pointer;transition:background .12s}
-.news-item:hover{background:var(--s3)}
-.news-item:last-child{border-bottom:none}
-.news-headline{font-size:11px;color:var(--tx);line-height:1.4;font-weight:500}
-.news-meta{font-size:9px;color:var(--dim);margin-top:2px;font-family:'DM Mono',monospace}
-.news-empty{padding:16px 12px;font-size:11px;color:var(--dim);text-align:center}
-
-/* ── CLAUDE PANEL ── */
-#claudePanel{display:none;flex-direction:column;background:var(--s2);border:1px solid var(--ac);border-radius:10px;margin-bottom:2px;max-height:300px}
-.claude-key-row{display:none;padding:10px 12px;border-bottom:1px solid var(--b1);flex-direction:column;gap:6px}
-.claude-msgs{flex:1;overflow-y:auto;padding:12px 14px;font-size:13px;line-height:1.6;max-height:200px}
-.claude-inp-row{display:flex;gap:6px;padding:10px;border-top:1px solid var(--b1)}
-
-/* ── CHART PANEL ── */
-.chart-panel{flex-shrink:0;background:var(--s1);border-top:1px solid var(--b1);display:flex;align-items:center;gap:10px;padding:9px 16px}
-.cp-sym{font-size:16px;font-weight:900;min-width:60px;letter-spacing:-.3px}
-.cp-px{font-family:'DM Mono',monospace;font-size:13px;font-weight:500}
-.cp-chg{font-family:'DM Mono',monospace;font-size:13px;font-weight:700}
-.cp-pmh{font-size:10px;color:var(--sky);font-family:'DM Mono',monospace;font-weight:600}
-.cp-spread{font-size:10px;color:var(--mu);font-family:'DM Mono',monospace}
-.cp-meta{flex:1;font-size:10px;color:var(--dim);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.cp-note-btn{background:none;border:1px solid var(--b2);border-radius:6px;color:var(--dim);font-size:11px;padding:4px 9px;cursor:pointer;flex-shrink:0}
-.cp-note-btn:hover{color:var(--ac2);border-color:var(--ac)}
-.cp-pop{background:linear-gradient(135deg,var(--ac),#5b4dcc);border:none;border-radius:7px;color:#fff;font-weight:700;font-size:12px;padding:7px 14px;cursor:pointer;transition:opacity .15s;flex-shrink:0}
-.cp-pop:hover{opacity:.85}
-.up{color:var(--gr)}.dn{color:var(--rd)}
-
-/* ── TOAST ── */
-.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--s3);border:1px solid var(--b2);border-radius:8px;padding:9px 16px;font-size:12px;font-weight:500;opacity:0;transition:opacity .25s;pointer-events:none;z-index:200;white-space:nowrap;box-shadow:0 8px 24px #0006}
-
-/* ── TRADE JOURNAL MODAL ── */
-#journalModal{display:none;position:fixed;inset:0;background:#0009;z-index:400;align-items:flex-start;justify-content:center;padding-top:40px;overflow-y:auto}
-.journal-box{background:var(--s2);border:1px solid var(--b2);border-radius:16px;padding:24px;width:640px;max-width:95vw;box-shadow:0 24px 64px #0008}
-.journal-box h3{font-size:16px;font-weight:800;margin-bottom:16px;color:var(--ac2)}
-.journal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
-.journal-field{display:flex;flex-direction:column;gap:4px}
-.journal-field label{font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.06em}
-.journal-field input,.journal-field select,.journal-field textarea{background:var(--s1);border:1px solid var(--b2);border-radius:8px;color:var(--tx);padding:8px 10px;font-size:13px;outline:none;font-family:'DM Mono',monospace}
-.journal-field input:focus,.journal-field select:focus,.journal-field textarea:focus{border-color:var(--ac)}
-.journal-field select option{background:var(--s2)}
-.journal-pnl{font-size:20px;font-weight:900;font-family:'DM Mono',monospace;padding:10px 16px;border-radius:10px;text-align:center;margin-bottom:14px}
-.journal-pnl.pos{color:var(--gr);background:#19c48a12;border:1px solid #19c48a30}
-.journal-pnl.neg{color:var(--rd);background:#f0506e12;border:1px solid #f0506e30}
-.journal-pnl.zero{color:var(--mu);background:var(--s1);border:1px solid var(--b1)}
-.journal-trades{max-height:300px;overflow-y:auto;margin-top:14px;border-top:1px solid var(--b1);padding-top:14px}
-.journal-trade-row{display:grid;grid-template-columns:60px 1fr 80px 80px 80px 70px;gap:8px;align-items:center;padding:7px 0;border-bottom:1px solid var(--b1);font-size:11px}
-.journal-trade-row:last-child{border-bottom:none}
-.journal-trade-hdr{font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.05em}
-
-/* ── SESSION LOG PANEL ── */
-#logPanel{display:none;flex-direction:column;width:220px;flex-shrink:0;background:var(--s1);border-left:1px solid var(--b1);overflow-y:auto}
-.log-hdr{padding:10px 12px;border-bottom:1px solid var(--b1);font-size:11px;font-weight:700;color:var(--ac2);display:flex;align-items:center;justify-content:space-between}
-.log-item{padding:7px 12px;border-bottom:1px solid var(--b1);font-size:10px;line-height:1.5}
-.log-item:last-child{border-bottom:none}
-.log-time{font-size:8px;color:var(--dim);font-family:'DM Mono',monospace}
-.log-sym{font-weight:800;color:var(--gr)}
-.log-detail{color:var(--mu)}
-.log-score5{color:var(--gr)}.log-score4{color:var(--gold)}.log-rm{color:var(--rd);opacity:.7}
-
-/* ── VWAP / OFF-HIGHS CONTEXT ── */
-.vwap-badge{font-size:8px;font-weight:700;padding:1px 4px;border-radius:3px;flex-shrink:0}
-.vwap-above{background:#19c48a18;color:var(--gr);border:1px solid #19c48a35}
-.vwap-below{background:#f0506e18;color:var(--rd);border:1px solid #f0506e35}
-.off-highs{font-size:8px;color:var(--dim);font-family:'DM Mono',monospace;flex-shrink:0}
-
-/* ── STAR / PIN ── */
-.star-btn{background:none;border:none;cursor:pointer;font-size:12px;padding:0 2px;opacity:.4;transition:opacity .15s;flex-shrink:0}
-.star-btn:hover,.star-btn.starred{opacity:1}
-.scan-row.pinned{background:linear-gradient(90deg,#f0b94f08,transparent)}
-
-/* ── SECTOR BADGE ── */
-.sector-alert{display:flex;align-items:center;gap:6px;padding:6px 12px;background:#f0b94f12;border:1px solid #f0b94f30;border-radius:8px;font-size:11px;font-weight:700;color:var(--gold)}
-
-/* ── COPY SYMBOLS ── */
-.copy-syms-btn{background:none;border:1px solid var(--b2);border-radius:6px;color:var(--dim);font-size:10px;font-weight:600;padding:3px 9px;cursor:pointer;transition:all .15s}
-.copy-syms-btn:hover{color:var(--ac2);border-color:var(--ac)}
-
-/* ── SINCE OPEN badge ── */
-.since-open{font-size:9px;font-family:'DM Mono',monospace;font-weight:700;flex-shrink:0}
-.since-open.pos{color:var(--gr)}.since-open.neg{color:var(--rd)}
-
-/* ── MOBILE LAYOUT ── */
-@media(max-width:600px){
-  .topbar{height:auto;padding:8px 10px;flex-wrap:wrap;gap:6px}
-  .clock-center{position:static;transform:none;order:3;width:100%;text-align:center;padding:2px 0}
-  #htime{font-size:16px}
-  .brand-sub{display:none}
-  .topbar-right{gap:4px}
-  .tb-btn{font-size:10px;padding:5px 8px}
-  #si{order:2;width:100%}
-  .scan-row{grid-template-columns:120px 56px 56px 80px 1fr 70px 30px;padding:5px 8px 0 8px}
-  .sort-bar{grid-template-columns:120px 56px 56px 80px 1fr 70px 30px;padding:0 8px}
-  .row-headline-bar{font-size:9px;padding:0 8px 3px 8px}
-  .scan-sym{font-size:12px}
-  .sort-bar{grid-template-columns:130px 60px 60px 1fr 80px 36px;padding:0 10px}
-  .scanner-wrap{padding:8px 10px;gap:6px}
-  #pulsePanel{display:none!important}
-  .cp-spread,.cp-pmh{display:none}
-  .row-headline{display:none}
-  .range-bar-wrap{display:none}
-}
-</style>
-</head>
-<body>
-<div id="audioBanner" onclick="unlockAudio()" style="display:flex;position:fixed;top:0;left:0;right:0;z-index:9999;background:linear-gradient(90deg,#f0b94f,#f0a020);color:#1a1a1a;padding:16px;font-size:16px;font-weight:900;align-items:center;justify-content:center;gap:12px;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.5);animation:armPulse 1.4s ease-in-out infinite;letter-spacing:.02em">
-  <span style="font-size:22px">🔔</span>
-  <span>TAP HERE TO ARM ALERT SOUNDS — you won't hear a single alert until you do</span>
-  <span style="font-size:22px">👆</span>
-</div>
-<style>@keyframes armPulse{0%,100%{filter:brightness(1)}50%{filter:brightness(1.18)}}
-#armDot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:6px;vertical-align:middle}
-#armDot.live{background:var(--gr);box-shadow:0 0 6px var(--gr)}
-#armDot.dead{background:var(--rd);animation:armPulse 1s infinite}</style>
-
-<div id="loginWall">
-  <div class="login-box">
-    <div id="loginForm" style="display:flex;flex-direction:column">
-      <div class="login-logo">Yedidyah's <span>Dashboard</span></div>
-      <div class="login-sub">Momentum Scanner · Ross Cameron 5 Pillars</div>
-      <input id="loginEmail" type="email" placeholder="Email" autocomplete="username"/>
-      <input id="loginPass" type="password" placeholder="Password" autocomplete="current-password" onkeydown="if(event.key==='Enter')tryLogin()"/>
-      <button class="login-btn" id="loginBtn" onclick="tryLogin()">Sign In →</button>
-      <div class="login-err" id="loginErr"></div>
-      <div class="login-switch">No account? <a onclick="showSignup()">Create one</a></div>
-    </div>
-    <div id="signupForm" style="display:none;flex-direction:column">
-      <div class="login-logo">Create Account</div>
-      <div class="login-sub">Requires admin approval before access</div>
-      <input id="regEmail" type="email" placeholder="Email" autocomplete="username"/>
-      <input id="regPass" type="password" placeholder="Password (min 6 characters)" autocomplete="new-password"/>
-      <button class="login-btn" onclick="trySignup()">Create Account</button>
-      <div class="login-msg" id="regMsg"></div>
-      <div class="login-switch"><a onclick="showLogin()">← Back to sign in</a></div>
-    </div>
-  </div>
-</div>
-
-<!-- NOTES MODAL -->
-<div id="notesModal">
-  <div class="notes-box" style="width:420px;max-height:80vh;display:flex;flex-direction:column">
-    <h3 id="notesModalTitle">📝 Notes — SYMBOL</h3>
-    <textarea id="notesInp" placeholder="Add a new note… e.g. watching breakout above $3.55, strong catalyst, entry plan…"></textarea>
-    <div class="notes-btns">
-      <button class="tb-btn" onclick="closeNotes()">Cancel</button>
-      <button onclick="saveNotes()" style="background:var(--ac);border:none;border-radius:7px;color:#fff;font-weight:700;font-size:12px;padding:8px 16px;cursor:pointer">Save Note</button>
-    </div>
-    <div style="margin-top:14px;border-top:1px solid var(--b1);padding-top:10px;flex:1;overflow-y:auto;max-height:260px">
-      <div style="font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">History</div>
-      <div id="notesHistory"></div>
-    </div>
-  </div>
-</div>
-
-<!-- TRADE JOURNAL MODAL -->
-<div id="journalModal">
-  <div class="journal-box">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <h3>📒 Trade Journal</h3>
-      <button class="tb-btn" onclick="closeJournal()">✕ Close</button>
-    </div>
-    <!-- New trade entry form -->
-    <div style="background:var(--s3);border:1px solid var(--b1);border-radius:10px;padding:14px;margin-bottom:16px">
-      <div style="font-size:10px;font-weight:700;color:var(--ac2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.06em">Log a Trade</div>
-      <div class="journal-grid">
-        <div class="journal-field"><label>Symbol</label><input id="jSym" type="text" placeholder="LNKS" style="text-transform:uppercase"/></div>
-        <div class="journal-field"><label>Side</label><select id="jSide"><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select></div>
-        <div class="journal-field"><label>Entry Price</label><input id="jEntry" type="number" step="0.01" placeholder="2.50"/></div>
-        <div class="journal-field"><label>Exit Price</label><input id="jExit" type="number" step="0.01" placeholder="3.10"/></div>
-        <div class="journal-field"><label>Shares</label><input id="jShares" type="number" placeholder="1000"/></div>
-        <div class="journal-field"><label>Setup Score at Entry</label><select id="jScore"><option>5/5</option><option>4/5</option><option>3/5</option><option>2/5</option><option>manual</option></select></div>
-      </div>
-      <div class="journal-field" style="margin-bottom:10px"><label>Notes / Reason</label><textarea id="jNote" rows="2" placeholder="Why you took the trade, what the catalyst was, how it played out…" style="width:100%;resize:vertical"></textarea></div>
-      <div id="jPnlPreview" class="journal-pnl zero">Enter prices + shares to see P&L</div>
-      <button onclick="saveTradeEntry()" style="width:100%;background:var(--ac);border:none;border-radius:8px;color:#fff;font-weight:700;font-size:13px;padding:10px;cursor:pointer">Save Trade →</button>
-    </div>
-    <!-- Trade history -->
-    <div style="font-size:10px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">
-      History
-      <span id="jTotalPnl" style="margin-left:10px;font-size:11px;font-family:'DM Mono',monospace"></span>
-    </div>
-    <div class="journal-trades">
-      <div class="journal-trade-row journal-trade-hdr">
-        <span>Date</span><span>Symbol</span><span>Side</span><span>P&L $</span><span>P&L %</span><span>Score</span>
-      </div>
-      <div id="journalList"></div>
-    </div>
-  </div>
-</div>
-
-<div id="mainApp">
-  <div class="topbar" style="position:relative">
-    <div style="flex-shrink:0">
-      <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.62</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
-    </div>
-    <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
-    <div class="clock-center">
-      <span id="htime" class="cls-color">—</span>
-      <span class="sess cls" id="sessbdg">—</span>
-    </div>
-    <div class="topbar-right">
-      <button class="tb-btn" id="soundBtn" onclick="toggleSound()" title="Toggle alert sounds">🔔</button>
-      <button class="tb-btn" onclick="toggleFilters()">⚙ Filters</button>
-      <button class="tb-btn" id="pulseToggleBtn" onclick="togglePulse()">📊 Pulse</button>
-      <button class="tb-btn" id="logToggleBtn" onclick="toggleLog()">📋 Log</button>
-      <button class="tb-btn" onclick="openJournal()">📒 Journal</button>
-      <button class="tb-btn" id="claudeToggleBtn" onclick="toggleClaude()">🤖 Claude</button>
-      <button class="tb-btn" onclick="logout()">Sign Out</button>
-    </div>
-  </div>
-
-  <div class="main">
-    <div class="scanner-col">
-      <div class="scanner-wrap">
-
-        <div class="scan-hdr">
-          <div class="scan-title">
-            <h2>🎯 5 Pillars Scanner</h2>
-            <span class="scan-count" id="scanCount">0</span>
-          </div>
-          <div class="scan-hdr-right">
-            <div id="sectorAlert" style="display:none" class="sector-alert"></div>
-            <button class="copy-syms-btn" id="splitBtn" onclick="toggleSplit()" title="Split into Setups + Momentum columns" style="margin-right:6px">▤ List</button>
-            <button class="copy-syms-btn" id="sortModeBtn" onclick="toggleSortMode()" title="Toggle: Heat (most active first) or Score (5→1)" style="margin-right:6px">🔥 Heat</button>
-            <button class="copy-syms-btn" onclick="copySymbols()" title="Copy all passing symbols to clipboard">📋 Copy All</button>
-            <span class="scan-status" id="scanStatus">Starting…</span>
-          </div>
-        </div>
-
-        <div class="scan-filters" id="scanFilters" style="display:none">
-          <div class="flt-g"><span class="flt-l">Min Price</span><input class="flt-i" type="number" value="1" step="0.5" id="f-minp"/></div>
-          <div class="flt-g"><span class="flt-l">Max Price</span><input class="flt-i" type="number" value="10" id="f-maxp"/></div>
-          <div class="flt-divider"></div>
-          <div class="flt-g"><span class="flt-l">Min % Change</span><input class="flt-i" type="number" value="10" id="f-chg"/></div>
-          <div class="flt-g"><span class="flt-l">Min RVOL</span><input class="flt-i" type="number" value="2" step="0.5" id="f-rvol"/></div>
-          <div class="flt-divider"></div>
-          <div class="flt-g"><span class="flt-l">Auto-remove (min)</span><input class="flt-i" type="number" value="5" min="1" max="60" id="f-autorm"/></div>
-          <div class="flt-divider"></div>
-          <div class="flt-g"><span class="flt-l">Max shown</span><input class="flt-i" type="number" value="15" min="5" max="100" id="f-maxshow" title="Max symbols shown in scanner — tracked symbols continue scoring silently"/></div>
-          <div class="sess-threshold">
-            <span class="flt-l">Active Threshold</span>
-            <span class="thresh-val cls" id="sessThreshold">—</span>
-          </div>
-        </div>
-
-        <div id="newsPanel">
-          <div class="news-hdr">
-            <span>📰 News — <span id="newsPanelSym" class="news-sym-label">select a row</span></span>
-            <button class="tb-btn" style="padding:3px 8px;font-size:10px" onclick="closeNewsPanel()">✕</button>
-          </div>
-          <div class="news-list" id="newsList"><div class="news-empty">Click a row to load headlines</div></div>
-        </div>
-
-        <div id="claudePanel">
-          <div class="claude-key-row" id="claudeKeyRow">
-            <span style="font-size:10px;color:var(--mu)">Paste your Anthropic API key (sk-ant-…) — stored only in this browser</span>
-            <div style="display:flex;gap:6px">
-              <input id="claudeKeyInp" type="password" placeholder="sk-ant-…" style="flex:1;background:var(--s1);border:1px solid var(--b2);border-radius:7px;color:var(--tx);padding:8px 10px;font-size:12px;outline:none;font-family:'DM Mono',monospace" onkeydown="if(event.key==='Enter')saveClaudeKey()"/>
-              <button onclick="saveClaudeKey()" style="background:var(--ac);border:none;border-radius:7px;color:#fff;font-weight:700;font-size:12px;padding:8px 14px;cursor:pointer">Save</button>
-            </div>
-          </div>
-          <div class="claude-msgs" id="claudeMsgs"></div>
-          <div class="claude-inp-row">
-            <button class="tb-btn" style="font-size:11px" onclick="askClaude('Summarize the live scanner — what are the top setups right now and why?')">⚡ Summarize</button>
-            <input id="claudeInp" type="text" placeholder="Ask about your scanner…" style="flex:1;background:var(--s1);border:1px solid var(--b2);border-radius:7px;color:var(--tx);padding:7px 10px;font-size:13px;outline:none" onkeydown="if(event.key==='Enter'){const v=this.value.trim();if(v){this.value='';askClaude(v);}}"/>
-            <button onclick="const i=document.getElementById('claudeInp');const v=i.value.trim();if(v){i.value='';askClaude(v);}" style="background:var(--ac);border:none;border-radius:7px;color:#fff;font-weight:700;font-size:12px;padding:8px 14px;cursor:pointer">Send</button>
-          </div>
-        </div>
-
-        <div class="scan-add">
-          <input id="addSymInp" type="text" placeholder="Paste tickers: GETY, SAGT, EHGO or just one — press Enter to add + score all 5 pillars" onkeydown="if(event.key==='Enter')addScanSyms()"/>
-          <button onclick="addScanSyms()">Check →</button>
-        </div>
-
-        <div class="scan-tags-wrap" id="scanTagsWrap" style="display:none">
-          <div class="scan-tags" id="scanTags"></div>
-          <button class="tags-clear" onclick="clearAllSyms()">Clear all</button>
-          <button class="tags-clear" onclick="forceRescan()" style="color:var(--ac2);border-color:var(--ac)">↺ Reload</button>
-        </div>
-
-        <div class="scan-list" id="scanList">
-          <div class="sort-bar" id="sortBar" style="display:none">
-            <span class="sort-col" onclick="setSort('sym')">Symbol <span class="arr" id="arr-sym"></span></span>
-            <span class="sort-col right" onclick="setSort('px')">Price <span class="arr" id="arr-px"></span></span>
-            <span class="sort-col right" onclick="setSort('chg')">Change <span class="arr" id="arr-chg"></span></span>
-            <span class="sort-col" onclick="setSort('rvol')" style="padding-left:6px">RVOL / Float <span class="arr" id="arr-rvol"></span></span>
-            <span class="sort-col" style="padding-left:8px">News Catalyst</span>
-            <span class="sort-col" onclick="setSort('score')" style="padding-left:6px">Pillars <span class="arr" id="arr-score"></span></span>
-            <span class="sort-col right" onclick="setSort('score')">Score <span class="arr" id="arr-score2"></span></span>
-          </div>
-          <div id="scanRows"></div>
-          <div class="scan-empty" id="scanEmpty">
-            <div class="ic">🎯</div>
-            <div class="t">Scanning the market…</div>
-            <div class="d">Webull live scan running. Watching 100 top movers across the entire market.</div>
-          </div>
-        </div>
-
-      </div>
-
-      <div class="chart-panel" id="chartPanel" style="display:none" onclick="openTVPopup()">
-        <span class="cp-sym" id="cpSym">—</span>
-        <span class="cp-px" id="cpPx">—</span>
-        <span class="cp-chg" id="cpChg">—</span>
-        <span class="cp-pmh" id="cpPmh"></span>
-        <span class="cp-spread" id="cpSpread"></span>
-        <span class="cp-meta" id="cpMeta">Click to pop out full chart →</span>
-        <button class="cp-note-btn" id="cpNoteBtn" onclick="event.stopPropagation();showNoteBtn()" style="display:none">📝 Note</button>
-        <button class="cp-pop" onclick="event.stopPropagation();openTVPopup()">Pop Out ↗</button>
-      </div>
-    </div>
-
-    <!-- MARKET PULSE PANEL -->
-    <div id="pulsePanel">
-      <div class="pulse-hdr">
-        <span>📊 Market Pulse</span>
-        <button class="tb-btn" style="padding:2px 7px;font-size:10px" onclick="togglePulse()">✕</button>
-      </div>
-      <div class="pulse-section">
-        <div class="pulse-section-title">Session Stats</div>
-        <div class="pulse-stat"><span class="pulse-stat-label">Symbols tracked</span><span class="pulse-stat-val" id="ps-total">0</span></div>
-        <div class="pulse-stat"><span class="pulse-stat-label">Passing P1+P2</span><span class="pulse-stat-val" id="ps-passing">0</span></div>
-        <div class="pulse-stat"><span class="pulse-stat-label">5/5 setups</span><span class="pulse-stat-val" style="color:var(--gr)" id="ps-five">0</span></div>
-        <div class="pulse-stat"><span class="pulse-stat-label">4/5 setups</span><span class="pulse-stat-val" style="color:var(--gold)" id="ps-four">0</span></div>
-        <div class="pulse-stat"><span class="pulse-stat-label">Avg % change</span><span class="pulse-stat-val" id="ps-avgchg">—</span></div>
-        <div class="pulse-stat"><span class="pulse-stat-label">Top mover</span><span class="pulse-stat-val" style="color:var(--gr)" id="ps-top">—</span></div>
-      </div>
-      <div class="pulse-section">
-        <div class="pulse-section-title">🔥 Best Setups</div>
-        <div id="ps-best-list"></div>
-      </div>
-      <div class="pulse-section">
-        <div class="pulse-section-title">🔔 Recent Alerts</div>
-        <div id="ps-alert-list" style="font-size:10px;line-height:1.5"></div>
-      </div>
-      <div class="pulse-section">
-        <div class="pulse-section-title">📝 My Notes</div>
-        <div id="ps-notes-list" style="font-size:10px;color:var(--mu);line-height:1.6"></div>
-      </div>
-    </div>
-
-    <!-- SESSION LOG PANEL -->
-    <div id="logPanel">
-      <div class="log-hdr">
-        <span>📋 Session Log</span>
-        <button class="tb-btn" style="padding:2px 7px;font-size:10px" onclick="toggleLog()">✕</button>
-      </div>
-      <div id="logList" style="flex:1;overflow-y:auto">
-        <div style="padding:16px 12px;font-size:10px;color:var(--dim)">Session events will appear here as they happen.</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"></div>
-
-<script>
-// ═══ SUPABASE ═══
-const SUPA_URL='https://yklxpcatopitwjzutolj.supabase.co';
-const SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlrbHhwY2F0b3BpdHdqenV0b2xqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA4MDYyMTEsImV4cCI6MjA5NjM4MjIxMX0.KJotgJpSLziUvdZkUb66tV7vZXPEfMOjGOij2-vmk6Q';
-let _supaAuthDead=false;
-const sf=(p,o={})=>{
-  if(_supaAuthDead&&p.includes('/rest/v1/'))return Promise.resolve(new Response('{}',{status:401}));
-  return fetch(SUPA_URL+p,{...o,headers:{'apikey':SUPA_KEY,'Content-Type':'application/json',...(o.headers||{})}}).then(r=>{
-    if(r.status===401&&p.includes('/rest/v1/'))_supaAuthDead=true;
-    return r;
-  });
+const CORS = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Cache-Control': 'no-store',
 };
-async function tryLogin(){
-  const email=document.getElementById('loginEmail').value.trim(),pass=document.getElementById('loginPass').value.trim();
-  const err=document.getElementById('loginErr'),btn=document.getElementById('loginBtn');
-  if(!email||!pass){err.textContent='Please enter email and password.';err.style.display='block';return;}
-  btn.textContent='Signing in…';btn.disabled=true;
-  try{
-    const r=await sf('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email,password:pass})});
-    const d=await r.json();
-    if(!r.ok){err.textContent=d.error_description||'Invalid credentials.';err.style.display='block';btn.textContent='Sign In →';btn.disabled=false;return;}
-    const pr=await sf('/rest/v1/profiles?select=approved&id=eq.'+d.user.id,{headers:{'Authorization':'Bearer '+d.access_token}});
-    const prof=await pr.json();
-    if(!prof?.[0]?.approved){err.textContent='Pending admin approval.';err.style.display='block';btn.textContent='Sign In →';btn.disabled=false;return;}
-    sessionStorage.setItem('sv_token',d.access_token);sessionStorage.setItem('sv_refresh',d.refresh_token||'');sessionStorage.setItem('sv_uid',d.user.id);sessionStorage.setItem('sv_email',d.user.email);
-    showApp();
-  }catch(e){err.textContent='Connection error.';err.style.display='block';btn.textContent='Sign In →';btn.disabled=false;}
-}
-async function trySignup(){
-  const email=document.getElementById('regEmail').value.trim(),pass=document.getElementById('regPass').value.trim();
-  const msg=document.getElementById('regMsg');
-  if(!email||!pass){msg.style.color='#f0506e';msg.textContent='Fill in all fields.';msg.style.display='block';return;}
-  if(pass.length<6){msg.style.color='#f0506e';msg.textContent='Password min 6 chars.';msg.style.display='block';return;}
-  try{
-    const r=await sf('/auth/v1/signup',{method:'POST',body:JSON.stringify({email,password:pass})});
-    const d=await r.json();
-    if(!r.ok){msg.style.color='#f0506e';msg.textContent=d.error_description||'Signup failed.';msg.style.display='block';return;}
-    if(d.user?.id)await sf('/rest/v1/profiles',{method:'POST',headers:{'Authorization':'Bearer '+d.access_token,'Prefer':'return=minimal'},body:JSON.stringify({id:d.user.id,email,approved:false})});
-    msg.style.color='#19c48a';msg.textContent='Account created! Awaiting admin approval.';msg.style.display='block';
-    setTimeout(()=>showLogin(),4000);
-  }catch(e){msg.style.color='#f0506e';msg.textContent='Connection error.';msg.style.display='block';}
-}
-function showSignup(){document.getElementById('loginForm').style.display='none';document.getElementById('signupForm').style.display='flex';}
-function showLogin(){document.getElementById('signupForm').style.display='none';document.getElementById('loginForm').style.display='flex';document.getElementById('loginErr').style.display='none';}
-function showApp(){document.getElementById('loginWall').style.display='none';document.getElementById('mainApp').style.display='flex';const b=document.getElementById('sortModeBtn');if(b)b.textContent=sortMode==='heat'?'🔥 Heat':'🏆 Score';const sb=document.getElementById('splitBtn');if(sb){sb.textContent=splitView?'▣ Split':'▤ List';sb.classList.toggle('on',splitView);}setTimeout(init,50);}
-function checkAuth(){if(sessionStorage.getItem('sv_token')){showApp();return true;}document.getElementById('loginWall').style.display='flex';return false;}
-function logout(){sessionStorage.clear();location.reload();}
 
-// ═══ CONFIG ═══
-// Finnhub key moved to Worker — never expose API keys in browser code
-const WORKER_URL='https://webull-proxy.yedidyah-claude.workers.dev';
+// ─── MD5 (pure JS, for POST bodies) ──────────────────────────────────────────
+function md5Hex(str) {
+  function safeAdd(x,y){const lsw=(x&0xffff)+(y&0xffff);const msw=(x>>16)+(y>>16)+(lsw>>16);return(msw<<16)|(lsw&0xffff);}
+  function bitRotateLeft(num,cnt){return(num<<cnt)|(num>>>(32-cnt));}
+  function md5cmn(q,a,b,x,s,t){return safeAdd(bitRotateLeft(safeAdd(safeAdd(a,q),safeAdd(x,t)),s),b);}
+  function md5ff(a,b,c,d,x,s,t){return md5cmn((b&c)|((~b)&d),a,b,x,s,t);}
+  function md5gg(a,b,c,d,x,s,t){return md5cmn((b&d)|(c&(~d)),a,b,x,s,t);}
+  function md5hh(a,b,c,d,x,s,t){return md5cmn(b^c^d,a,b,x,s,t);}
+  function md5ii(a,b,c,d,x,s,t){return md5cmn(c^(b|(~d)),a,b,x,s,t);}
+  function md5blks(s){const nblk=((s.length+8)>>6)+1,blks=new Array(nblk*16).fill(0);for(let i=0;i<s.length;i++)blks[i>>2]|=s.charCodeAt(i)<<((i%4)*8);blks[s.length>>2]|=0x80<<((s.length%4)*8);blks[nblk*16-2]=s.length*8;return blks;}
+  function rhex(n){let s='',j;for(j=0;j<4;j++)s+=('0'+((n>>(j*8+4))&0x0f).toString(16)).slice(-1)+('0'+((n>>(j*8))&0x0f).toString(16)).slice(-1);return s;}
+  const x=md5blks(str);let a=1732584193,b=-271733879,c=-1732584194,d=271733878;
+  for(let i=0;i<x.length;i+=16){const[oa,ob,oc,od]=[a,b,c,d];a=md5ff(a,b,c,d,x[i],7,-680876936);d=md5ff(d,a,b,c,x[i+1],12,-389564586);c=md5ff(c,d,a,b,x[i+2],17,606105819);b=md5ff(b,c,d,a,x[i+3],22,-1044525330);a=md5ff(a,b,c,d,x[i+4],7,-176418897);d=md5ff(d,a,b,c,x[i+5],12,1200080426);c=md5ff(c,d,a,b,x[i+6],17,-1473231341);b=md5ff(b,c,d,a,x[i+7],22,-45705983);a=md5ff(a,b,c,d,x[i+8],7,1770035416);d=md5ff(d,a,b,c,x[i+9],12,-1958414417);c=md5ff(c,d,a,b,x[i+10],17,-42063);b=md5ff(b,c,d,a,x[i+11],22,-1990404162);a=md5ff(a,b,c,d,x[i+12],7,1804603682);d=md5ff(d,a,b,c,x[i+13],12,-40341101);c=md5ff(c,d,a,b,x[i+14],17,-1502002290);b=md5ff(b,c,d,a,x[i+15],22,1236535329);a=md5gg(a,b,c,d,x[i+1],5,-165796510);d=md5gg(d,a,b,c,x[i+6],9,-1069501632);c=md5gg(c,d,a,b,x[i+11],14,643717713);b=md5gg(b,c,d,a,x[i],20,-373897302);a=md5gg(a,b,c,d,x[i+5],5,-701558691);d=md5gg(d,a,b,c,x[i+10],9,38016083);c=md5gg(c,d,a,b,x[i+15],14,-660478335);b=md5gg(b,c,d,a,x[i+4],20,-405537848);a=md5gg(a,b,c,d,x[i+9],5,568446438);d=md5gg(d,a,b,c,x[i+14],9,-1019803690);c=md5gg(c,d,a,b,x[i+3],14,-187363961);b=md5gg(b,c,d,a,x[i+8],20,1163531501);a=md5gg(a,b,c,d,x[i+13],5,-1444681467);d=md5gg(d,a,b,c,x[i+2],9,-51403784);c=md5gg(c,d,a,b,x[i+7],14,1735328473);b=md5gg(b,c,d,a,x[i+12],20,-1926607734);a=md5hh(a,b,c,d,x[i+5],4,-378558);d=md5hh(d,a,b,c,x[i+8],11,-2022574463);c=md5hh(c,d,a,b,x[i+11],16,1839030562);b=md5hh(b,c,d,a,x[i+14],23,-35309556);a=md5hh(a,b,c,d,x[i+1],4,-1530992060);d=md5hh(d,a,b,c,x[i+4],11,1272893353);c=md5hh(c,d,a,b,x[i+7],16,-155497632);b=md5hh(b,c,d,a,x[i+10],23,-1094730640);a=md5hh(a,b,c,d,x[i+13],4,681279174);d=md5hh(d,a,b,c,x[i],11,-358537222);c=md5hh(c,d,a,b,x[i+3],16,-722521979);b=md5hh(b,c,d,a,x[i+6],23,76029189);a=md5hh(a,b,c,d,x[i+9],4,-640364487);d=md5hh(d,a,b,c,x[i+12],11,-421815835);c=md5hh(c,d,a,b,x[i+15],16,530742520);b=md5hh(b,c,d,a,x[i+2],23,-995338651);a=md5ii(a,b,c,d,x[i],6,-198630844);d=md5ii(d,a,b,c,x[i+7],10,1126891415);c=md5ii(c,d,a,b,x[i+14],15,-1416354905);b=md5ii(b,c,d,a,x[i+5],21,-57434055);a=md5ii(a,b,c,d,x[i+12],6,1700485571);d=md5ii(d,a,b,c,x[i+3],10,-1894986606);c=md5ii(c,d,a,b,x[i+10],15,-1051523);b=md5ii(b,c,d,a,x[i+1],21,-2054922799);a=md5ii(a,b,c,d,x[i+8],6,1873313359);d=md5ii(d,a,b,c,x[i+15],10,-30611744);c=md5ii(c,d,a,b,x[i+6],15,-1560198380);b=md5ii(b,c,d,a,x[i+13],21,1309151649);a=md5ii(a,b,c,d,x[i+4],6,-145523070);d=md5ii(d,a,b,c,x[i+11],10,-1120210379);c=md5ii(c,d,a,b,x[i+2],15,718787259);b=md5ii(b,c,d,a,x[i+9],21,-343485551);a=safeAdd(a,oa);b=safeAdd(b,ob);c=safeAdd(c,oc);d=safeAdd(d,od);}
+  return (rhex(a)+rhex(b)+rhex(c)+rhex(d)).toUpperCase();
+}
 
-// Reports failed API calls to the Worker's KV log so Claude can pull the
-// real error history next session instead of relying on console screenshots.
-// Fire-and-forget — never blocks or throws on its own failure.
-function logErrorToServer(source,status,url,message){
-  try{
-    fetch(WORKER_URL+'/log-error',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({source,status,url,message:(message||'').slice(0,300)})
-    }).catch(()=>{});
-  }catch(e){}
+// ─── HMAC-SHA1 ────────────────────────────────────────────────────────────────
+async function hmacSha1Base64(secret, message) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-1' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
+  return btoa(String.fromCharCode(...new Uint8Array(sig)));
 }
-const FH_URL='https://finnhub-proxy.yedidyah-claude.workers.dev';
 
-// ═══ STATE ═══
-let Q={};
-let scanSyms=JSON.parse(localStorage.getItem('sv_scan_v1')||'[]');
-let scanCache={};
-// Persisted: source + age must survive a reload, or every symbol reverts to
-// "manual" with no badge and the daily-clear logic loses its timestamps.
-let symMeta=new Map(JSON.parse(localStorage.getItem('sv_meta_v1')||'[]'));
-function saveMeta(){try{localStorage.setItem('sv_meta_v1',JSON.stringify([...symMeta]));}catch(e){}}
-let failTimer={};
-let pmHigh={};
-let symNotes=JSON.parse(localStorage.getItem('sv_notes_v1')||'{}');
-let starredSyms=new Set(JSON.parse(localStorage.getItem('sv_starred_v1')||'[]'));
-let tradeJournal=JSON.parse(localStorage.getItem('sv_journal_v1')||'[]'); // [{id,sym,side,entry,exit,shares,score,note,ts}]
-let sessionLog=[]; // [{ts, type, sym, detail}] — in-memory only, resets each session
-let logOpen=false;
-// Migrate old flat string notes to new array format
-(()=>{
-  let migrated=false;
-  Object.keys(symNotes).forEach(sym=>{
-    if(typeof symNotes[sym]==='string'){
-      symNotes[sym]=[{text:symNotes[sym],ts:new Date(0).toISOString()}];
-      migrated=true;
-    }
-  });
-  if(migrated)localStorage.setItem('sv_notes_v1',JSON.stringify(symNotes));
-})();
-let appReady=false;
-let curChartSym=null;
-let scanDeepRunning=false;
-let _uniIdx=0;
-let _uniRunning=false;
-let _uniStarted=false;
-let _webullScanRunning=false;
-let _lastWebullCall=0;
-let fhWS=null;
-let _wsGaveUp=false;
-let sortCol='score';
-let sortMode=localStorage.getItem('sv_sortmode')||'heat'; // 'heat' = most active first, 'score' = 5→1
-let splitView=localStorage.getItem('sv_splitview')!=='0'; // default ON
-const _momentumSticky={}; // sym -> expiry: keeps a spiker on the momentum board a few cycles
-const _setupSticky={}; // sym -> expiry: keeps a 3/5+ setup on the left board a few cycles
-const _lastHod={}; // sym -> last seen high-of-day, for detecting NEW HOD events (Ross's HOD Momo)
-const _lastGoodRow={}; // sym -> last successfully-scored row, kept across transient data gaps
-// Webull's pre-market change_ratio is measured from a STALE previous close, so a
-// stock that ran YESTERDAY still reports a huge gain today (LABT: Webull +83%,
-// reality -5.9%). When we know the true previous close from Finnhub, recompute the
-// percentage from that. Falls back to Webull's number when we don't know better.
-function _correctPct(sym,px,wbPct){
-  const tp=Q[sym]?._truePc;
-  if(tp>0&&px>0)return (px-tp)/tp*100;
-  return wbPct;
-}
-let splitSwap=localStorage.getItem('sv_splitswap')==='1';
-// Symbols clicked/searched are HELD in the Setups (left) column for 3 min, even
-// at 0/5 — so a momentum pick you're watching stays visible while its setup forms.
-const HOLD_MS=180000;
-let heldSyms={}; // sym -> expiry timestamp
-function holdSym(sym){heldSyms[sym]=Date.now()+HOLD_MS;liveScanUpdate();}
-function releaseHold(sym,e){if(e)e.stopPropagation();delete heldSyms[sym];liveScanUpdate();}
-function isHeld(sym){return heldSyms[sym]&&heldSyms[sym]>Date.now();}
-function toggleSplit(){splitView=!splitView;localStorage.setItem('sv_splitview',splitView?'1':'0');const b=document.getElementById('splitBtn');if(b){b.textContent=splitView?'▣ Split':'▤ List';b.classList.toggle('on',splitView);}liveScanUpdate();}
-function swapSplit(){splitSwap=!splitSwap;localStorage.setItem('sv_splitswap',splitSwap?'1':'0');liveScanUpdate();}
-function toggleSortMode(){sortMode=sortMode==='heat'?'score':'heat';localStorage.setItem('sv_sortmode',sortMode);const b=document.getElementById('sortModeBtn');if(b)b.textContent=sortMode==='heat'?'🔥 Heat':'🏆 Score';liveScanUpdate();}
-let sortDir=-1;
-let pulseOpen=true;
-
-// ═══ SESSION / CLOCK ═══
-function getSession(){
-  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
-  const m=et.getHours()*60+et.getMinutes(),d=et.getDay();
-  const y=et.getFullYear(),mo=et.getMonth()+1,day=et.getDate();
-  // Weekends always closed
-  if(d===0||d===6)return'cls';
-  // US Market Holidays (fixed + observed rules)
-  const holidays=[
-    `${y}-01-01`, // New Year's Day
-    `${y}-01-20`, // MLK Day (3rd Monday Jan — approximate, good enough)
-    `${y}-02-17`, // Presidents Day (3rd Monday Feb)
-    `${y}-04-18`, // Good Friday 2025 — update yearly or compute
-    `${y}-05-26`, // Memorial Day (last Monday May)
-    `${y}-06-19`, // Juneteenth
-    `${y}-07-04`, // Independence Day
-    `${y}-09-01`, // Labor Day (1st Monday Sep)
-    `${y}-11-27`, // Thanksgiving (4th Thursday Nov)
-    `${y}-12-25`, // Christmas
-  ];
-  // Observed: if holiday falls on Saturday, Friday before is off; Sunday -> Monday
-  const pad=n=>String(n).padStart(2,'0');
-  const todayStr=`${y}-${pad(mo)}-${pad(day)}`;
-  // Check if today is a holiday or observed holiday
-  const isHoliday=holidays.some(h=>{
-    const hd=new Date(h+'T12:00:00');
-    const hw=hd.getDay();
-    if(hw===6){// Saturday holiday -> Friday off
-      const fri=new Date(hd);fri.setDate(fri.getDate()-1);
-      return todayStr===`${fri.getFullYear()}-${pad(fri.getMonth()+1)}-${pad(fri.getDate())}`;
-    }
-    if(hw===0){// Sunday holiday -> Monday off
-      const mon=new Date(hd);mon.setDate(mon.getDate()+1);
-      return todayStr===`${mon.getFullYear()}-${pad(mon.getMonth()+1)}-${pad(mon.getDate())}`;
-    }
-    return todayStr===h;
-  });
-  if(isHoliday)return'cls';
-  if(m>=240&&m<570)return'pre';if(m>=570&&m<960)return'mkt';if(m>=960&&m<1200)return'aft';return'cls';
-}
-function tick(){
-  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
-  const p=n=>String(n).padStart(2,'0');
-  const timeStr=`${p(et.getHours())}:${p(et.getMinutes())}:${p(et.getSeconds())}`;
-  const htEl=document.getElementById('htime');
-  if(htEl)htEl.textContent=timeStr;
-  const sess=getSession();
-  const colorMap={pre:'pre-color',mkt:'mkt-color',aft:'aft-color',cls:'cls-color'};
-  if(htEl){htEl.className=colorMap[sess]||'cls-color';}
-  const labels={pre:'PRE-MARKET',mkt:'MKT OPEN',aft:'AFTER HRS',cls:'CLOSED'};
-  const el=document.getElementById('sessbdg');if(el){el.textContent=labels[sess];el.className='sess '+sess;}
-  const threshEl=document.getElementById('sessThreshold');
-  if(threshEl){
-    const threshMap={pre:'≥5% (Pre)',mkt:'≥10% (Mkt)',aft:'≥5% (Aft)',cls:'≥10% (Cls)'};
-    threshEl.textContent=threshMap[sess]||'≥10%';
-    threshEl.className='thresh-val '+sess;
-  }
-  const mins=et.getHours()*60+et.getMinutes();
-  if(mins===240&&et.getSeconds()===0)pmHigh={};
-}
-setInterval(tick,1000);tick();
-
-// ═══ UTILITIES ═══
-function fmtP(p){return p?parseFloat(p).toFixed(2):'—';}
-function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.opacity='1';clearTimeout(t._t);t._t=setTimeout(()=>t.style.opacity='0',3500);}
-// ── VISUAL ALERT SYSTEM — replaces Web Audio API (which was causing bugs) ──
-// Uses CSS animations on the scan header to signal different alert types.
-// No AudioContext, no browser limits, works on all devices including iPhone.
-// ═══ SOUND ALERTS (v3.9.18) ═══
-// 5 distinct sounds, all synthesized — no audio files, works offline.
-// AudioContext is created on first tap/click (browser autoplay policy).
-let soundOn=localStorage.getItem('sv_sound')!=='0';
-let _actx=null;
-let _audioUnlocked=false;
-function _ctx(){if(!_actx){try{_actx=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}}if(_actx&&_actx.state==='suspended')_actx.resume();return _actx;}
-function unlockAudio(){_ctx();_audioUnlocked=true;const b=document.getElementById('audioBanner');if(b)b.style.display='none';const d=document.getElementById('armDot');if(d){d.className='live';d.title='Alert sounds armed ✓';}showToast('🔔 Alerts armed — you\'ll hear every setup now');try{playSound('score4');}catch(e){}}
-document.addEventListener('pointerdown',()=>{if(!_audioUnlocked)unlockAudio();},{once:true});
-document.addEventListener('keydown',()=>{if(!_audioUnlocked)unlockAudio();},{once:true});
-// A fresh page load has audio blocked by the browser until the first interaction.
-// Loading at 4am and walking away = every ping silent. Nag until it's unlocked.
-setTimeout(()=>{
-  if(_audioUnlocked)return;
-  const b=document.getElementById('audioBanner');
-  if(b)b.style.display='flex';
-},2500);
-function tone(freq,start,dur,type='sine',vol=0.18){
-  const c=_ctx();if(!c)return;
-  try{
-    const o=c.createOscillator(),g=c.createGain();
-    o.type=type;o.frequency.value=freq;
-    g.gain.setValueAtTime(0.0001,c.currentTime+start);
-    g.gain.linearRampToValueAtTime(vol,c.currentTime+start+0.01);
-    g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+start+dur);
-    o.connect(g);g.connect(c.destination);
-    o.start(c.currentTime+start);o.stop(c.currentTime+start+dur+0.05);
-  }catch(e){}
-}
-function playSound(type){
-  if(!soundOn)return;
-  switch(type){
-    case 'score5':tone(523,0,.14);tone(659,.12,.14);tone(784,.24,.14);tone(1047,.36,.32);break;      // 🚀 rising C-E-G-C arpeggio — jackpot
-    case 'score4':tone(392,0,.12,'triangle');tone(523,.13,.24,'triangle');break;                     // ⚡ two-note rise — priority
-    case 'pmh':tone(1319,0,.09,'square',0.12);tone(1319,.14,.09,'square',0.12);break;
-    case 'spike':tone(659,0,.08,'square',0.12);tone(988,.09,.14,'square',0.13);break;                // 🎯 urgent double ping — PMH breakout
-    case 'halt':tone(220,0,.28,'sawtooth',0.14);tone(165,.26,.36,'sawtooth',0.14);break;             // 🛑 low descending — warning
-    default:tone(880,0,.08,'sine',0.11);                                                              // 🔥 soft blip — new symbol
-  }
-}
-function toggleSound(){
-  soundOn=!soundOn;localStorage.setItem('sv_sound',soundOn?'1':'0');
-  const b=document.getElementById('soundBtn');if(b)b.textContent=soundOn?'🔔':'🔕';
-  showToast(soundOn?'🔔 Alert sounds ON':'🔕 Alert sounds muted');
-  if(soundOn)playSound('new');
-}
-setTimeout(()=>{const b=document.getElementById('soundBtn');if(b)b.textContent=soundOn?'🔔':'🔕';},0);
-// PMH breakout — fires ONCE per symbol per day, only during regular market hours,
-// the first time price crosses above the recorded pre-market high (key entry trigger).
-const _pmhAlerted={};
-// ═══ ALERT SYSTEM (v3.9.37) — 4 sounds, each one meaning ═══
-// A setup only alerts if it has REAL volume — the same gate that keeps
-// fake-% artifacts out of the top ranking. No volume = no alert, ever.
-//   🎯 PMH break     — urgent double-ping, the entry trigger (checkPmhBreak)
-//   🚀 new 5/5       — jackpot arpeggio, once when it first hits 5
-//   ⚡ new 4/5       — two-note rise, once when it first hits 4 (or 4→5 upgrade)
-//   🔥 standing 4/5+ — soft blip every 2 min while it sits unactioned
-const _alertState={}; // sym -> {lastScore, lastStandingPing}
-function hasRealVolume(sym){
-  const q=Q[sym];
-  return !!q && (q._fromWebull||q._volFmp) && (q.volume||0)>0;
-}
-// ═══ ALERT HISTORY — rolling record of what pinged, so a missed sound/ping is
-// still visible in the sidebar. Persists for the session.
-let alertHistory=JSON.parse(sessionStorage.getItem('sv_alert_hist')||'[]');
-function recordAlert(kind,sym,detail){
-  const et=new Date().toLocaleTimeString('en-US',{hour12:false,timeZone:'America/New_York'});
-  alertHistory.unshift({t:et,kind,sym,detail});
-  if(alertHistory.length>15)alertHistory.pop();
-  try{sessionStorage.setItem('sv_alert_hist',JSON.stringify(alertHistory));}catch(e){}
-  renderAlertHistory();
-}
-function renderAlertHistory(){
-  const el=document.getElementById('ps-alert-list');if(!el)return;
-  if(!alertHistory.length){el.innerHTML='<div style="color:var(--dim)">No alerts yet this session.</div>';return;}
-  const icon={pmh:'🎯',score5:'🚀',score4:'⚡',standing:'🔥',spike:'⚡',hod:'📈'};
-  const col={pmh:'var(--cyan)',score5:'var(--gr)',score4:'var(--gold)',standing:'var(--gold)',spike:'var(--gold)',hod:'var(--cyan)'};
-  el.innerHTML=alertHistory.map(a=>
-    '<div style="display:flex;gap:6px;align-items:baseline;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer" onclick="selectSym(\''+a.sym+'\')">'
-    +'<span>'+(icon[a.kind]||'🔔')+'</span>'
-    +'<span style="font-weight:800;color:'+(col[a.kind]||'var(--txt)')+'">'+a.sym+'</span>'
-    +'<span style="color:var(--mu);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+a.detail+'</span>'
-    +'<span style="color:var(--dim);font-family:monospace;font-size:9px">'+a.t.slice(0,5)+'</span>'
-    +'</div>'
-  ).join('');
-}
-function checkSetupAlerts(sym,score){
-  const q=Q[sym];
-  if(!q||!hasRealVolume(sym)){if(_alertState[sym])_alertState[sym].lastScore=score;return;}
-  const now=Date.now();
-  const st=_alertState[sym]||{lastScore:0,lastAlertedScore:0,lastScoreAlertTs:0,lastAlertPx:0,lastHod:0,lastSpikeTs:0};
-
-  // ── EVENT 1: score reaches a NEW higher level (a real setup formed) ──
-  // Guard against P4/volume-gate flicker bouncing score 3↔4↔3: only fire when we
-  // reach a score we haven't already alerted, AND enforce a 10-min cooldown per
-  // symbol so a transient dip-and-recover can't re-trigger the same alert.
-  if(score>=4 && score>st.lastAlertedScore && now-st.lastScoreAlertTs>=600000){
-    playPing(score>=5?'score5':'score4');
-    showToast((score>=5?'🚀 ':'⚡ ')+sym+' is '+score+'/5'+(soundOn?'':' (🔕)'));
-    addLog(score>=5?'score5':'score4',sym,'Reached '+score+'/5');
-    recordAlert(score>=5?'score5':'score4',sym,'hit '+score+'/5 · $'+q.price.toFixed(2)+' '+((q.changePct||0)>=0?'+':'')+(q.changePct||0).toFixed(0)+'%');
-    st.lastAlertPx=q.price;st.lastAlertedScore=score;st.lastScoreAlertTs=now;
-  }
-  // If the score genuinely drops and stays down, re-arm so a later climb can alert
-  // again — but only after it's been below 4 for a real stretch, not a 1-tick blip.
-  if(score<4 && now-st.lastScoreAlertTs>=300000){st.lastAlertedScore=0;}
-  // ── EVENT 2: fast price spike — pings on ANY score, like Ross's momentum alert ──
-  // Uses the 60s-ago price captured for heat. A quick pop is news even at 2/5.
-  else if(q._pxAgo&&q._pxAgo>0){
-    const spikePct=(q.price-q._pxAgo)/q._pxAgo*100;
-    const bigSpike=spikePct>=4; // ~4%+ in ~1 min = a real move
-    const cooled=now-st.lastSpikeTs>=180000; // don't spam the same spike; 3-min gap
-    if(bigSpike&&cooled&&q.price>st.lastAlertPx*1.005){
-      playPing('spike');
-      showToast('⚡ '+sym+' spiking +'+spikePct.toFixed(1)+'% fast · '+score+'/5'+(soundOn?'':' (🔕)'));
-      addLog('spike',sym,'Spiked +'+spikePct.toFixed(1)+'% ('+score+'/5)');
-      recordAlert('spike',sym,'spiked +'+spikePct.toFixed(1)+'% · $'+q.price.toFixed(2)+' · '+score+'/5');
-      st.lastSpikeTs=now;st.lastAlertPx=q.price;
-    }
-  }
-  // ── EVENT 3: new high of day (breakout continuation) ──
-  const hod=q.high||0;
-  if(hod>0&&hod>st.lastHod&&st.lastHod>0&&q.price>=hod*0.999&&hasRealVolume(sym)){
-    if(now-st.lastSpikeTs>=60000){ // don't double-fire with a spike
-      playPing('pmh');
-      showToast('📈 '+sym+' new HOD $'+hod.toFixed(2)+' · '+score+'/5'+(soundOn?'':' (🔕)'));
-      recordAlert('hod',sym,'new HOD $'+hod.toFixed(2)+' · '+score+'/5');
-      st.lastSpikeTs=now;
-    }
-  }
-  if(hod>st.lastHod)st.lastHod=hod;
-  st.lastScore=score;
-  _alertState[sym]=st;
-}
-function checkPmhBreak(sym,px){
-  const sess=getSession();
-  if(sess!=='mkt'&&sess!=='pre')return; // pre-market breaks matter most for gappers
-  if(!pmHigh[sym]||px<=pmHigh[sym]||_pmhAlerted[sym])return;
-  _pmhAlerted[sym]=true;
-  playPing('pmh');
-  showToast('🎯 '+sym+' broke pre-market high $'+pmHigh[sym].toFixed(2));
-  addLog('pmh',sym,'Broke PMH $'+pmHigh[sym].toFixed(2));
-  recordAlert('pmh',sym,'broke PMH $'+pmHigh[sym].toFixed(2));
-}
-function playPing(type='new'){
-  playSound(type);
-  const el=document.getElementById('scanCount');
-  if(!el)return;
-  // Different colors for different alert types
-  const colors={
-    score5:'#19c48a', // green — 5/5 confirmed
-    score4:'#f0b94f', // gold — 4/5 priority
-    halt:'#f0506e',   // red — trading halt
-    pmh:'#42d4f4',    // cyan — PMH breakout
-    new:'#7c6aff',    // purple — new symbol
+async function buildSignature(appKey, appSecret, path, queryParams, bodyString, timestamp, nonce) {
+  const signingHeaders = {
+    'x-app-key': appKey,
+    'x-timestamp': timestamp,
+    'x-signature-algorithm': 'HMAC-SHA1',
+    'x-signature-version': '1.0',
+    'x-signature-nonce': nonce,
+    'host': WEBULL_HOST,
   };
-  const col=colors[type]||colors.new;
-  el.style.transition='none';
-  el.style.background=col;
-  el.style.transform='scale(1.4)';
-  setTimeout(()=>{
-    el.style.transition='all 0.6s ease';
-    el.style.background='var(--ac)';
-    el.style.transform='scale(1)';
-  },300);
-}
-// P4 is recomputed on EVERY render, not frozen at deep-scan time.
-// avgVol changes daily; volume changes every 10s from Webull — so RVOL is derived
-// live at zero API cost. This is why a 5/5 can decay to 4/5 as the tape cools.
-function minsIntoSession(){
-  const s=getSession();
-  if(s!=='mkt')return 390;
-  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
-  const open=new Date(et);open.setHours(9,30,0,0);
-  return Math.max(1,(et-open)/60000);
-}
-// ═══ HEAT SCORE (v3.9.38) — ranks by what's moving RIGHT NOW ═══
-// Blend of three signals, any one lifts a stock, all three send it to the top:
-// recent price velocity, volume surge in the last minute, and breaking highs.
-// Score becomes a tiebreaker so a fresh 3/5 breakout beats a stale 4/5.
-function heatScore(sym){
-  const q=Q[sym];if(!q||!q.price)return 0;
-  let heat=0;
-  if(q._pxAgo&&q._pxAgo>0){const vel=(q.price-q._pxAgo)/q._pxAgo*100;if(vel>0)heat+=Math.min(vel*8,60);}
-  if(q._volAgo!=null&&q.volume>q._volAgo){const added=q.volume-q._volAgo;if(added>50000)heat+=Math.min(added/50000*6,30);}
-  const hod=pmHigh[sym]||q.high;
-  if(hod&&q.price>=hod*0.98)heat+=20;
-  heat+=Math.min((q.changePct||0)/5,8);
-  return heat;
-}
-function scoreP4(sym,minsOverride){
-  const q=Q[sym],c=scanCache[sym]||{};
-  if(!q)return {pass:null,label:'—',bad:false};
-  const sess=getSession();
-  const volFloor=sess==='mkt'?500000:100000;
-  const rvT=sess==='pre'?2:sess==='aft'?1.5:5;
-  const vol=q.volume||0;
-  // Webull's relative_volume_10d is NOT session-normalised — it is raw cumulative
-  // volume / 10-day average DAILY volume. Pre-market it reads ~0.008 for nearly
-  // everything (verified against the live /gainers payload), which is what printed
-  // "0.0x" on every row. Values under 0.1 are that artifact, not a real ratio.
-  // Our own computation is likewise only valid during regular hours.
-  let rv=null;
-  if(c.wbRvol>0&&(sess==='mkt'||c.wbRvol>=0.1))rv=c.wbRvol;
-  else if(c.avgVol>0&&vol>0&&sess==='mkt'){
-    const mins=minsOverride||minsIntoSession();
-    rv=(vol/c.avgVol)*(390/mins);
-  }
-  if(rv===null){
-    // No trustworthy ratio. Show the raw volume — "267K" tells you more than "—",
-    // and judge P4 on the absolute floor, which is what kills 1-share phantoms.
-    const lbl=vol>0?(vol>=1e6?(vol/1e6).toFixed(1)+'M':vol>=1e3?Math.round(vol/1e3)+'K':String(vol)):'—';
-    return {pass:vol>0?vol>=volFloor:null,label:lbl,bad:false,unverified:true,isVol:true};
-  }
-  const bad=rv>200; // implausible ratio — show but never trust
-  const label=rv>=100?String(Math.round(rv)):rv.toFixed(1);
-  // The absolute floor only applies when volume is known. Punishing a symbol for
-  // data we don't have is how every row went P4-grey with a real 18x RVOL.
-  const pass=vol>0
-    ? (bad?vol>=volFloor*3:(rv>=rvT&&vol>=volFloor))
-    : (bad?false:rv>=rvT);
-  return {pass,label,bad,unverified:vol===0};
-}
-function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
-// ═══ COUNTRY OF DOMICILE (v3.9.29) ═══
-// Where the company is actually based — a US-listed ticker is often a China/Israel/
-// Canada operator, which changes the risk profile (dilution, halts, reporting).
-// Cached forever in localStorage: a company's domicile doesn't change.
-let _ctryCache=JSON.parse(localStorage.getItem('sv_ctry_cache')||'{}');
-const FLAGS={US:'🇺🇸',CN:'🇨🇳',HK:'🇭🇰',TW:'🇹🇼',IL:'🇮🇱',CA:'🇨🇦',GB:'🇬🇧',SG:'🇸🇬',JP:'🇯🇵',KR:'🇰🇷',
-  IN:'🇮🇳',AU:'🇦🇺',DE:'🇩🇪',FR:'🇫🇷',NL:'🇳🇱',CH:'🇨🇭',SE:'🇸🇪',IE:'🇮🇪',BR:'🇧🇷',MX:'🇲🇽',
-  GR:'🇬🇷',CY:'🇨🇾',MY:'🇲🇾',ID:'🇮🇩',AE:'🇦🇪',KY:'🏝',VG:'🏝',BM:'🏝'};
-function flagFor(cc){return cc?(FLAGS[cc]||'🌐'):'';}
-async function getCountry(sym){
-  if(_ctryCache[sym]!==undefined)return _ctryCache[sym];
-  if(fhPaused())return null;
-  try{
-    const r=await fhFetch('/profile?symbol='+sym);
-    if(!r.ok)return null;
-    const d=await r.json();
-    const cc=(d&&d.country)?String(d.country).toUpperCase().slice(0,2):null;
-    _ctryCache[sym]=cc||'';
-    localStorage.setItem('sv_ctry_cache',JSON.stringify(_ctryCache));
-    return cc;
-  }catch(e){return null;}
-}
-const debouncedScanUpdate=debounce(()=>liveScanUpdate(),250);
-
-// ═══ SORT ═══
-function setSort(col){if(sortCol===col)sortDir*=-1;else{sortCol=col;sortDir=-1;}updateSortArrows();liveScanUpdate();}
-function updateSortArrows(){
-  ['sym','px','chg','rvol','score'].forEach(c=>{
-    const el=document.getElementById('arr-'+c),el2=document.getElementById('arr-'+c+'2');
-    const arr=sortCol===c?(sortDir===-1?'↓':'↑'):'';
-    if(el){el.textContent=arr;el.closest('.sort-col').classList.toggle('active',sortCol===c);}
-    if(el2)el2.textContent=arr;
-  });
+  const allParams = { ...queryParams, ...signingHeaders };
+  const str1 = Object.keys(allParams).sort().map(k => `${k}=${allParams[k]}`).join('&');
+  const str3 = bodyString ? `${path}&${str1}&${md5Hex(bodyString)}` : `${path}&${str1}`;
+  return await hmacSha1Base64(`${appSecret}&`, encodeURIComponent(str3));
 }
 
-// ═══ FINNHUB API ═══
-const apiQueue=[];let apiRunning=false;
-function queueCall(fn){return new Promise((resolve,reject)=>{apiQueue.push({fn,resolve,reject});if(!apiRunning)drainQueue();});}
-async function drainQueue(){if(apiRunning)return;apiRunning=true;while(apiQueue.length){const{fn,resolve,reject}=apiQueue.shift();try{resolve(await fn());}catch(e){reject(e);}if(apiQueue.length)await new Promise(r=>setTimeout(r,fhKeys.length>=3?400:1200));}apiRunning=false;}
-const _badSyms={};const _deepBadSyms={};
-// Finnhub circuit breaker — same pattern as FMP + Supabase breakers.
-// 5+ rate-limit responses within 60s = pause ALL Finnhub calls for 60s so key windows reset.
-let _fh429s=[],_fhPausedUntil=0;
-function fhNote429(){const now=Date.now();_fh429s=_fh429s.filter(t=>now-t<60000);_fh429s.push(now);if(_fh429s.length>=5&&now>=_fhPausedUntil){_fhPausedUntil=now+60000;_fh429s=[];showToast('⏸ Finnhub rate limited — pausing scans 60s');}}
-function fhPaused(){return Date.now()<_fhPausedUntil;}
-// Direct Finnhub from the browser (residential IP = dedicated 60/min per key, no shared
-// Cloudflare egress-IP contention). Keys live ONLY in localStorage — never in the repo.
-// Set once via console: localStorage.setItem('sv_fh_keys',JSON.stringify(['key1','key2','key3']))
-// No keys set = falls back to the Worker proxy exactly as before.
-let fhKeys=JSON.parse(localStorage.getItem('sv_fh_keys')||'[]');let _fhKeyIdx=0;
-function fhNextKey(){if(!Array.isArray(fhKeys)||!fhKeys.length)return null;const k=fhKeys[_fhKeyIdx%fhKeys.length];_fhKeyIdx++;return k;}
-async function fhFetch(path){
-  // Try direct Finnhub with up to 2 attempts — CORS/network blips are often
-  // transient, and a single retry recovers most of them before we fall to proxy.
-  for(let attempt=0;attempt<2;attempt++){
-    const key=fhNextKey();
-    if(!key)break;
-    try{
-      const qs=path.split('?')[1]||'';
-      let ep='quote';
-      if(path.startsWith('/news'))ep='company-news';
-      else if(path.startsWith('/metric'))ep='stock/metric';
-      else if(path.startsWith('/profile'))ep='stock/profile2';
-      const extra=ep==='stock/metric'?'&metric=all':'';
-      const r=await fetch('https://finnhub.io/api/v1/'+ep+'?'+qs+extra+'&token='+key);
-      if(r.status!==429&&r.status!==403)return r; // direct worked (or real error)
-      // rate-limited on this key — the loop retries with the NEXT rotating key
-    }catch(e){
-      // CORS/network throw — brief pause, then retry with a different key
-      if(attempt===0)await new Promise(res=>setTimeout(res,150));
-    }
-  }
-  // All direct attempts failed — fall back to the proxy (KV cache may have it)
-  try{
-    const pr=await fetch(FH_URL+path);
-    if(pr.ok)return pr;
-  }catch(e){}
-  // Both paths failed — return a benign empty response so callers don't crash
-  return new Response('null',{status:200,headers:{'Content-Type':'application/json'}});
-}
-// A quote whose exchange timestamp predates today's 4:00 AM ET session start is
-// YESTERDAY'S data (Finnhub free tier serves stale closes in pre-market for
-// symbols not in today's live feeds). Stale rows must never rank or score.
-function isStaleQuote(sym){
-  const q=Q[sym];
-  if(!q)return false;
-  if(q._fromWebull||q._fromFmp)return false; // live gainer feeds are today's data by definition
-  if(!q.priceTs)return false;
-  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
-  const sessionStart=new Date(et);sessionStart.setHours(4,0,0,0);
-  const offset=et.getTime()-Date.now(); // ET-to-local drift of the trick above cancels out
-  return q.priceTs<(sessionStart.getTime()-offset);
-}
-// P3 quality gate — a real catalyst is stock-specific and fresh.
-// Three ways an article fails:
-//   1. GENERIC — daily movers-list wallpaper ("These stocks are moving in today's session")
-//   2. MARKET  — index/macro news tagged to every ticker ("Dow Gains Over 150 Points")
-//   3. ROUNDUP — one article tagged to many tickers; the news is about someone else
-//                (KUST scored 5/5 on "Why Aehr Test Systems Shares Are Trading Higher")
-const GENERIC_NEWS=/stocks? (are |that are )?moving|top gainers and losers|gap-ups and gap-downs|unusual volume|top (stock )?mov(ers|ements)|most active|which stocks are|what[\u2019']?s (happening|going on)|market is filled with|gapping stocks|earnings scheduled for|(mon|tues|wednes|thurs|fri)day[\u2019']?s (session|intraday|pre-?market|after)|let[\u2019']?s (take|have) a look|stocks? (that are )?in motion|get insights into|discover the (top|most)|wondering what|and other big stocks|shares? (are )?trading (higher|lower)|here are \d+ stocks|\d+ stocks moving|in today[\u2019']?s (session|pre-?market|after)/i;
-const MARKET_NEWS=/\b(dow|s&p ?500|nasdaq composite|russell 2000|nyse composite)\b.{0,45}\b(gain|fall|rise|rises|drop|jump|slide|slides|point|close|closes|surge|tumble|rally|rallies)|^(dow|s&p|nasdaq|the markets?|us stocks|stocks) (gain|fall|rise|drop|jump|slide|clos|surge|tumble|rall)/i;
-function isRealCatalyst(a,sym){
-  if(!a||!a.headline)return false;
-  const h=a.headline;
-  if(GENERIC_NEWS.test(h)||MARKET_NEWS.test(h))return false;
-  // Tagged to a crowd of tickers = roundup, not this company's catalyst
-  const rel=(a.related||'').split(',').map(s=>s.trim()).filter(Boolean);
-  if(rel.length>3)return false;
-  // Headline names a different company's ticker and not ours
-  if(sym){
-    const tick=h.match(/\(([A-Z]{1,5})\)/g)||[];
-    if(tick.length&&!tick.some(t=>t==='('+sym+')'))return false;
-  }
-  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
-  const hours=et.getDay()===1?72:24; // Mondays look back through the weekend
-  return (a.datetime||0)*1000>=Date.now()-hours*3600000;
-}
-// FMP direct (Starter plan) — float for P5 + volume/h-l-o backfill for non-Nasdaq rows
-// that Webull (Nasdaq-only) can never cover. Key lives ONLY in localStorage:
-//   localStorage.setItem('sv_fmp_key','YOUR_FMP_KEY')
-// No key set = these features silently stay off, everything else works as before.
-let fmpKey=localStorage.getItem('sv_fmp_key')||'';
-let _fmpCalls=JSON.parse(localStorage.getItem('sv_fmp_calls')||'{}');
-function fmpBudgetOk(){const d=new Date().toISOString().split('T')[0];if(_fmpCalls.date!==d)_fmpCalls={date:d,count:0};return _fmpCalls.count<2000;} // runaway guard — Starter plan is 300/min, no daily cap
-function fmpCount(){_fmpCalls.count=(_fmpCalls.count||0)+1;localStorage.setItem('sv_fmp_calls',JSON.stringify(_fmpCalls));}
-let _fmpCooldownUntil=0; // any FMP 429 pauses ALL frontend FMP calls for 2 min so the quota window resets
-function fmpCoolingDown(){return Date.now()<_fmpCooldownUntil;}
-let _floatCache=JSON.parse(localStorage.getItem('sv_float_cache')||'{}');
-async function getFloatFMP(sym){
-  const c=_floatCache[sym];
-  if(c&&Date.now()-c.ts<7*86400000)return c.v; // float rarely changes — 7-day cache
-  if(!fmpKey||!fmpBudgetOk()||fmpCoolingDown())return null;
-  try{
-    fmpCount();
-    const r=await fetch('https://financialmodelingprep.com/stable/shares-float?symbol='+encodeURIComponent(sym)+'&apikey='+fmpKey);
-    if(r.status===429){
-      let daily=false;try{const t=await r.text();daily=/limit reach|upgrade your plan/i.test(t);}catch(e){}
-      if(daily){_fmpCalls.count=9999;localStorage.setItem('sv_fmp_calls',JSON.stringify(_fmpCalls));} // daily quota gone — fmpBudgetOk() stays false until the date rolls over
-      _fmpCooldownUntil=Date.now()+120000;return null;
-    }
-    if(!r.ok)return null;
-    const d=await r.json();
-    const row=Array.isArray(d)?d[0]:d;
-    const fs=row&&row.floatShares?row.floatShares:null;
-    if(fs){_floatCache[sym]={v:fs,ts:Date.now()};localStorage.setItem('sv_float_cache',JSON.stringify(_floatCache));}
-    return fs||null;
-  }catch(e){return null;}
-}
-let _fmpVolDead=sessionStorage.getItem('sv_fmpvol_dead')==='1'; // plan doesn't include quote endpoints — stop trying
-const _volTried={};
-async function fmpVolumeBackfill(syms){
-  if(!fmpKey||_fmpVolDead||!syms.length||!fmpBudgetOk()||fmpCoolingDown())return;
-  // FMP's quote volume is NOT session-aware: in pre-market it returns the prior
-  // session's full-day total. Verified live — TGHL read 136M from FMP while its
-  // real pre-market volume was 267K. Only usable during regular hours.
-  if(getSession()!=='mkt')return;
-  const now=Date.now();
-  for(const sym of syms){
-    if(now-(_volTried[sym]||0)<300000)continue; // refresh FMP volumes every 5 min (Starter plan) — keeps NYSE RVOL live
-    _volTried[sym]=now;
-    try{
-      fmpCount();
-      const r=await fetch('https://financialmodelingprep.com/stable/quote-short?symbol='+encodeURIComponent(sym)+'&apikey='+fmpKey);
-      if(r.status===429){
-        delete _volTried[sym];
-        let daily=false;try{const t=await r.text();daily=/limit reach|upgrade your plan/i.test(t);}catch(e){}
-        if(daily){_fmpCalls.count=9999;localStorage.setItem('sv_fmp_calls',JSON.stringify(_fmpCalls));}
-        _fmpCooldownUntil=Date.now()+120000;return;
-      } // rate limited — retry after cooldown; daily limit — dead until tomorrow
-      if(r.status===402||r.status===403){_fmpVolDead=true;sessionStorage.setItem('sv_fmpvol_dead','1');return;} // plan gate — give up silently for the session
-      if(!r.ok)continue;
-      const d=await r.json();const it=Array.isArray(d)?d[0]:d;
-      // Webull's volume is session-aware and always wins. FMP only fills symbols
-      // Webull cannot see (NYSE/AMEX) — never overwrite a Webull-sourced volume.
-      if(it&&it.volume&&Q[sym]&&!Q[sym]._fromWebull&&(!Q[sym].volume||Q[sym]._volFmp)){Q[sym].volume=it.volume;Q[sym]._volFmp=true;}
-    }catch(e){delete _volTried[sym];}
-  }
-}
-async function fetchQDirect(sym){
-  if(fhPaused())return;
-  if(Q[sym]?.price&&Q[sym]?.high&&Date.now()-(Q[sym]._ts||0)<90000)return;
-  if(_badSyms[sym]&&Date.now()-_badSyms[sym]<300000)return;
-  // Skip Finnhub if we already have fresh Webull data — EXCEPT when we still lack
-  // a TRUE previous close. Webull's pre-market change_ratio is measured from a
-  // stale reference (verified live: LABT reported +83% because Webull measured
-  // from $1.86, the close from BEFORE yesterday's run; the real prior close was
-  // $3.37 and the stock was actually DOWN today). Finnhub's `pc` is the real
-  // previous close, and it only changes once a day — so one fetch per symbol per
-  // day is enough to correct every percentage on the board.
-  const needTruePc=!(Q[sym]?._truePc>0);
-  if(!needTruePc&&Q[sym]?._fromWebull&&Date.now()-(Q[sym]._ts||0)<120000)return;
-  if(!needTruePc&&Q[sym]?._fromFmp&&Date.now()-(Q[sym]._ts||0)<120000)return;
-  return queueCall(async()=>{
-    try{
-      const r=await fhFetch('/quote?symbol='+sym);
-      if(r.status===429||r.status===403){_badSyms[sym]=Date.now();if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-quote',r.status,FH_URL+'/quote?symbol='+sym,sym);return;}
-      const q=await r.json();
-      if(q.c){
-        const wbPx=Q[sym]?._fromWebull?Q[sym].price:null;
-        // Split-artifact guard: Webull's /gainers API sometimes serves un-split-adjusted
-        // prices (BIYA showed $4.14 API vs $7.97 real). Finnhub is split-adjusted. When
-        // they diverge >15%, trust Finnhub's price/% and flag the row as suspect.
-        const splitMismatch=wbPx&&q.c&&Math.abs(q.c-wbPx)/Math.max(q.c,wbPx)>0.15;
-        Q[sym]={symbol:sym,price:q.c,open:q.o||Q[sym]?.open||0,high:q.h||Q[sym]?.high||0,low:q.l||Q[sym]?.low||0,prevClose:q.pc,change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,_truePc:q.pc||Q[sym]?._truePc||0,volume:Math.max(q.v||0,Q[sym]?.volume||0),bid:q.c*(1-0.0005),ask:q.c*(1+0.0005),_fromWebull:Q[sym]?._fromWebull,_fromFmp:Q[sym]?._fromFmp,wbRvol:Q[sym]?.wbRvol||0,_pxAgo:Q[sym]?._pxAgo,_pxAgoTs:Q[sym]?._pxAgoTs,_volAgo:Q[sym]?._volAgo,_volAgoTs:Q[sym]?._volAgoTs,_splitFlag:splitMismatch||Q[sym]?._splitFlag,priceTs:q.t?q.t*1000:Date.now(),_ts:Date.now()};
-        const sess=getSession();
-        checkPmhBreak(sym,q.c);
-        if(sess==='pre'||sess==='mkt'){if(!pmHigh[sym]||q.h>pmHigh[sym])pmHigh[sym]=q.h;}
-      }
-    }catch(e){}
-  });
-}
-async function fetchQ(sym){if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<90000)return;await fetchQDirect(sym);}
-
-function connectFinnhubWS(){
-  // WebSocket disabled — all Finnhub calls routed through Worker proxy
-  // Direct WS bypasses proxy, causes CORS + rate limit errors
-  _wsGaveUp=true;
-}
-
-// ═══ NOTES — timestamped, Supabase-synced, permanent history ═══
-// Structure: symNotes = { AAPL: [{text, ts}], LNKS: [{text, ts}] }
-// Latest entry = symNotes[sym][symNotes[sym].length-1].text (for display)
-let _notesSym=null;
-
-function getLatestNote(sym){
-  const entries=symNotes[sym];
-  return entries&&entries.length?entries[entries.length-1].text:'';
-}
-
-function openNotes(sym){
-  _notesSym=sym||curChartSym;if(!_notesSym)return;
-  document.getElementById('notesModalTitle').textContent='📝 Notes — '+_notesSym;
-  // Show current note in textarea
-  document.getElementById('notesInp').value=getLatestNote(_notesSym);
-  // Render history below textarea
-  renderNoteHistory(_notesSym);
-  document.getElementById('notesModal').style.display='flex';
-  setTimeout(()=>document.getElementById('notesInp').focus(),50);
-}
-
-function renderNoteHistory(sym){
-  const hist=document.getElementById('notesHistory');
-  if(!hist)return;
-  const entries=symNotes[sym]||[];
-  if(!entries.length){hist.innerHTML='<div style="color:var(--dim);font-size:11px;padding:6px 0">No previous notes for '+sym+'</div>';return;}
-  // Show newest first
-  hist.innerHTML=[...entries].reverse().map((e,i)=>{
-    const d=new Date(e.ts);
-    const dateStr=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
-    const timeStr=d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',hour12:true});
-    return '<div style="padding:6px 0;border-bottom:1px solid var(--b1);'+(i===0?'':'opacity:.7')+'">'
-      +'<div style="font-size:9px;color:var(--dim);font-family:\'DM Mono\',monospace;margin-bottom:3px">'+dateStr+' · '+timeStr+(i===0?' · <span style="color:var(--ac2)">Latest</span>':'')+'</div>'
-      +'<div style="font-size:12px;color:var(--tx);line-height:1.5">'+e.text+'</div>'
-      +'</div>';
-  }).join('');
-}
-
-function closeNotes(){document.getElementById('notesModal').style.display='none';}
-
-function saveNotes(){
-  const val=document.getElementById('notesInp').value.trim();
-  if(!val){showToast('Note is empty — nothing saved');return;}
-  if(!symNotes[_notesSym])symNotes[_notesSym]=[];
-  // Append new timestamped entry
-  symNotes[_notesSym].push({text:val,ts:new Date().toISOString()});
-  localStorage.setItem('sv_notes_v1',JSON.stringify(symNotes));
-  syncNotesToCloud();
-  closeNotes();updatePulse();updateCPPrice();
-  showToast('📝 Note saved for '+_notesSym+' ('+symNotes[_notesSym].length+' total)');
-}
-
-function syncNotesToCloud(){
-  // Notes are stored locally in localStorage (permanent, survives sessions)
-  // Supabase sync requires adding a 'notes' jsonb column to the profiles table
-  // For now: localStorage is the source of truth — notes persist forever locally
-  localStorage.setItem('sv_notes_v1',JSON.stringify(symNotes));
-}
-
-async function pullNotesFromCloud(){
-  // Notes live in localStorage — no cloud column yet
-  // They persist across sessions automatically via localStorage
-}
-
-// Close notes modal on backdrop click
-document.getElementById('notesModal').addEventListener('click',e=>{if(e.target===document.getElementById('notesModal'))closeNotes();});
-
-// ═══ MARKET PULSE PANEL ═══
-function togglePulse(){
-  pulseOpen=!pulseOpen;
-  document.getElementById('pulsePanel').style.display=pulseOpen?'flex':'none';
-  document.getElementById('pulseToggleBtn').classList.toggle('active',pulseOpen);
-  if(pulseOpen)updatePulse();
-}
-function updatePulse(){
-  if(!pulseOpen)return;
-  renderAlertHistory();
-  const minP=parseFloat(document.getElementById('f-minp')?.value)||1;
-  const maxP=parseFloat(document.getElementById('f-maxp')?.value)||10;
-  const minC=parseFloat(document.getElementById('f-chg')?.value)||10;
-  let passing=0,five=0,four=0,chgSum=0,chgCount=0,topSym='—',topChg=-999;
-  const best=[];
-  scanSyms.forEach(sym=>{
-    const q=Q[sym];if(!q?.price)return;
-    const p1=q.price>=minP&&q.price<=maxP,p2=(q.changePct||0)>=minC;
-    if(!p1||!p2)return;
-    passing++;chgSum+=(q.changePct||0);chgCount++;
-    const c=scanCache[sym]||{};
-    const score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
-    if(score>=5)five++;else if(score>=4)four++;
-    if((q.changePct||0)>topChg){topChg=q.changePct||0;topSym=sym+'+'+(q.changePct||0).toFixed(1)+'%';}
-    if(score>=4)best.push({sym,score,chg:q.changePct||0,rv:parseFloat(c.rvolValue)||0});
-  });
-  document.getElementById('ps-total').textContent=scanSyms.length;
-  document.getElementById('ps-passing').textContent=passing;
-  document.getElementById('ps-five').textContent=five;
-  document.getElementById('ps-four').textContent=four;
-  document.getElementById('ps-avgchg').textContent=chgCount>0?'+'+(chgSum/chgCount).toFixed(1)+'%':'—';
-  document.getElementById('ps-top').textContent=topChg>-999?topSym:'—';
-  // Best setups list
-  best.sort((a,b)=>b.score-a.score||(b.chg-a.chg));
-  const bl=document.getElementById('ps-best-list');
-  bl.innerHTML=best.slice(0,8).map(b=>
-    '<div class="pulse-top-sym" onclick="selectSym(\''+b.sym+'\')">'
-      +'<span class="pulse-sym-name">'+b.sym+'</span>'
-      +'<span class="pulse-sym-score">'+b.score+'/5</span>'
-      +'<span class="pulse-sym-chg">+'+b.chg.toFixed(1)+'%</span>'
-    +'</div>'
-  ).join('')||'<div style="font-size:10px;color:var(--dim);padding:4px 0">No 4+/5 setups yet</div>';
-  // Notes list — show latest note per symbol with timestamp
-  const nl=document.getElementById('ps-notes-list');
-  const noteKeys=Object.keys(symNotes);
-  nl.innerHTML=noteKeys.length?noteKeys.map(k=>{
-    const entries=symNotes[k]||[];
-    if(!entries.length)return'';
-    const latest=entries[entries.length-1];
-    const d=new Date(latest.ts);
-    const dateStr=d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-    return '<div style="margin-bottom:8px"><span style="color:var(--ac2);font-weight:700;cursor:pointer" onclick="selectSym(\''+k+'\')">'+k+'</span>'
-      +' <span style="font-size:8px;color:var(--dim);font-family:\'DM Mono\',monospace">'+dateStr+' ('+entries.length+')</span>'
-      +'<div style="font-size:10px;color:var(--mu);line-height:1.4;margin-top:2px">'+latest.text.substring(0,60)+(latest.text.length>60?'…':'')+'</div></div>';
-  }).join(''):'<div style="font-size:10px;color:var(--dim)">No notes yet. Click 📝 Note in the chart panel.</div>';
-}
-setInterval(()=>{if(pulseOpen)updatePulse();},10000);
-
-// ═══ SYMBOL MANAGEMENT ═══
-async function selectSym(sym,promote){
-  sym=sym.toUpperCase().trim();if(!sym)return;
-  // Only PROMOTE to Setups (pin to top 3min) from search or Momentum — clicking a
-  // row already in Setups just selects it, doesn't re-add or jump it to the top.
-  if(promote)holdSym(sym);
-  // Copy to clipboard silently on every click
-  navigator.clipboard.writeText(sym).catch(()=>{});
-  if(sym.includes('.')&&sym!=='BTC/USD'&&sym!=='ETH/USD'){showToast('🚫 Non-US ticker — not supported');return;}
-  curChartSym=sym;
-  if(!Q[sym])await fetchQDirect(sym);
-  if(!scanSyms.includes(sym)){
-    scanSyms.push(sym);saveScanSyms();
-    if(!symMeta.has(sym))symMeta.set(sym,{ts:Date.now(),source:'manual',addedTs:Date.now()});
-    playPing('new');
-    if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
-  }
-  const q=Q[sym];
-  const minP=parseFloat(document.getElementById('f-minp').value)||1;
-  const maxP=parseFloat(document.getElementById('f-maxp').value)||10;
-  const minC=parseFloat(document.getElementById('f-chg').value)||10;
-  if(q?.price&&(q.price<minP||q.price>maxP))showToast('📈 Added '+sym+' (outside your price range — watching anyway)');
-  else if(q?.price&&(q.changePct||0)<minC)showToast('📈 Added '+sym+' (under % threshold — watching anyway)');
-  else showToast('📈 Added '+sym+' to scanner');
-  addLog('new',sym,'Manually added');
-  liveScanUpdate();openChartPanel(sym);
-  loadNews(sym);
-  setTimeout(startDeepScan,200);
-}
-function saveScanSyms(){localStorage.setItem('sv_scan_v1',JSON.stringify(scanSyms));syncWatchlistToCloud();}
-
-// Single add (kept for internal use)
-function addScanSym(sym){if(sym)selectSym(sym);}
-
-// Bulk add — accepts comma/space/newline separated tickers
-// e.g. "GETY, SAGT, EHGO" or pasted from anywhere
-function addScanSyms(){
-  const inp=document.getElementById('addSymInp');
-  const raw=inp.value.trim();
-  if(!raw)return;
-  inp.value='';
-  // Split on commas, spaces, newlines — filter empty + non-US + typos
-  const syms=[...new Set(
-    raw.split(/[\s,\n]+/)
-      .map(s=>s.toUpperCase().trim())
-      .filter(s=>s.length>=1&&s.length<=5&&/^[A-Z]+$/.test(s)) // only 1-5 uppercase letters, no numbers/special chars
-  )];
-  if(!syms.length)return;
-  if(syms.length===1){selectSym(syms[0]);return;}
-  // Multiple symbols — add all, show count toast
-  showToast('📋 Adding '+syms.length+' symbols…');
-  syms.forEach((sym,i)=>{
-    setTimeout(()=>{
-      selectSym(sym);
-      if(i===syms.length-1)showToast('✅ Added '+syms.length+' symbols — scoring in progress');
-    },i*150); // stagger slightly to avoid race conditions
-  });
-}
-function rmScanSym(sym,e){if(e)e.stopPropagation();scanSyms=scanSyms.filter(s=>s!==sym);saveScanSyms();delete scanCache[sym];symMeta.delete(sym);delete failTimer[sym];liveScanUpdate();}
-function clearAllSyms(){
-  scanSyms=[];saveScanSyms();scanCache={};symMeta.clear();failTimer={};
-  _lastDeepScan=0; // reset the 3-min deep-scan gate so new symbols score immediately
-  Object.keys(_newsCache).forEach(k=>delete _newsCache[k]);
-  Object.keys(_volTried).forEach(k=>delete _volTried[k]);
-  Object.keys(_badSyms).forEach(k=>delete _badSyms[k]);
-  Object.keys(_deepBadSyms).forEach(k=>delete _deepBadSyms[k]);
-  liveScanUpdate();
-  showToast('🗑 Cleared — rescanning now…');
-  // Stagger to avoid duplicate calls with scheduled scan
-  setTimeout(()=>{if(!_webullScanRunning)runWebullScan();},500);
-  setTimeout(()=>{if(!_fmpScanRunning&&!_fmpQuotaExhausted)runFmpScan();},1000);
-  setTimeout(()=>{startDeepScan();},3000);
-}
-function forceRescan(){
-  showToast('↺ Force rescanning…');
-  if(!_webullScanRunning)runWebullScan();
-  setTimeout(()=>{if(!_fmpScanRunning&&!_fmpQuotaExhausted)runFmpScan();},500);
-  setTimeout(()=>{startDeepScan();},2000);
-}
-function toggleFilters(){
-  const f=document.getElementById('scanFilters');
-  const btn=document.querySelector('[onclick="toggleFilters()"]');
-  const open=f.style.display==='none';
-  f.style.display=open?'flex':'none';
-  if(btn)btn.classList.toggle('active',open);
-}
-
-// ═══ NEWS PANEL ═══
-const _newsCache={};
-// Open news as pop-out window (not new tab)
-let _newsWin=null;
-function openNewsPopout(url){
-  const sw=screen.availWidth,sh=screen.availHeight;
-  const cw=Math.floor(sw*0.55),ch=Math.floor(sh*0.8);
-  const ol=Math.floor((sw-cw)/2),ot=Math.floor((sh-ch)/2);
-  const feat='width='+cw+',height='+ch+',left='+ol+',top='+ot+',resizable=yes,scrollbars=yes,toolbar=no,menubar=no,location=yes,status=no';
-  if(_newsWin&&!_newsWin.closed){_newsWin.location.href=url;_newsWin.focus();}
-  else{_newsWin=window.open(url,'newsWin',feat);}
-}
-async function loadNews(sym){
-  const panel=document.getElementById('newsPanel');
-  const list=document.getElementById('newsList');
-  const label=document.getElementById('newsPanelSym');
-  panel.style.display='flex';
-  if(label)label.textContent=sym;
-  if(_newsCache[sym]){renderNews(sym);return;}
-  list.innerHTML='<div class="news-empty">Loading…</div>';
-  try{
-    const today=new Date().toISOString().split('T')[0];
-    const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];
-    const r=await fhFetch('/news?symbol='+sym+'&from='+from+'&to='+today);
-    if(!r.ok){list.innerHTML='<div class="news-empty">No news available</div>';return;}
-    const items=await r.json();
-    _newsCache[sym]=(Array.isArray(items)?items:[]).slice(0,8);
-    renderNews(sym);
-  }catch(e){list.innerHTML='<div class="news-empty">Could not load news</div>';}
-}
-function renderNews(sym){
-  const list=document.getElementById('newsList');
-  const items=_newsCache[sym]||[];
-  if(!items.length){list.innerHTML='<div class="news-empty">No recent news for '+sym+'</div>';return;}
-  list.innerHTML=items.map(n=>{
-    const d=new Date(n.datetime*1000);
-    const timeStr=d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',timeZone:'America/New_York'})+' ET';
-    const src=n.source||'';
-    // Pop-out window instead of new tab
-    return '<div class="news-item" onclick="openNewsPopout(\''+n.url+'\')">'
-      +'<div class="news-headline">'+n.headline+'</div>'
-      +'<div class="news-meta">'+src+(src?' · ':'')+timeStr+'</div>'
-      +'</div>';
-  }).join('');
-}
-function closeNewsPanel(){document.getElementById('newsPanel').style.display='none';}
-
-// ═══ CROSS-DEVICE SYNC ═══
-// Supabase access tokens expire after 60 min. Refresh proactively at 45 min,
-// and reactively on any 401, so multi-hour trading sessions never lose sync.
-async function refreshSession(){
-  const rt=sessionStorage.getItem('sv_refresh');
-  if(!rt)return false;
-  try{
-    const r=await sf('/auth/v1/token?grant_type=refresh_token',{method:'POST',body:JSON.stringify({refresh_token:rt})});
-    if(!r.ok)return false;
-    const d=await r.json();
-    if(d.access_token){sessionStorage.setItem('sv_token',d.access_token);if(d.refresh_token)sessionStorage.setItem('sv_refresh',d.refresh_token);return true;}
-  }catch(e){}
-  return false;
-}
-setInterval(()=>{if(sessionStorage.getItem('sv_refresh'))refreshSession();},45*60*1000);
-let _syncTimer=null;
-function syncWatchlistToCloud(){
-  // Debounced — waits 3s after last change before syncing
-  // Prevents 37 Supabase calls when 37 symbols load at startup
-  clearTimeout(_syncTimer);
-  _syncTimer=setTimeout(async()=>{
-    const uid=sessionStorage.getItem('sv_uid');
-    let token=sessionStorage.getItem('sv_token');
-    if(!token||!uid)return;
-    try{
-      const body=JSON.stringify({watchlist:scanSyms});
-      let r=await sf('/rest/v1/profiles?id=eq.'+uid,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},body});
-      if(r.status===401&&await refreshSession()){
-        token=sessionStorage.getItem('sv_token');
-        await sf('/rest/v1/profiles?id=eq.'+uid,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},body});
-      }
-    }catch(e){}
-  },3000);
-}
-async function pullWatchlistFromCloud(){
-  const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
-  if(!token||!uid)return;
-  try{
-    // If the daily clear just ran, yesterday's cloud watchlist is contaminated —
-    // overwrite the cloud with the cleaned local list instead of merging it back in.
-    if(sessionStorage.getItem('sv_cleared_today')==='1'){
-      sessionStorage.removeItem('sv_cleared_today');
-      syncWatchlistToCloud();
-      return;
-    }
-    const r=await sf('/rest/v1/profiles?select=watchlist&id=eq.'+uid,{headers:{'Authorization':'Bearer '+token}});
-    const d=await r.json();const cloudList=d?.[0]?.watchlist;
-    if(!Array.isArray(cloudList))return;
-    const merged=[...new Set([...scanSyms,...cloudList])];
-    if(merged.length!==scanSyms.length||!merged.every(s=>scanSyms.includes(s))){
-      scanSyms=merged;localStorage.setItem('sv_scan_v1',JSON.stringify(scanSyms));
-      liveScanUpdate();
-      const toFetch=scanSyms.filter(s=>!Q[s]?.price);
-      for(const sym of toFetch){await fetchQDirect(sym);await new Promise(r=>setTimeout(r,1100));}
-      liveScanUpdate();
-    }
-    syncWatchlistToCloud();
-  }catch(e){}
-}
-
-// ═══ SCANNER RENDER ═══
-function renderScanTags(){
-  const tags=document.getElementById('scanTags');
-  const wrap=document.getElementById('scanTagsWrap');
-  if(!scanSyms.length){if(wrap)wrap.style.display='none';return;}
-  if(wrap)wrap.style.display='flex';
-  tags.innerHTML=scanSyms.map(s=>
-    '<span class="tag">'+s+'<button onclick="rmScanSym(\''+s+'\',event)">×</button></span>'
-  ).join('');
-}
-
-function liveScanUpdate(){
-  renderScanTags();
-  saveMeta(); // keep source badges + addedTs across reloads
-  const minP=parseFloat(document.getElementById('f-minp').value)||1;
-  const maxP=parseFloat(document.getElementById('f-maxp').value)||10;
-  const minC=parseFloat(document.getElementById('f-chg').value)||10;
-  const minRV=parseFloat(document.getElementById('f-rvol')?.value)||0;
-  const autoRmMins=parseFloat(document.getElementById('f-autorm')?.value)||5;
-  const autoRmMs=autoRmMins*60000;
-  const results=[];
-  const now=Date.now();
-  scanSyms.forEach(sym=>{
-    const q=Q[sym];
-    // PERSISTENCE: if this symbol has no fresh quote THIS cycle but we scored it
-    // recently, keep showing its last-known-good row instead of dropping it. This
-    // is what stops the whole-board flicker — a transient data gap no longer wipes
-    // the stock from Setups / Momentum / Top Gainers.
-    if(!q?.price){
-      const last=_lastGoodRow[sym];
-      if(last&&now-last._rowTs<60000){results.push(last);}
-      return;
-    }
-    if(isStaleQuote(sym))return; // yesterday's data — never rank it
-    // P4 recomputed live — RVOL moves with the tape, so scores rise AND fall.
-    // But NEVER wipe a known value just because volume went missing this cycle:
-    // that's what made RVOL appear then vanish on the next refresh.
-    if(scanCache[sym]){
-      const rv=scoreP4(sym);
-      if(rv.label!=='—'){
-        scanCache[sym].p4=rv.pass;scanCache[sym].rvolValue=rv.label;scanCache[sym].rvolBad=rv.bad;scanCache[sym].rvolIsVol=rv.isVol||false;
-      }else if(scanCache[sym].rvolValue===undefined){
-        scanCache[sym].p4=rv.pass;scanCache[sym].rvolValue='—';scanCache[sym].rvolBad=false;scanCache[sym].rvolIsVol=false;
-      }
-    }
-    const p1=q.price>=minP&&q.price<=maxP;
-    const p2=(q.changePct||0)>=minC;
-    const c=scanCache[sym]||{};
-    const rv=parseFloat(c.rvolValue)||0;
-    if(!p1||!p2){
-      const _m=symMeta.get(sym);
-      const isManual=_m&&_m.source==='manual';
-      // Manual adds ALWAYS show (user chose them) — fall through to display even
-      // below threshold. Only feed-added symbols get hidden + auto-removed.
-      if(!isManual){
-        if(q&&q.price>0){
-          if(!failTimer[sym])failTimer[sym]=now;
-          if(now-failTimer[sym]>autoRmMs){
-            addLog('rm',sym,'Auto-removed after '+autoRmMins+'min below threshold');
-            scanSyms=scanSyms.filter(s=>s!==sym);
-            saveScanSyms();delete scanCache[sym];symMeta.delete(sym);
-          }
-        }
-        return; // feed symbol below threshold — don't display
-      }
-      // manual add: fall through, it displays with whatever score it has
-    } else {delete failTimer[sym];}
-    if(minRV>0&&rv>0&&rv<minRV){const _m2=symMeta.get(sym);if(!(_m2&&_m2.source==='manual'))return;}
-    let score=[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
-    // FORMER RUNNER (Ross's way): a stock showing a big % that actually came from a
-    // PRIOR session — ran yesterday, still flagged today, but flat now. Ross's HOD
-    // scanner LABELS these "former runner" rather than hiding them, so the trader
-    // knows the history. We flag it (shown as a ⚠ badge) but DON'T hack the score.
-    {
-      const _sess=getSession();
-      const haveVelData=q._pxAgo!=null&&q._pxAgo>0&&q._pxAgoTs&&(Date.now()-q._pxAgoTs)>=45000;
-      // Judge only with real data. Former runner = big headline %, but measured flat
-      // in the current session AND thin current volume. During regular hours a stock
-      // that's genuinely still trading (higher volume) is NOT flagged.
-      const _vn=q.volume||0;
-      if(haveVelData){
-        const _rv=Math.abs((q.price-q._pxAgo)/q._pxAgo*100);
-        // A real former runner RAN and FADED: it's well below its high of day, flat
-        // now, and barely trading. A stock sitting AT its high is the opposite of
-        // stale — never flag it. (The old check flagged anything under 150K volume,
-        // which in pre-market is nearly every stock.)
-        const _hod=q.high||0;
-        const faded=_hod>0&&q.price<_hod*0.75; // dropped 25%+ off its high
-        c._formerRunner=(faded&&(q.changePct||0)>=20&&_rv<0.3&&_vn>0&&_vn<50000);
-      } else { c._formerRunner=false; } // no velocity data yet — don't label
-    }
-    checkSetupAlerts(sym,score); // volume-gated: real setups ping, artifacts stay silent
-    const meta=symMeta.get(sym)||{source:'manual',addedTs:0,ts:0};
-    const _row={sym,q,p1,p2,p3:c.p3,p4:c.p4,p5:c.p5,score,hasNews:c.hasNews||false,formerRunner:c._formerRunner||false,
-      src:meta.source,rv,addedTs:meta.addedTs||meta.ts||0,floatValue:c.floatValue,
-      pmh:pmHigh[sym]||0,newsHeadline:c.latestHeadline||'',
-      turnover:c.turnoverRate||0,halted:c.halted||false,ctry:c.ctry||'',splitFlag:q._splitFlag||false,_rowTs:now};
-    results.push(_row);
-    _lastGoodRow[sym]=_row; // remember for persistence if data blips next cycle
-  });
-  const countEl=document.getElementById('scanCount');
-  if(countEl)countEl.textContent=results.length;
-  const empty=document.getElementById('scanEmpty');
-  const rows=document.getElementById('scanRows');
-  const sortBar=document.getElementById('sortBar');
-  if(!results.length){
-    if(empty)empty.style.display='flex';if(rows)rows.innerHTML='';if(sortBar)sortBar.style.display='none';return;
-  }
-  if(empty)empty.style.display='none';if(sortBar)sortBar.style.display='grid';
-
-  const FRESH_MS=90000;
-  results.sort((a,b)=>{
-    // Pinned/starred always float to absolute top
-    const aStar=starredSyms.has(a.sym),bStar=starredSyms.has(b.sym);
-    if(aStar!==bStar)return aStar?-1:1;
-    const aFresh=now-a.addedTs<FRESH_MS,bFresh=now-b.addedTs<FRESH_MS;
-    if(aFresh!==bFresh)return aFresh?-1:1;
-    let av,bv;
-    switch(sortCol){
-      case'sym':av=a.sym;bv=b.sym;return sortDir*(av<bv?-1:av>bv?1:0);
-      case'px':av=a.q.price||0;bv=b.q.price||0;break;
-      case'chg':av=a.q.changePct||0;bv=b.q.changePct||0;break;
-      case'rvol':av=a.rv||0;bv=b.rv||0;break;
-      case'score':default:
-        // A reverse-split artifact is an impossible % move WITH NO REAL VOLUME.
-        // A genuine monster runner (ZYBT +311% on 4.4M volume) has volume, so it
-        // is NOT an artifact — only sink the ones that are both extreme AND empty.
-        const aRealVol=(a.q._fromWebull||a.q._volFmp)&&(a.q.volume||0)>0;
-        const bRealVol=(b.q._fromWebull||b.q._volFmp)&&(b.q.volume||0)>0;
-        const aArt=((a.q.changePct||0)>150&&!aRealVol)||a.splitFlag;
-        const bArt=((b.q.changePct||0)>150&&!bRealVol)||b.splitFlag;
-        if(aArt!==bArt)return aArt?1:-1;
-        // Real volume ranks above no-volume rows.
-        if(aRealVol!==bRealVol)return aRealVol?-1:1;
-        if(sortMode==='score'){
-          if(a.score!==b.score)return b.score-a.score;
-          return (b.q.changePct||0)-(a.q.changePct||0);
-        }
-        // HEAT mode (default): a UNIFIED rank blending pillar score and live heat,
-        // so a hot 4/5 tops the board and a cold 2/5 sinks — they combine, not compete.
-        // Score is worth ~15 heat points each, so a 5/5 always outranks a 2/5 unless
-        // the 2/5 is truly exploding, and among equal movers the better setup wins.
-        const aRank=a.score*15+heatScore(a.sym);
-        const bRank=b.score*15+heatScore(b.sym);
-        if(Math.abs(aRank-bRank)>2)return bRank-aRank;
-        return (b.q.changePct||0)-(a.q.changePct||0);
-    }
-    return sortDir*(bv-av);
-  });
-
-  // Apply max display cap AFTER sorting — top N shown, rest tracked silently
-  const maxShow=parseInt(document.getElementById('f-maxshow')?.value)||20;
-  const displayResults=results.slice(0,maxShow);
-  const hiddenCount=results.length-displayResults.length;
-  if(countEl&&hiddenCount>0)countEl.textContent=displayResults.length+'/'+results.length;
-  const pd=v=>v===true?'pass':v===false?'fail':'na';
-  const sortBarEl=document.getElementById('sortBar');
-  if(sortBarEl)sortBarEl.style.display=splitView?'none':'';
-  if(splitView){
-    renderSplitView(results,maxShow,pd);
-  } else {
-    rows.innerHTML=displayResults.map(r=>buildRow(r,pd)).join('');
-  }
-  updateCPPrice();
-  if(pulseOpen)updatePulse();
-  checkSectors(results);
-}
-function buildRow(r,pd){
-  {
-    const u=(r.q.changePct||0)>=0;
-    const isHotNow=heatScore(r.sym)>=25&&((r.q._fromWebull||r.q._volFmp)&&(r.q.volume||0)>0);
-    const sc=r.halted?'halted':r.score>=5?'score5':r.score>=4?'score4':'score3';
-    const isFresh=(Date.now())-r.addedTs<90000;
-    const isPinned=starredSyms.has(r.sym);
-    const pending=r.p3===null&&r.p4===null&&r.p5===null;
-    const srcBadge=r.src==='wb'?'<span class="src-badge src-wb">WB</span>':
-      r.src==='fp'?'<span class="src-badge src-fp">FP</span>':
-      r.src==='seed'?'<span class="src-badge src-sd">SD</span>':'';
-    const frBadge=r.formerRunner?'<span class="src-badge fr-badge" title="Former runner — this % is from a prior session, flat now">⚠ FORMER</span>':'';
-    const rvNum=r.rv||0;
-    const rvBad=scanCache[r.sym]?.rvolBad;
-    const rvIsVol=scanCache[r.sym]?.rvolIsVol;
-    const rvClass=rvBad||rvIsVol?'':rvNum>=10?'fire':rvNum>=5?'hot':'';
-    const rvRaw=scanCache[r.sym]?.rvolValue;
-    // When no trustworthy ratio exists we show raw volume ("267K vol"), never a
-    // fabricated multiplier. Implausible ratios get a dimmed "?".
-    const rvLabel=rvRaw&&rvRaw!=='—'?(rvIsVol?rvRaw+' vol':rvRaw+'x'+(rvBad?'?':'')):(rvNum>0?rvNum.toFixed(1)+'x':'—');
-    const floatLabel=r.floatValue||'';
-    const pmhStr=r.pmh>0?'H:$'+r.pmh.toFixed(2):'';
-    const p3label=r.hasNews?'P3 🔥':'P3';
-    const hasNote=symNotes[r.sym]&&symNotes[r.sym].length>0;
-    // Since open gain: how much has price moved since market open (9:30 ET)
-    const openPx=r.q.open||0;
-    const sinceOpen=openPx>0?((r.q.price-openPx)/openPx*100):0;
-    const sinceOpenStr=openPx>0?((sinceOpen>=0?'+':'')+sinceOpen.toFixed(1)+'% open'):'';
-    // Day range bar
-    const dLow=r.q.low||0,dHigh=r.q.high||0,dPx=r.q.price||0;
-    const rangePct=dHigh>dLow?Math.round(((dPx-dLow)/(dHigh-dLow))*100):50;
-    const rangePctClamped=Math.max(3,Math.min(97,rangePct));
-    const volPct=rvNum>0?Math.min(100,Math.round((rvNum/10)*100)):30;
-    return '<div class="scan-row '+sc+(isHotNow?' hot-now':'')+(isFresh?' scan-row-new':'')+(isPinned?' pinned':'')+'" onclick="selectSym(\''+r.sym+'\')">'
-      +'<div class="scan-sym-cell">'
-        +'<div class="scan-sym-row">'
-          +'<button class="star-btn'+(isPinned?' starred':'')+'" onclick="event.stopPropagation();toggleStar(\''+r.sym+'\')" title="Pin symbol">'+(isPinned?'⭐':'☆')+'</button>'
-          +'<span class="scan-sym '+(u?'up':'dn')+'">'+r.sym+'</span>'
-          +(r.splitFlag?'<span title="Webull &amp; Finnhub prices disagree — possible split artifact, using Finnhub price" style="color:var(--gold);font-size:11px;cursor:help">⚠</span>':'')
-          +(r.ctry?'<span class="ctry-badge ctry-'+(['CN','HK'].includes(r.ctry)?'cn':r.ctry==='US'?'us':'x')+'" title="'+r.ctry+'-domiciled company">'+r.ctry+'</span>':'')
-          +srcBadge+frBadge
-          +(r.halted?'<span class="halt-badge">HALT</span>':'')
-          +(r.hasNews?'<span class="news-dot">🔥</span>':'')
-          +(pmhStr?'<span class="pmh-badge">'+pmhStr+'</span>':'')
-          +(hasNote?'<span style="font-size:9px;opacity:.6">📝</span>':'')
-          +'<button onclick="event.stopPropagation();copySym(\''+r.sym+'\')" title="Copy '+r.sym+'" style="background:none;border:none;cursor:pointer;font-size:9px;opacity:.3;padding:0 2px;transition:opacity .15s" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=.3">📋</button>'
-        +'</div>'
-        +'<div style="display:flex;align-items:center;gap:5px;margin-top:2px">'
-          // VWAP badge inline under sym name
-          +(()=>{
-            const q=r.q;
-            const vwap=q.high&&q.low&&q.price?(q.high+q.low+q.price)/3:0;
-            const aboveVwap=vwap>0&&q.price>vwap;
-            const offHighs=q.high>0?((q.high-q.price)/q.high*100):0;
-            let out='';
-            if(vwap>0)out+='<span class="vwap-badge '+(aboveVwap?'vwap-above':'vwap-below')+'">'+(aboveVwap?'▲VWAP':'▼VWAP')+'</span>';
-            if(offHighs>1&&offHighs<50)out+='<span class="off-highs">-'+offHighs.toFixed(0)+'%hi</span>';
-            return out;
-          })()
-          // Day range bar inline next to VWAP
-          +'<div class="range-bar" style="flex-shrink:0"><div class="range-bar-fill" style="width:'+rangePctClamped+'%"></div></div>'
-          +'<span class="range-label">'+( dLow?'$'+dLow.toFixed(2):'—' )+'–'+( dHigh?'$'+dHigh.toFixed(2):'—' )+'</span>'
-        +'</div>'
-      +'</div>'
-      +'<span class="scan-px">$'+fmtP(r.q.price)+'</span>'
-      +'<span class="scan-chg '+(u?'up':'dn')+'">'+(u?'+':'')+((r.q.changePct||0).toFixed(1))+'%</span>'
-      +'<div class="scan-rvol-cell">'
-        +'<span class="scan-rvol '+rvClass+'">'+rvLabel+'</span>'
-        +'<span class="scan-flt'+(r.p5===true?' lowflt':'')+'">'+(floatLabel?floatLabel:'float —')+'</span>'
-        +(sinceOpenStr&&!r.newsHeadline
-          ?'<span class="since-open '+(sinceOpen>=0?'pos':'neg')+'">'+sinceOpenStr+'</span>'
-          :'<div class="vol-bar"><div class="vol-bar-fill" style="width:'+volPct+'%"></div></div>')
-      +'</div>'
-      +'<div style="padding:0 8px;overflow:hidden;min-width:0">'
-        +(r.newsHeadline
-          ?'<span style="font-size:10px;color:var(--mu);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block;line-height:1.4">🔥 '+r.newsHeadline.substring(0,90)+(r.newsHeadline.length>90?'…':'')+'</span>'
-          :(sinceOpenStr?'<span class="since-open '+(sinceOpen>=0?'pos':'neg')+'" style="font-size:10px">'+sinceOpenStr+'</span>':'')
-        )
-      +'</div>'
-      +'<div class="scan-pills">'
-        +'<span class="pill '+(pending?'na':pd(r.p1))+'">P1</span>'
-        +'<span class="pill '+(pending?'na':pd(r.p2))+'">P2</span>'
-        +'<span class="pill '+(pending?'na':pd(r.p3))+'">'+p3label+'</span>'
-        +'<span class="pill '+(pending?'na':pd(r.p4))+'">P4</span>'
-        +'<span class="pill '+(pending?'na':pd(r.p5))+'">P5</span>'
-      +'</div>'
-      +'<span class="scan-score">'+r.score+'/5</span>'
-      +'<div style="grid-column:1/-1;height:5px"></div>'
-      +'</div>';
-  }
-}
-function renderSplitView(results,maxShow,pd){
-  const rows=document.getElementById('scanRows');
-  const nowT=Date.now();
-  const held=Object.keys(heldSyms).filter(isHeld);
-  // A held symbol may not be in `results` yet (brand-new, 0/5, still loading).
-  // Synthesize a minimal row object for any held symbol that has a quote.
-  const resultSyms=new Set(results.map(r=>r.sym));
-  const heldExtra=held.filter(s=>!resultSyms.has(s)&&Q[s]&&Q[s].price).map(s=>{
-    const q=Q[s],c=scanCache[s]||{};
-    const score=[q.price>=1&&q.price<=20,(q.changePct||0)>=0,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length;
-    const meta=symMeta.get(s)||{source:'manual',addedTs:0,ts:0};
-    return {sym:s,q,p1:q.price>=1&&q.price<=20,p2:true,p3:c.p3,p4:c.p4,p5:c.p5,score,
-      hasNews:c.hasNews||false,src:meta.source,rv:parseFloat(c.rvolValue)||0,addedTs:meta.addedTs||0,
-      floatValue:c.floatValue,pmh:pmHigh[s]||0,newsHeadline:c.latestHeadline||'',turnover:0,halted:false,ctry:c.ctry||'',splitFlag:false};
-  });
-  const allResults=[...results,...heldExtra];
-  // LEFT = Setups: held picks (any score) first, then 3/5+ by score.
-  const heldRows=allResults.filter(r=>held.includes(r.sym));
-  // Setup stickiness — mirror the momentum side. When a stock reaches 3/5+, it
-  // stays on the Setups board for ~30s even if its score briefly dips (from a data
-  // blip or P4 volume-gate flicker). Stops the left side from blinking in and out.
-  // ── SETUP MEMBERSHIP (Warrior's List scanner is a STABLE list, refreshed ~30s,
-  // not re-judged every render). Once a stock qualifies (3/5+), it's a MEMBER and
-  // stays on the board for 40s even if a data blip drops its score for a cycle.
-  // This is the ONE persistence layer — it's what stops the whole-list flicker.
-  allResults.forEach(r=>{if(r.score>=3)_setupSticky[r.sym]=nowT+40000;});
-  const scoreRows=allResults.filter(r=>(r.score>=3||(_setupSticky[r.sym]&&_setupSticky[r.sym]>nowT))&&!held.includes(r.sym))
-    .sort((a,b)=>b.score-a.score||(b.q.changePct||0)-(a.q.changePct||0));
-  const setups=[...heldRows.sort((a,b)=>heldSyms[b.sym]-heldSyms[a.sym]),...scoreRows].slice(0,maxShow);
-  // RIGHT = Momentum: ONLY stocks actually spiking now — not everything with volume.
-  // ── EVENT-DRIVEN MOMENTUM (mirrors Ross's two scanners) ──
-  // Ross runs two momentum scanners: HOD Momo (fires on a NEW high-of-day) and
-  // Running Up (fires on a quick % move even before a new HOD). We combine them:
-  // a stock FIRES onto the board on either event, then SITS for 3 minutes (like an
-  // alert that stays up), refreshing its timer on each new event. It only drops off
-  // once it's been quiet for the full window — fire-and-sit, not live-flicker.
-  const MOMO_SIT_MS=180000; // 3 min, matching how Ross's alerts stay visible
-  results.forEach(r=>{
-    const q=r.q;if(!q||!q.price)return;
-    const hasVol=(q.volume||0)>0;if(!hasVol)return; // any real volume qualifies
-    let vel=0;if(q._pxAgo&&q._pxAgo>0)vel=(q.price-q._pxAgo)/q._pxAgo*100;
-    const volSurge=(q._volAgo!=null&&q.volume-q._volAgo>50000);
-    const hod=q.high||0;
-    const prevHod=_lastHod[r.sym]||0;
-    const newHod=hod>0&&hod>prevHod&&q.price>=hod*0.998; // HOD Momo event
-    if(hod>prevHod)_lastHod[r.sym]=hod;
-    const runningUp=vel>=1.0||volSurge; // Running Up event (quick move, pre-HOD)
-    // A stock is a MOMENTUM name if it's a real gapper (Ross's core: up 10%+ with
-    // real volume) — that's the baseline the board should always show. Live events
-    // (new HOD, quick move) REFRESH its timer so active ones stay longer.
-    // TRADEABLE FLOOR: a stock that's traded 9K-20K shares isn't a momentum name,
-    // it's noise with a big percentage on almost no activity. Ross wouldn't touch
-    // it — you can't get in or out. Require real volume before it counts as a mover.
-    const _vFloor=(typeof getSession==='function'&&getSession()==='mkt')?100000:50000;
-    const isGapper=(q.changePct||0)>=10&&(q.volume||0)>=_vFloor;
-    if(isGapper||newHod||runningUp)_momentumSticky[r.sym]=nowT+MOMO_SIT_MS;
-  });
-  const movers=results.filter(r=>_momentumSticky[r.sym]&&_momentumSticky[r.sym]>nowT&&(r.q.volume||0)>0)
-    .sort((a,b)=>{
-      // Sort by live heat tier first (what's moving NOW rises), then by day % change
-      // so the biggest movers lead when nothing is actively spiking.
-      const ha=Math.floor(heatScore(a.sym)/15),hb=Math.floor(heatScore(b.sym)/15);
-      if(ha!==hb)return hb-ha;
-      return (b.q.changePct||0)-(a.q.changePct||0);
-    })
-    .slice(0,maxShow);
-  const buildSetupRow=r=>{
-    const base=buildRow(r,pd);
-    if(!held.includes(r.sym))return base;
-    // Prepend a "held" ribbon with a dismiss X onto held rows
-    const mins=Math.ceil((heldSyms[r.sym]-Date.now())/60000);
-    return '<div class="held-row">'
-      +'<div class="held-tag">📌 watching '+(mins>0?mins+'m':'')+'<span class="held-x" onclick="releaseHold(\''+r.sym+'\',event)">✕</span></div>'
-      +base+'</div>';
+async function webullGet(appKey, appSecret, path, queryParams = {}) {
+  const timestamp = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+  const nonce = crypto.randomUUID().replace(/-/g, '');
+  const signature = await buildSignature(appKey, appSecret, path, queryParams, null, timestamp, nonce);
+  const qs = new URLSearchParams(queryParams).toString();
+  const url = `${WEBULL_BASE}${path}${qs ? '?' + qs : ''}`;
+  const headers = {
+    'x-app-key': appKey,
+    'x-timestamp': timestamp,
+    'x-signature': signature,
+    'x-signature-algorithm': 'HMAC-SHA1',
+    'x-signature-version': '1.0',
+    'x-signature-nonce': nonce,
+    'x-version': 'v2',
+    'Content-Type': 'application/json',
   };
-  const buildMomentumRow=r=>{
-    const q=r.q;
-    const u=(q.changePct||0)>=0;
-    const heat=heatScore(r.sym);
-    let vel=0;if(q._pxAgo&&q._pxAgo>0)vel=(q.price-q._pxAgo)/q._pxAgo*100;
-    const velStr=vel>=0.5?'▲'+vel.toFixed(1)+'%/min':vel<=-0.5?'▼'+Math.abs(vel).toFixed(1)+'%/min':'';
-    const volLabel=(q.volume>0)?(q.volume>=1e6?(q.volume/1e6).toFixed(1)+'M':q.volume>=1e3?Math.round(q.volume/1e3)+'K':q.volume+''):'—';
-    const hod=q.high||0;const nearHod=hod>0&&q.price>=hod*0.995;
-    const flame=heat>=40?'🔥🔥':heat>=25?'🔥':'';
-    const scoreDot=r.score>=4?'<span class="mo-score s4">'+r.score+'/5</span>':r.score>=3?'<span class="mo-score s3">'+r.score+'/5</span>':'<span class="mo-score">'+r.score+'/5</span>';
-    return '<div class="mo-row'+(nearHod?' athod':'')+'" onclick="selectSym(\''+r.sym+'\',true)">'
-      +'<div class="mo-top">'
-        +'<span class="mo-sym">'+r.sym+'</span>'+(flame?'<span class="mo-flame">'+flame+'</span>':'')
-        +'<span class="mo-px">$'+q.price.toFixed(2)+'</span>'
-        +'<span class="mo-chg '+(u?'up':'dn')+'">'+(u?'+':'')+(q.changePct||0).toFixed(1)+'%</span>'
-      +'</div>'
-      +'<div class="mo-bot">'
-        +(velStr?'<span class="mo-vel '+(vel>=0?'up':'dn')+'">'+velStr+'</span>':'')
-        +'<span class="mo-vol">Vol '+volLabel+'</span>'
-        +(nearHod?'<span class="mo-hod">◆ HOD</span>':'')
-        +scoreDot
-      +'</div>'
-      +'</div>';
-  };
-  const left=setups.length?setups.map(buildSetupRow).join(''):'<div class="split-empty">Click a mover to watch it here 👉</div>';
-  const right=movers.length?movers.map(buildMomentumRow).join(''):'<div class="split-empty">No active movers yet</div>';
-  // ── TOP GAINERS (Ross's Top Gainers scanner) — the 10 biggest % gainers under $20
-  // with real volume, sorted by % change. Ross starts his day here, then shifts focus
-  // to HOD Momo. This is a simple, always-populated list of the day's movers.
-  const _tgFloor=(typeof getSession==='function'&&getSession()==='mkt')?100000:50000;
-  const topGainers=allResults
-    .filter(r=>r.q&&r.q.price>0&&r.q.price<=20&&(r.q.changePct||0)>=5&&(r.q.volume||0)>=_tgFloor)
-    .sort((a,b)=>(b.q.changePct||0)-(a.q.changePct||0))
-    .slice(0,10);
-  const tgHtml=topGainers.length?topGainers.map(r=>{
-    const q=r.q,u=(q.changePct||0)>=0;
-    const volLabel=(q.volume>0)?(q.volume>=1e6?(q.volume/1e6).toFixed(1)+'M':q.volume>=1e3?Math.round(q.volume/1e3)+'K':q.volume+''):'—';
-    return '<div class="tg-row" onclick="selectSym(\''+r.sym+'\',true)">'
-      +'<span class="tg-sym">'+r.sym+'</span>'
-      +(r.formerRunner?'<span class="tg-fr" title="Former runner">⚠</span>':'')
-      +'<span class="tg-px">$'+q.price.toFixed(2)+'</span>'
-      +'<span class="tg-vol">'+volLabel+'</span>'
-      +'<span class="tg-chg '+(u?'up':'dn')+'">'+(u?'+':'')+(q.changePct||0).toFixed(1)+'%</span>'
-      +'</div>';
-  }).join(''):'<div class="split-empty">No gainers yet</div>';
-  const leftLbl=splitSwap?'⚡ Momentum':'🎯 Setups';
-  const rightLbl=splitSwap?'🎯 Setups':'⚡ Momentum';
-  const leftHtml=splitSwap?right:left;
-  const rightHtml=splitSwap?left:right;
-  rows.innerHTML='<div class="split-wrap">'
-    +'<div class="split-col"><div class="split-hd left" onclick="swapSplit()">'+leftLbl+'</div>'+leftHtml+'</div>'
-    +'<div class="split-col"><div class="split-hd right" onclick="swapSplit()">'+rightLbl+'</div>'+rightHtml
-      +'<div class="tg-box"><div class="tg-hd">📈 Top Gainers <span class="tg-sub">under $20 · min '+Math.round(_tgFloor/1000)+'K vol</span></div>'+tgHtml+'</div>'
-    +'</div>'
-    +'</div>';
+  return await fetch(url, { headers });
 }
 
-// ═══ WEBULL LIVE SCAN — 100 symbols ═══
-async function runWebullScan(){
-  if(!appReady||_webullScanRunning)return;
-  if(Date.now()-_lastWebullCall<10000)return; // hard floor: no Webull call within 10s of the last one, no matter the source
-  _lastWebullCall=Date.now();
-  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
-  const mins=et.getHours()*60+et.getMinutes();
-  if(mins<240||mins>1200)return;
-  _webullScanRunning=true;
-  const sess=getSession();
-  const minC=sess==='pre'||sess==='aft'?5:10;
-  const minP=parseFloat(document.getElementById('f-minp').value)||1;
-  const maxP=parseFloat(document.getElementById('f-maxp').value)||10;
-  try{
-    // Bumped to 100 — catches twice as many movers
-    // Sequential, not parallel — Webull rate limits per-second, simultaneous
-    // calls to /gainers + /active trip it even with 60s between cycles
-    const gainersResp=await fetch(WORKER_URL+'/gainers?count=100').catch(()=>null);
-    if(gainersResp&&!gainersResp.ok)logErrorToServer('webull-gainers',gainersResp.status,WORKER_URL+'/gainers','');
-    await new Promise(r=>setTimeout(r,2000));
-    const activeResp=await fetch(WORKER_URL+'/active?count=100').catch(()=>null);
-    if(activeResp&&!activeResp.ok)logErrorToServer('webull-active',activeResp.status,WORKER_URL+'/active','');
-    const seenSyms=new Set();
-    if(gainersResp?.ok){
-      const gainersData=await gainersResp.json().catch(()=>null);
-      const items=Array.isArray(gainersData)?gainersData:(gainersData?.data||gainersData?.list||[]);
-      for(const item of items){
-        const sym=(item.symbol||item.ticker||'').toUpperCase().trim();
-        if(!sym||sym.includes('.')||seenSyms.has(sym))continue;
-        seenSyms.add(sym);
-        const px=parseFloat(item.price||item.last_price||0);
-        const rawRatio=parseFloat(item.change_ratio||item.change_pct||0);
-        const chgPct=Math.abs(rawRatio)<=1?rawRatio*100:rawRatio;
-        const vol=parseFloat(item.volume||0);
-        if(!px)continue;
-        // Detect halt: if volume=0 and price unchanged flag it
-        const isHalt=(vol===0&&Math.abs(chgPct)<0.01&&scanSyms.includes(sym));
-        if(isHalt&&scanCache[sym]){
-          const wasHalted=scanCache[sym].halted;
-          scanCache[sym]={...scanCache[sym],halted:true};
-          if(!wasHalted){playPing('halt');showToast('🛑 '+sym+' — TRADING HALT DETECTED');}
-        }
-        if(!Q[sym]||Date.now()-(Q[sym]._ts||0)>20000){
-          const prev=Q[sym];
-          // Track a 60-second-ago price so heat ranking can measure recent acceleration
-          let pxAgo=prev?._pxAgo,pxAgoTs=prev?._pxAgoTs;
-          if(!pxAgoTs||Date.now()-pxAgoTs>60000){pxAgo=prev?.price||px;pxAgoTs=Date.now();}
-          const volAgo=(!prev?._volAgoTs||Date.now()-prev._volAgoTs>60000)?(prev?.volume||vol):prev._volAgo;
-          const volAgoTs=(!prev?._volAgoTs||Date.now()-prev._volAgoTs>60000)?Date.now():prev._volAgoTs;
-          Q[sym]={symbol:sym,price:px,changePct:_correctPct(sym,px,chgPct),volume:vol,open:Q[sym]?.open||0,high:Q[sym]?.high||0,low:Q[sym]?.low||0,prevClose:item.pre_close?parseFloat(item.pre_close):px,wbRvol:Q[sym]?.wbRvol||0,_truePc:Q[sym]?._truePc||0,_wbPct:chgPct,_pxAgo:pxAgo,_pxAgoTs:pxAgoTs,_volAgo:volAgo,_volAgoTs:volAgoTs,_ts:Date.now(),_fromWebull:true};
-        }
-        // Store turnover rate from Webull if available
-        const tr=parseFloat(item.turnover_rate||item.turnover||0);
-        if(tr>0&&scanCache[sym])scanCache[sym]={...scanCache[sym],turnoverRate:tr.toFixed(2)};
-        checkPmhBreak(sym,px);
-        if(!pmHigh[sym]||px>pmHigh[sym])pmHigh[sym]=px;
-        // Symbols carried over from a previous session have no meta — stamp the
-        // real source on them, or they stay badge-less "manual" forever.
-        if(scanSyms.includes(sym)){
-          const m=symMeta.get(sym);
-          if(!m||m.source==='manual'||m.source==='seed')symMeta.set(sym,{ts:Date.now(),source:'wb',addedTs:m?.addedTs||Date.now()});
-        }
-        if(px>=minP&&px<=maxP&&chgPct>=minC&&!scanSyms.includes(sym)&&scanSyms.length<25){
-          scanSyms.push(sym);saveScanSyms();
-          symMeta.set(sym,{ts:Date.now(),source:'wb',addedTs:Date.now()});
-          if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
-          showToast('🔥 '+sym+' +'+chgPct.toFixed(1)+'% · $'+fmtP(px)+' · Webull');
-          addLog('new',sym,'+'+chgPct.toFixed(1)+'% $'+fmtP(px)+' — Webull');
-          liveScanUpdate();setTimeout(startDeepScan,500);
-        }
-      }
-    }
-    if(activeResp?.ok){
-      const activeData=await activeResp.json().catch(()=>null);
-      const items=Array.isArray(activeData)?activeData:(activeData?.data||activeData?.list||[]);
-      for(const item of items){
-        const sym=(item.symbol||item.ticker||'').toUpperCase().trim();
-        if(!sym||sym.includes('.'))continue;
-        if(scanSyms.includes(sym)){
-          const rv=parseFloat(item.relative_volume_10d||item.relative_volume||0);
-          const tr=parseFloat(item.turnover_rate||item.turnover||0);
-          if(rv>0){
-            const threshold=sess==='pre'?2:sess==='aft'?1.5:5;
-            const wasBelow=!scanCache[sym]?.p4;
-            // Webull's own 10-day RVOL is the best source — but it must still go
-            // through scoreP4 so the absolute volume floor and sanity caps apply.
-            scanCache[sym]={...scanCache[sym],wbRvol:rv,_rvolFromWebull:true};
-            const sc=scoreP4(sym);
-            scanCache[sym]={...scanCache[sym],p4:sc.pass,rvolValue:sc.label,rvolBad:sc.bad};
-            if(tr>0)scanCache[sym]={...scanCache[sym],turnoverRate:tr.toFixed(2)};
-            // (Alert firing removed here — ALL alerts route through checkSetupAlerts
-            //  in the render loop, which has the per-symbol cooldown. This legacy
-            //  path fired every 60s Webull refresh with no dedup — the AMC spammer.)
-          }
-        }
-        if(!seenSyms.has(sym)){
-          seenSyms.add(sym);
-          const px=parseFloat(item.price||item.last_price||0);
-          const rawRatio=parseFloat(item.change_ratio||item.change_pct||0);
-          const chgPct=Math.abs(rawRatio)<=1?rawRatio*100:rawRatio;
-          if(px>=minP&&px<=maxP&&chgPct>=minC&&!scanSyms.includes(sym)&&scanSyms.length<25){
-            scanSyms.push(sym);saveScanSyms();
-            symMeta.set(sym,{ts:Date.now(),source:'wb',addedTs:Date.now()});
-            showToast('📊 '+sym+' RVOL +'+chgPct.toFixed(1)+'%');
-            liveScanUpdate();setTimeout(startDeepScan,500);
-          }
-        }
-      }
-    }
-    const sess2=getSession();
-    const interval=sess2==='pre'?'10s':sess2==='mkt'?'30s':'60s';
-    document.getElementById('scanStatus').textContent='WB live · '+new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'})+' · every '+interval;
-    liveScanUpdate();
-  }catch(e){console.warn('Worker error:',e);}
-  finally{_webullScanRunning=false;}
+// ─── Session detection ────────────────────────────────────────────────────────
+// Determines which market_session to request from Webull
+function getMarketSession() {
+  const now = new Date();
+  const et = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
+  const mins = et.getHours() * 60 + et.getMinutes();
+  // Pre-market: 4:00am–9:29am ET
+  if (mins >= 240 && mins < 570) return 'PRE_MARKET';
+  // Regular: 9:30am–4:00pm ET
+  if (mins >= 570 && mins < 960) return 'REGULAR';
+  // After-hours: 4:00pm–8:00pm ET
+  if (mins >= 960 && mins < 1200) return 'AFTER_MARKET';
+  return 'PRE_MARKET'; // default to pre-market for overnight
 }
 
-// ═══ FMP LIVE SCAN — NYSE + Nasdaq + AMEX coverage ═══
-// Runs in parallel with Webull. Catches NYSE stocks like GETY that
-// Webull's OpenAPI misses due to exchange/subscription limitations.
-let _fmpScanRunning=false;
-let _fmpQuotaExhausted=false;
-let _lastFmpCall=0;
-async function runFmpScan(){
-  if(!appReady||_fmpScanRunning||_fmpQuotaExhausted)return;
-  if(Date.now()-_lastFmpCall<45000)return; // Starter plan — 45s cadence for faster NYSE discovery
-  _lastFmpCall=Date.now();
-  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
-  const mins=et.getHours()*60+et.getMinutes();
-  if(mins<240||mins>1200)return;
-  _fmpScanRunning=true;
-  const sess=getSession();
-  const minC=sess==='pre'||sess==='aft'?5:10;
-  const minP=parseFloat(document.getElementById('f-minp').value)||1;
-  const maxP=parseFloat(document.getElementById('f-maxp').value)||10;
-  try{
-    const resp=await fetch(WORKER_URL+'/fmp-gainers').catch(()=>null);
-    if(resp&&!resp.ok)logErrorToServer('fmp-gainers',resp.status,WORKER_URL+'/fmp-gainers','');
-    if(resp?.status===429){
-      // FMP free tier is 250 requests/DAY, not per-minute — once exhausted, retrying
-      // does nothing but waste a request when the quota resets. Stop for the rest of today.
-      _fmpQuotaExhausted=true;
-      addLog('rm','FMP','Daily quota likely exhausted — pausing FMP scan until tomorrow');
-      _fmpScanRunning=false;return;
-    }
-    if(!resp?.ok){_fmpScanRunning=false;return;}
-    const items=await resp.json().catch(()=>null);
-    if(!Array.isArray(items)){_fmpScanRunning=false;return;}
-    for(const item of items){
-      const sym=(item.symbol||'').toUpperCase().trim();
-      if(!sym||sym.includes('.'))continue;
-      const px=parseFloat(item.price||0);
-      const chgPct=parseFloat(item.change_ratio||0);
-      if(!px)continue;
-      // Update Q if we don't have fresh data
-      if(!Q[sym]||Date.now()-(Q[sym]._ts||0)>30000){
-        Q[sym]={symbol:sym,price:px,changePct:chgPct,volume:parseFloat(item.volume||0),open:Q[sym]?.open||0,high:Q[sym]?.high||0,low:Q[sym]?.low||0,
-          prevClose:parseFloat(item.pre_close||px),_ts:Date.now(),_fromFmp:true};
-      }
-      checkPmhBreak(sym,px);
-      if(!pmHigh[sym]||px>pmHigh[sym])pmHigh[sym]=px;
-      if(px>=minP&&px<=maxP&&chgPct>=minC&&!scanSyms.includes(sym)&&scanSyms.length<25){
-        scanSyms.push(sym);saveScanSyms();
-        symMeta.set(sym,{ts:Date.now(),source:'fp',addedTs:Date.now()});
-        if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
-        showToast('🟢 FMP: '+sym+' +'+chgPct.toFixed(1)+'% · $'+fmtP(px));
-        addLog('new',sym,'+'+chgPct.toFixed(1)+'% $'+fmtP(px)+' — FMP (NYSE/NAS/AMEX)');
-        liveScanUpdate();
-        setTimeout(startDeepScan,500);
-      }
-    }
-  }catch(e){console.warn('FMP scan error:',e);}
-  finally{_fmpScanRunning=false;}
-}
-const SEED_UNIVERSE=[
-  'MARA','RIOT','CLSK','HUT','BTBT','CIFR','IREN','WULF','CORZ','BITF',
-  'PLUG','FCEL','BLNK','CHPT','EVGO','PTRA','GOEV','NKLA','MULN','WKHS',
-  'NIO','XPEV','LI','SOFI','HOOD','AFRM','UPST','DKNG','PENN','RBLX',
-  'GME','AMC','BBBY','EXPR','NAKD','SNDL','CLOV','AGEN','SAVA','AXSM',
-  'AVXL','ARDX','LQDA','ADTX','SNGX','PHVS','CXAI','AIXI','MLGO','GFAI',
-  'NKGN','BTAI','BBAI','BURU','AEYE','SENS','TBLT','QBTS','RGTI','IONQ',
-  'ARQQ','QUBT','ABSI','CENN','FFIE','IMTX','CJET','BKKT','SOLO','XELA',
-  'SPHL','BNAI','CMND','ACMR','BTCS','MIGI','SRM','BFRI','GREE','HIVE',
-  'PRTY','LIZI','TPST','RAPT','VVOS','IQST','KTTA','RCAT','MGOL','CRKN',
-  'VRME','NXGL','HOLO','FFAI','AIFU','RELI','SINT','NVNI','HITI','MDAI',
-  'HYMC','MEGL','AGMH','KPLT','IINN','OTRK','PRME','EDSA','MITI','NRGV',
-  'SOXL','TQQQ','UVXY','LABU','SQQQ','TNA','NUGT','SOXS','FNGU','TECL',
-  'IWM','SPXU','SDOW','TECS','DPST','HIBL','HIBS','FNGD','DUST','NAIL',
-  'CUPR','VSME','DSY','AZI','NOK','BB','ACB','CGC','TLRY',
-  'HEXO','AUVI','DRUG','IDEX','AEHR','GDHG','HITI','AIXI',
+// ─── Volume picker ────────────────────────────────────────────────────────────
+// Different Webull sessions expose volume under different keys. Rather than
+// guessing one, take the largest sane value across all of them. A pre-market
+// mover showing 7.79M in Webull's own UI must not arrive here as 0.
+const VOLUME_KEYS = [
+  'volume', 'pre_market_volume', 'preMarketVolume', 'pm_volume',
+  'after_market_volume', 'afterMarketVolume', 'total_volume', 'totalVolume',
+  'trade_volume', 'tradeVolume', 'session_volume', 'sessionVolume', 'vol'
 ];
-async function runSeedScan(){
-  if(!appReady||_uniRunning)return;
-  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
-  const mins=et.getHours()*60+et.getMinutes();
-  if(mins<240||mins>1200)return;
-  _uniRunning=true;
-  const sess=getSession();
-  const minC=sess==='pre'||sess==='aft'?5:10;
-  const minP=parseFloat(document.getElementById('f-minp').value)||1;
-  const maxP=parseFloat(document.getElementById('f-maxp').value)||10;
-  const batch=[];
-  for(let i=0;i<8;i++){
-    const sym=SEED_UNIVERSE[_uniIdx%SEED_UNIVERSE.length];
-    _uniIdx=(_uniIdx+1)%SEED_UNIVERSE.length;
-    if(scanSyms.includes(sym))continue;
-    if(Q[sym]?.price&&Date.now()-(Q[sym]._ts||0)<60000)continue;
-    batch.push(sym);
+function pickVolume(item) {
+  let best = 0;
+  for (const k of VOLUME_KEYS) {
+    const v = parseFloat(item?.[k] ?? 0);
+    if (Number.isFinite(v) && v > best) best = v;
   }
-  await Promise.all(batch.map(async sym=>{
-    try{
-      await fetchQDirect(sym);const q=Q[sym];if(!q?.price)return;
-      if(q.price>=minP&&q.price<=maxP&&(q.changePct||0)>=minC&&!scanSyms.includes(sym)&&scanSyms.length<25){
-        scanSyms.push(sym);saveScanSyms();
-        symMeta.set(sym,{ts:Date.now(),source:'seed',addedTs:Date.now()});
-        if(fhWS?.readyState===1)fhWS.send(JSON.stringify({type:'subscribe',symbol:sym}));
-        showToast('🔥 '+sym+' +'+((q.changePct||0).toFixed(1))+'% · Seed');
-        liveScanUpdate();
-      }
-    }catch(e){}
-  }));
-  _uniRunning=false;
-}
-function startUniverseScan(){
-  if(_uniStarted)return;_uniStarted=true;
-  // Adaptive scan speed: 10s pre-market, 30s market hours, 60s after hours/closed
-  function getWebullInterval(){
-    const sess=getSession();
-    // 60s all sessions — Webull API rate limit requires this
-    return 60000;
-  }
-  function scheduleNextWebull(){
-    setTimeout(()=>{runWebullScan();scheduleNextWebull();},getWebullInterval());
-  }
-  // FMP scan: every 30s — covers NYSE/AMEX that Webull API misses
-  // Staggered 15s after Webull so they don't fire simultaneously
-  function scheduleNextFmp(){
-    setTimeout(()=>{runFmpScan();scheduleNextFmp();},45000); // Starter plan — 45s cadence
-  }
-  setTimeout(()=>{runWebullScan();scheduleNextWebull();},12000);
-  setTimeout(()=>{runFmpScan();scheduleNextFmp();},27000); // staggered 15s
-  setTimeout(()=>{runSeedScan();setInterval(runSeedScan,3000);},15000);
+  return best;
 }
 
-// ═══ DEEP SCAN ═══
-let _lastDeepScan=0;
-async function startDeepScan(){
-  if(!appReady||scanDeepRunning)return;
-  // Rate limit: deep scan can only run once every 3 minutes max
-  if(Date.now()-_lastDeepScan<90000){return;} // 90s — fast enough that partial rows fill in quickly
-  _lastDeepScan=Date.now();
-  scanDeepRunning=true;
-  const statusEl=document.getElementById('scanStatus');
-  if(statusEl)statusEl.textContent='Scanning P3/P4/P5…';
-  const sess=getSession();const rvThreshold=sess==='pre'?2:sess==='aft'?1.5:5;const minC=sess==='pre'||sess==='aft'?5:10;
-  const etNow=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));const mktOpen=new Date(etNow);mktOpen.setHours(9,30,0,0);const minsElapsed=sess==='mkt'?Math.max(1,(etNow-mktOpen)/60000):390;
-
-  // Smart cap: only deep-scan top 30 candidates sorted by existing score + % change
-  // This prevents Finnhub 429 rate limit errors when 100+ symbols are tracked
-  // Symbols beyond cap keep their existing P3/P4/P5 data — nothing is lost
-  const candidates=[...scanSyms]
-    .filter(sym=>{
-      const q=Q[sym];if(!q?.price)return false;
-      if(isStaleQuote(sym))return false; // yesterday's data — don't burn API calls scoring ghosts
-      return q.price>=1&&q.price<=20&&(q.changePct||0)>=minC;
-    })
-    .sort((a,b)=>{
-      const ca=scanCache[a]||{},cb=scanCache[b]||{};
-      // Never-scored symbols go FIRST — a brand-new mover must get scored (and
-      // split-price-corrected) this cycle, not sit unscored behind old rows.
-      const aNew=ca.ts?0:1,bNew=cb.ts?0:1;
-      if(aNew!==bNew)return bNew-aNew;
-      const scoreA=[true,true,ca.p3===true,ca.p4===true,ca.p5===true].filter(Boolean).length;
-      const scoreB=[true,true,cb.p3===true,cb.p4===true,cb.p5===true].filter(Boolean).length;
-      if(scoreB!==scoreA)return scoreB-scoreA;
-      return (Q[b]?.changePct||0)-(Q[a]?.changePct||0);
-    })
-    .slice(0,15); // top 15 — new movers first, then by score
-
-  await fmpVolumeBackfill(candidates.filter(s=>Q[s]&&!Q[s]._fromWebull&&(!Q[s].volume||Q[s]._volFmp))); // NYSE/AMEX only — Webull covers the restes FMP-sourced volumes every 5 min
-
-  for(const sym of candidates){
-    if(fhPaused()){await new Promise(r=>setTimeout(r,1500));if(fhPaused())continue;} // pause, don't abandon the rest of the list
-    try{
-      if(!Q[sym]||!Q[sym].high)await fetchQ(sym);const q=Q[sym];if(!q?.price)continue;
-      const p1=q.price>=1&&q.price<=20,p2=(q.changePct||0)>=minC;if(!p1||!p2)continue;
-      // 3min cache — P4 is live-recomputed every render, so this only gates the
-      // API-costly parts (news + metric). Was 10min, which froze scores mid-move.
-      const cached=scanCache[sym]||{};if(Date.now()-(cached.ts||0)<90000)continue;
-      if(_deepBadSyms[sym]&&Date.now()-_deepBadSyms[sym]<600000)continue;
-      let hasNews=cached.hasNews??false,p3=cached.p3??null,p4=cached.p4??null,p5=cached.p5??null;
-      let latestHeadline=cached.latestHeadline||'';
-      let hitLimit=false;
-      const prevScore=[p1,p2,cached.p3===true,cached.p4===true,cached.p5===true].filter(Boolean).length;
-      await queueCall(async()=>{try{
-        const today=new Date().toISOString().split('T')[0];
-        const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];
-        const r=await fhFetch('/news?symbol='+sym+'&from='+from+'&to='+today);
-        if(r.status===403||r.status===429){p3=null;hitLimit=true;if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-news',r.status,FH_URL+'/news?symbol='+sym,sym);return;}
-        const news=await r.json();
-        const catalysts=Array.isArray(news)?news.filter(a=>isRealCatalyst(a,sym)):[];
-        hasNews=catalysts.length>0;p3=hasNews;
-        if(catalysts.length&&catalysts[0].headline)latestHeadline=catalysts[0].headline;
-        else if(Array.isArray(news)&&news[0]?.headline)latestHeadline=news[0].headline; // display-only fallback
-        if(Array.isArray(news)&&news.length)_newsCache[sym]=news.slice(0,8);
-      }catch(e){p3=null;}});
-      if(!scanCache[sym]?._rvolFromWebull){
-        await queueCall(async()=>{try{
-          const r=await fhFetch('/metric?symbol='+sym);
-          if(r.status===403||r.status===429){p4=null;p5=null;hitLimit=true;if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-metric',r.status,FH_URL+'/metric?symbol='+sym,sym);return;}
-          const d=await r.json();const m=d.metric||{};
-          const avgDailyVol=(m['10DayAverageTradingVolume']||0)*1e6;
-          const volFloor=sess==='mkt'?500000:100000; // absolute floor — a big ratio on a dead tape is not momentum
-          // avgVol is cached so RVOL can be recomputed live on every render (see scoreP4)
-          // — a 10-day average under 5k shares means broken/new-listing data, not signal.
-          scanCache[sym]={...scanCache[sym],avgVol:avgDailyVol>=5000?avgDailyVol:0};
-          const rv=scoreP4(sym,mins);
-          p4=rv.pass;
-          scanCache[sym]={...scanCache[sym],rvolValue:rv.label,rvolBad:rv.bad};
-          const tf=m['shareFloat']??m['float']??null;
-          let fm=null;
-          if(tf!==null)fm=tf>1000?tf/1e6:tf;
-          else{const fs=await getFloatFMP(sym);if(fs)fm=fs/1e6;}
-          // Sub-50k float is a data error, not a tradeable float — never score it
-          if(fm!==null&&fm>=0.05){p5=fm<10;scanCache[sym]={...scanCache[sym],floatValue:fm<0.1?'<0.1M':fm.toFixed(1)+'M'};}
-          else{p5=null;scanCache[sym]={...scanCache[sym],floatValue:'—'};}
-        }catch(e){p4=null;p5=null;}});
-      } else {
-        await queueCall(async()=>{try{
-          const r=await fhFetch('/metric?symbol='+sym);
-          if(r.status===403||r.status===429){hitLimit=true;if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-metric-retry',r.status,FH_URL+'/metric?symbol='+sym,sym);return;}
-          const d=await r.json();const m=d.metric||{};
-          const tf=m['shareFloat']??m['float']??null;
-          let fm=null;
-          if(tf!==null)fm=tf>1000?tf/1e6:tf;
-          else{const fs=await getFloatFMP(sym);if(fs)fm=fs/1e6;}
-          if(fm!==null&&fm>=0.05){p5=fm<10;scanCache[sym]={...scanCache[sym],floatValue:fm<0.1?'<0.1M':fm.toFixed(1)+'M'};}
-          else{p5=null;scanCache[sym]={...scanCache[sym],floatValue:'—'};}
-          p4=scanCache[sym]?.p4??null;
-        }catch(e){}});
-      }
-      if(hitLimit)_deepBadSyms[sym]=Date.now();
-      // Float must never depend on the Finnhub metric call surviving. Finnhub's
-      // free tier has no float data at all, so FMP is the real source — ask it
-      // directly whenever float is still unknown, whichever branch ran above.
-      if(scanCache[sym]?.floatValue===undefined||scanCache[sym]?.floatValue==='—'){
-        const fs=await getFloatFMP(sym);
-        if(fs){
-          const fm=fs/1e6;
-          if(fm>=0.05){p5=fm<10;scanCache[sym]={...scanCache[sym],floatValue:fm<0.1?'<0.1M':fm.toFixed(1)+'M'};}
-          else{p5=null;scanCache[sym]={...scanCache[sym],floatValue:'—'};}
-        }else if(scanCache[sym]?.floatValue===undefined){
-          scanCache[sym]={...scanCache[sym],floatValue:'—'};
-        }
-      }
-      scanCache[sym]={...scanCache[sym],p3,p4,p5,hasNews,latestHeadline,ts:Date.now()};
-      // Country of domicile — one call per symbol, cached forever
-      if(_ctryCache[sym]===undefined)await getCountry(sym);
-      scanCache[sym]={...scanCache[sym],ctry:_ctryCache[sym]||''};
-      const newScore=[p1,p2,p3===true,p4===true,p5===true].filter(Boolean).length;
-      if(newScore>prevScore){
-        // Sound is handled by checkSetupAlerts (volume-gated) on the next render,
-        // so it can't double-ping and can't fire on a no-volume artifact. Keep the
-        // logs/toasts here for the timeline; 5/5 and 4/5 get a visual toast only.
-        if(newScore>=5){showToast('🚀 '+sym+' hit 5/5'+(hasRealVolume(sym)?'':' (no volume — muted)'));addLog('score5',sym,'Hit 5/5');}
-        else if(newScore>=4){showToast('⚡ '+sym+' now '+newScore+'/5'+(hasRealVolume(sym)?'':' (no volume — muted)'));addLog('score4',sym,'Upgraded to '+newScore+'/5');}
-        else if(newScore===3&&prevScore<3){showToast('📈 '+sym+' now 3/5 — progressing');addLog('score3',sym,'Now 3/5');}
-      }
-    }catch(e){}
-  }
-  scanDeepRunning=false;
-  const now=new Date().toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  if(statusEl)statusEl.textContent='WB live · '+now;
-  liveScanUpdate();
-}
-let deepScanCountdown=60;
-setInterval(async()=>{
-  deepScanCountdown--;
-  if(deepScanCountdown<=0){deepScanCountdown=60;await startDeepScan();}
-  else{const el=document.getElementById('scanStatus');if(el&&!scanDeepRunning&&!_webullScanRunning)el.textContent='Next scan '+deepScanCountdown+'s';}
-},1000);
-['f-minp','f-maxp','f-chg','f-rvol','f-autorm','f-maxshow'].forEach(id=>{
-  const el=document.getElementById(id);if(el)el.addEventListener('input',()=>liveScanUpdate());
-});
-
-// ═══ CHART PANEL ═══
-function openChartPanel(sym){
-  curChartSym=sym;
-  document.getElementById('chartPanel').style.display='flex';
-  document.getElementById('cpSym').textContent=sym;
-  const noteBtn=document.getElementById('cpNoteBtn');if(noteBtn)noteBtn.style.display='block';
-  const c=scanCache[sym]||{};
-  const meta=[];
-  if(c.floatValue)meta.push('Float '+c.floatValue);
-  if(c.rvolValue)meta.push('RVOL '+c.rvolValue+'x');
-  if(c.turnoverRate)meta.push('Turnover '+c.turnoverRate+'%');
-  if(c.latestHeadline)meta.push('📰 '+c.latestHeadline.substring(0,55)+(c.latestHeadline.length>55?'…':''));
-  document.getElementById('cpMeta').textContent=meta.length?meta.join(' · '):'Click to pop out full chart →';
-  updateCPPrice();
-}
-function updateCPPrice(){
-  if(!curChartSym)return;const q=Q[curChartSym];if(!q)return;
-  const u=(q.changePct||0)>=0;
-  const px=document.getElementById('cpPx'),chg=document.getElementById('cpChg');
-  if(px){px.textContent='$'+fmtP(q.price);px.className='cp-px '+(u?'up':'dn');}
-  if(chg){chg.textContent=(u?'+':'')+(q.changePct||0).toFixed(2)+'%';chg.className='cp-chg '+(u?'up':'dn');}
-  const pmhEl=document.getElementById('cpPmh');
-  if(pmhEl&&pmHigh[curChartSym])pmhEl.textContent='PMH $'+pmHigh[curChartSym].toFixed(2);
-  else if(pmhEl)pmhEl.textContent='';
-  // Bid/Ask spread from quote data
-  const spreadEl=document.getElementById('cpSpread');
-  if(spreadEl&&q.bid&&q.ask){
-    const spread=((q.ask-q.bid)/q.price*100).toFixed(3);
-    spreadEl.textContent='Spread '+spread+'%';
-  } else if(spreadEl)spreadEl.textContent='';
-}
-const SAVED_LAYOUT_ID='7ghMFdhC';
-let _tvWin=null;
-function openTVPopup(){
-  if(!curChartSym){showToast('Select a stock first');return;}
-  let tvSym=curChartSym;
-  if(curChartSym==='BTC/USD')tvSym='BINANCE:BTCUSDT';
-  else if(curChartSym==='ETH/USD')tvSym='BINANCE:ETHUSDT';
-  const base='https://www.tradingview.com/chart/'+SAVED_LAYOUT_ID+'/?symbol='+encodeURIComponent(tvSym);
-  const sw=screen.availWidth,sh=screen.availHeight;
-  const cw=Math.floor(sw*0.9),ch=Math.floor(sh*0.9);
-  const ol=Math.floor((sw-cw)/2),ot=Math.floor((sh-ch)/2);
-  const feat='width='+cw+',height='+ch+',left='+ol+',top='+ot+',resizable=yes,scrollbars=no,toolbar=no,menubar=no,location=no,status=no';
-  if(_tvWin&&!_tvWin.closed){_tvWin.location.href=base;_tvWin.focus();}
-  else{_tvWin=window.open(base,'tvChartWin',feat);}
-}
-function showNoteBtn(){openNotes(curChartSym);}
-
-// ═══ CLAUDE ═══
-let claudeOpen=false;let claudeHistory=[];
-let claudeKey=localStorage.getItem('sv_claude_key')||'';
-function toggleClaude(){
-  claudeOpen=!claudeOpen;
-  const panel=document.getElementById('claudePanel');
-  panel.style.display=claudeOpen?'flex':'none';
-  const keyRow=document.getElementById('claudeKeyRow');
-  if(keyRow)keyRow.style.display=claudeKey?'none':'flex';
-  document.getElementById('claudeToggleBtn').classList.toggle('active',claudeOpen);
-  if(claudeOpen&&!claudeHistory.length){
-    addClaudeMsg('assistant',claudeKey?'Live scanner connected. Ask me what\'s setting up, or hit Summarize.':'Paste your Anthropic API key above to activate.');
-  }
-}
-function saveClaudeKey(){
-  const inp=document.getElementById('claudeKeyInp');const key=inp?.value.trim();
-  if(!key||!key.startsWith('sk-ant')){showToast('Key must start with sk-ant-');return;}
-  claudeKey=key;localStorage.setItem('sv_claude_key',key);
-  document.getElementById('claudeKeyRow').style.display='none';inp.value='';
-  addClaudeMsg('assistant','Key saved. Ask me anything about what\'s scanning.');
-}
-function addClaudeMsg(role,text){
-  claudeHistory.push({role,content:text});
-  const el=document.getElementById('claudeMsgs');
-  const b=document.createElement('div');
-  b.style.cssText='margin-bottom:10px;line-height:1.55';
-  b.style.color=role==='user'?'var(--ac3)':'var(--tx)';
-  b.innerHTML='<span style="font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.04em;opacity:.6">'+(role==='user'?'You':'Claude')+'</span><br>'+text.replace(/\n/g,'<br>');
-  el.appendChild(b);el.scrollTop=el.scrollHeight;
-}
-function buildScannerSnapshot(){
-  const minP=parseFloat(document.getElementById('f-minp').value)||1;
-  const maxP=parseFloat(document.getElementById('f-maxp').value)||10;
-  const minC=parseFloat(document.getElementById('f-chg').value)||10;
-  const lines=scanSyms.map(sym=>{
-    const q=Q[sym];if(!q?.price)return sym+': no data';
-    const c=scanCache[sym]||{};
-    const p1=q.price>=minP&&q.price<=maxP,p2=(q.changePct||0)>=minC;
-    const src=symMeta.get(sym)?.source||'manual';
-    const pv=v=>v===true?'✓':v===false?'✗':'?';
-    const pmhStr=pmHigh[sym]?'PMH=$'+pmHigh[sym].toFixed(2):'';
-    const noteStr=symNotes[sym]&&symNotes[sym].length?'note="'+symNotes[sym][symNotes[sym].length-1].text.substring(0,60)+'"':'';
-    return sym+'['+src+'] $'+fmtP(q.price)+' '+(q.changePct>=0?'+':'')+(q.changePct||0).toFixed(1)+'% '
-      +'P1='+pv(p1)+' P2='+pv(p2)+' P3='+pv(c.p3)+' P4='+pv(c.p4)+'('+((c.rvolValue||'?'))+'x) P5='+pv(c.p5)+'('+((c.floatValue||'?'))+')'
-      +' score='+[p1,p2,c.p3===true,c.p4===true,c.p5===true].filter(Boolean).length+'/5'
-      +(pmhStr?' '+pmhStr:'')+(noteStr?' '+noteStr:'')
-      +(c.latestHeadline?' news="'+c.latestHeadline.substring(0,80)+'"':'');
-  });
-  return lines.length?lines.join('\n'):'No symbols tracked.';
-}
-async function askClaude(question){
-  if(!claudeKey){document.getElementById('claudeKeyRow').style.display='flex';showToast('Add your API key first');return;}
-  addClaudeMsg('user',question);addClaudeMsg('assistant','…');
-  const thinkingEl=document.getElementById('claudeMsgs').lastChild;
-  try{
-    const snap=buildScannerSnapshot();
-    const sys='You are a momentum trading assistant embedded in a live 5 Pillars scanner (Ross Cameron strategy). P1=price $1-$20, P2=%change≥10%, P3=news, P4=RVOL≥5x, P5=float<10M. PMH=pre-market high (key breakout level). Source: wb=Webull live (100 top movers), seed=fallback, manual=user-added. Live data:\n'+snap+'\n\nBe concise and direct. Name specific tickers and numbers. Flag 4+/5 scorers as priority. Note any PMH breakout setups. If user has notes on a symbol reference them.';
-    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','x-api-key':claudeKey,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:1000,system:sys,messages:[{role:'user',content:question}]})});
-    const data=await r.json();
-    if(data.error){thinkingEl.innerHTML='<span style="font-weight:700;font-size:11px;opacity:.6">CLAUDE</span><br>Error: '+(data.error.message||data.error.type);return;}
-    const text=data?.content?.map(b=>b.text||'').join('\n').trim()||'No response.';
-    thinkingEl.innerHTML='<span style="font-weight:700;font-size:11px;opacity:.6">CLAUDE</span><br>'+text.replace(/\n/g,'<br>');
-    claudeHistory[claudeHistory.length-1].content=text;
-  }catch(e){thinkingEl.innerHTML='<span style="font-weight:700;font-size:11px;opacity:.6">CLAUDE</span><br>Something went wrong. Try again.';}
-  document.getElementById('claudeMsgs').scrollTop=document.getElementById('claudeMsgs').scrollHeight;
-}
-
-// ═══ STAR / PIN ═══
-function toggleStar(sym){
-  if(starredSyms.has(sym))starredSyms.delete(sym);
-  else starredSyms.add(sym);
-  localStorage.setItem('sv_starred_v1',JSON.stringify([...starredSyms]));
-  liveScanUpdate();
-  showToast(starredSyms.has(sym)?'⭐ '+sym+' pinned to top':'☆ '+sym+' unpinned');
-}
-
-// ═══ COPY SYMBOLS ═══
-function copySym(sym){
-  navigator.clipboard.writeText(sym).then(()=>{
-    showToast('📋 Copied '+sym);
-  }).catch(()=>showToast(sym));
-}
-function copySymbols(){
-  const minP=parseFloat(document.getElementById('f-minp').value)||1;
-  const maxP=parseFloat(document.getElementById('f-maxp').value)||10;
-  const minC=parseFloat(document.getElementById('f-chg').value)||10;
-  const passing=scanSyms.filter(sym=>{
-    const q=Q[sym];if(!q?.price)return false;
-    return q.price>=minP&&q.price<=maxP&&(q.changePct||0)>=minC;
-  });
-  if(!passing.length){showToast('No passing symbols to copy');return;}
-  navigator.clipboard.writeText(passing.join(', ')).then(()=>{
-    showToast('📋 Copied '+passing.length+' symbols to clipboard');
-  }).catch(()=>{
-    showToast(passing.join(', '));
-  });
-}
-
-// ═══ SECTOR DETECTION ═══
-// Basic sector mapping for common momentum tickers
-const SECTOR_MAP={
-  // Biotech/Pharma
-  SAVA:'BIO',AXSM:'BIO',AVXL:'BIO',ARDX:'BIO',LQDA:'BIO',ADTX:'BIO',SNGX:'BIO',PHVS:'BIO',RAPT:'BIO',TPST:'BIO',EDSA:'BIO',PRME:'BIO',
-  // Crypto miners
-  MARA:'CRYPTO',RIOT:'CRYPTO',CLSK:'CRYPTO',HUT:'CRYPTO',BTBT:'CRYPTO',CIFR:'CRYPTO',IREN:'CRYPTO',WULF:'CRYPTO',CORZ:'CRYPTO',BITF:'CRYPTO',GREE:'CRYPTO',HIVE:'CRYPTO',
-  // EV/Clean Energy
-  PLUG:'EV',FCEL:'EV',BLNK:'EV',CHPT:'EV',EVGO:'EV',PTRA:'EV',GOEV:'EV',NKLA:'EV',MULN:'EV',WKHS:'EV',
-  // Chinese EV
-  NIO:'CN',XPEV:'CN',LI:'CN',
-  // Fintech
-  SOFI:'FINTECH',HOOD:'FINTECH',AFRM:'FINTECH',UPST:'FINTECH',
-  // Quantum/AI
-  QBTS:'QUANT',RGTI:'QUANT',IONQ:'QUANT',ARQQ:'QUANT',QUBT:'QUANT',BBAI:'AI',CXAI:'AI',AIXI:'AI',
-};
-const SECTOR_LABELS={BIO:'🧬 Biotech Running',CRYPTO:'₿ Crypto Running',EV:'⚡ EV Running',CN:'🇨🇳 China ADRs',FINTECH:'💳 Fintech Running',QUANT:'⚛️ Quantum Running',AI:'🤖 AI Running'};
-function checkSectors(results){
-  const sectorCount={};
-  results.forEach(r=>{
-    const s=SECTOR_MAP[r.sym];
-    if(s)sectorCount[s]=(sectorCount[s]||0)+1;
-  });
-  const hotSectors=Object.entries(sectorCount).filter(([,c])=>c>=3).sort((a,b)=>b[1]-a[1]);
-  const alertEl=document.getElementById('sectorAlert');
-  if(!alertEl)return;
-  if(hotSectors.length){
-    const [sector,count]=hotSectors[0];
-    alertEl.style.display='flex';
-    alertEl.textContent=(SECTOR_LABELS[sector]||sector)+' ('+count+')';
-  } else {
-    alertEl.style.display='none';
-  }
-}
-
-// ═══ SESSION LOG ═══
-function addLog(type,sym,detail){
-  const et=new Date(new Date().toLocaleString('en-US',{timeZone:'America/New_York'}));
-  const p=n=>String(n).padStart(2,'0');
-  const ts=`${p(et.getHours())}:${p(et.getMinutes())}:${p(et.getSeconds())}`;
-  sessionLog.unshift({ts,type,sym,detail}); // newest first
-  if(sessionLog.length>200)sessionLog.pop(); // cap at 200 entries
-  renderLog();
-}
-function renderLog(){
-  if(!logOpen)return;
-  const list=document.getElementById('logList');
-  if(!list)return;
-  if(!sessionLog.length){list.innerHTML='<div style="padding:16px 12px;font-size:10px;color:var(--dim)">No events yet this session.</div>';return;}
-  const typeConfig={
-    new:{cls:'log-sym',icon:'🔥'},
-    score5:{cls:'log-score5',icon:'🚀'},
-    score4:{cls:'log-score4',icon:'⚡'},
-    score3:{cls:'',icon:'📈'},
-    rm:{cls:'log-rm',icon:'❌'},
-    halt:{cls:'',icon:'🛑'},
+// ─── Normalize a Webull item into a consistent shape ─────────────────────────
+// Webull returns change_ratio as a decimal (0.5659 = 56.59%)
+// This normalizes it so the dashboard always gets a proper percentage
+function normalizeItem(item) {
+  const rawRatio = parseFloat(item.change_ratio ?? item.change_pct ?? 0);
+  // If absolute value <= 2, it's a decimal — multiply by 100
+  const changePct = Math.abs(rawRatio) <= 2 ? rawRatio * 100 : rawRatio;
+  const px = parseFloat(item.close ?? item.price ?? item.last_price ?? 0);
+  const chg = parseFloat(item.change ?? 0);
+  // Webull often returns pre_close IDENTICAL to the current price, which is wrong
+  // (verified live: ZCMD price 4.290, pre_close 4.290, change 2.820 — the real
+  // previous close is 4.290 - 2.820 = 1.470). Only trust pre_close when it
+  // actually differs from price; otherwise derive it from price - change.
+  const rawPre = parseFloat(item.pre_close ?? 0);
+  const preClose = (rawPre > 0 && Math.abs(rawPre - px) > 0.0001) ? rawPre : (px - chg);
+  return {
+    symbol:        (item.symbol || item.ticker || '').toUpperCase(),
+    price:         px,
+    change_ratio:  changePct,   // normalized to percent (e.g. 56.59)
+    // Webull uses different volume keys depending on session. In PRE_MARKET the
+    // plain `volume` field is often the (empty) regular-session volume, while the
+    // real pre-market share count sits under a session-specific key. Take the
+    // LARGEST non-zero value across every plausible field so we never report 0
+    // for a stock that is genuinely trading millions of shares pre-market.
+    volume:        pickVolume(item),
+    pre_close:     preClose,
+    relative_volume_10d: parseFloat(item.relative_volume_10d ?? item.relative_volume ?? 0),
+    turnover_rate: parseFloat(item.turnover_rate ?? 0),
+    amplitude:     parseFloat(item.amplitude ?? 0),
+    market_value:  parseFloat(item.market_value ?? 0),
   };
-  list.innerHTML=sessionLog.map(e=>{
-    const cfg=typeConfig[e.type]||{cls:'',icon:'•'};
-    return '<div class="log-item">'
-      +'<div class="log-time">'+e.ts+' ET</div>'
-      +'<div><span class="'+cfg.cls+'" style="font-weight:700">'+cfg.icon+' '+e.sym+'</span> <span class="log-detail">'+e.detail+'</span></div>'
-      +'</div>';
-  }).join('');
-}
-function toggleLog(){
-  logOpen=!logOpen;
-  document.getElementById('logPanel').style.display=logOpen?'flex':'none';
-  document.getElementById('logToggleBtn').classList.toggle('active',logOpen);
-  if(logOpen)renderLog();
 }
 
-// ═══ TRADE JOURNAL ═══
-function openJournal(sym){
-  const inp=document.getElementById('jSym');
-  if(inp&&sym)inp.value=sym.toUpperCase();
-  else if(inp&&curChartSym)inp.value=curChartSym;
-  renderJournalList();
-  document.getElementById('journalModal').style.display='flex';
-  // Wire up live P&L preview
-  ['jEntry','jExit','jShares','jSide'].forEach(id=>{
-    const el=document.getElementById(id);
-    if(el)el.addEventListener('input',updateJournalPnl);
+// ─── /gainers handler ─────────────────────────────────────────────────────────
+async function handleGainers(request, env) {
+  const url = new URL(request.url);
+  const count = url.searchParams.get('count') || '100';
+  const session = getMarketSession();
+
+  const path = '/openapi/market-data/screener/gainers-losers';
+  const queryParams = {
+    category:       'US_STOCK',
+    order:          'CHANGE_RATIO',
+    direction:      'DESC',
+    count:          count,
+    market_session: session,   // ← THE KEY FIX
+  };
+
+  try {
+    const resp = await webullGet(env.WEBULL_APP_KEY, env.WEBULL_APP_SECRET, path, queryParams);
+    const raw = await resp.text();
+    if (!resp.ok) {
+      return new Response(JSON.stringify({ error: `Webull ${resp.status}`, detail: raw, session }), {
+        status: resp.status, headers: { 'Content-Type': 'application/json', ...CORS }
+      });
+    }
+    // Normalize and re-serialize so dashboard gets clean consistent data
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch(e) { parsed = { data: [] }; }
+    const items = Array.isArray(parsed) ? parsed : (parsed.data || parsed.list || []);
+    const normalized = items.map(normalizeItem).filter(i => i.symbol);
+    return new Response(JSON.stringify(normalized), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', ...CORS }
+    });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), {
+      status: 500, headers: { 'Content-Type': 'application/json', ...CORS }
+    });
+  }
+}
+
+// ─── /active handler ──────────────────────────────────────────────────────────
+async function handleActive(request, env) {
+  const url = new URL(request.url);
+  const count = url.searchParams.get('count') || '100';
+  const session = getMarketSession();
+
+  const path = '/openapi/market-data/screener/most-active';
+  // ORDER BY RAW VOLUME, not RELATIVE_VOLUME. Webull's relative_volume_10d is
+  // computed against full-day average volume, so in pre-market it returns
+  // near-zero noise (verified live: 0.0745, 0.0113, 0.0033). Sorting the
+  // most-active list by that field buried the genuinely liquid movers — the
+  // multi-million-share names Webull's own UI shows. Raw volume is truthful in
+  // every session. RELATIVE_VOLUME is kept as a fallback if VOLUME is rejected.
+  const buildParams = (order) => ({
+    category:       'US_STOCK',
+    order:          order,
+    direction:      'DESC',
+    count:          count,
+    market_session: session,
   });
-}
-function closeJournal(){
-  document.getElementById('journalModal').style.display='none';
-}
-function updateJournalPnl(){
-  const entry=parseFloat(document.getElementById('jEntry')?.value)||0;
-  const exit=parseFloat(document.getElementById('jExit')?.value)||0;
-  const shares=parseFloat(document.getElementById('jShares')?.value)||0;
-  const side=document.getElementById('jSide')?.value||'LONG';
-  const el=document.getElementById('jPnlPreview');
-  if(!el)return;
-  if(!entry||!exit||!shares){el.textContent='Enter prices + shares to see P&L';el.className='journal-pnl zero';return;}
-  const raw=(side==='LONG')?(exit-entry)*shares:(entry-exit)*shares;
-  const pct=((exit-entry)/entry*100*(side==='LONG'?1:-1));
-  const sign=raw>=0?'+':'';
-  el.textContent=sign+'$'+(raw.toFixed(2))+' ('+sign+pct.toFixed(2)+'%)';
-  el.className='journal-pnl '+(raw>0?'pos':raw<0?'neg':'zero');
-}
-function saveTradeEntry(){
-  const sym=(document.getElementById('jSym')?.value||'').toUpperCase().trim();
-  const entry=parseFloat(document.getElementById('jEntry')?.value)||0;
-  const exit=parseFloat(document.getElementById('jExit')?.value)||0;
-  const shares=parseFloat(document.getElementById('jShares')?.value)||0;
-  const side=document.getElementById('jSide')?.value||'LONG';
-  const score=document.getElementById('jScore')?.value||'';
-  const note=(document.getElementById('jNote')?.value||'').trim();
-  if(!sym||!entry||!exit||!shares){showToast('Fill in Symbol, Entry, Exit and Shares');return;}
-  const pnl=(side==='LONG')?(exit-entry)*shares:(entry-exit)*shares;
-  const pnlPct=((exit-entry)/entry*100*(side==='LONG'?1:-1));
-  const id=Date.now().toString(36);
-  const trade={id,sym,side,entry,exit,shares,pnl:parseFloat(pnl.toFixed(2)),pnlPct:parseFloat(pnlPct.toFixed(2)),score,note,ts:new Date().toISOString()};
-  tradeJournal.unshift(trade);
-  localStorage.setItem('sv_journal_v1',JSON.stringify(tradeJournal));
-  // Clear form
-  ['jSym','jEntry','jExit','jShares','jNote'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  document.getElementById('jPnlPreview').textContent='Enter prices + shares to see P&L';
-  document.getElementById('jPnlPreview').className='journal-pnl zero';
-  renderJournalList();
-  showToast('📒 Trade logged: '+sym+' '+(pnl>=0?'+':'')+'$'+pnl.toFixed(2));
-}
-function renderJournalList(){
-  const list=document.getElementById('journalList');
-  if(!list)return;
-  if(!tradeJournal.length){list.innerHTML='<div style="padding:16px 0;font-size:11px;color:var(--dim);text-align:center">No trades logged yet.</div>';document.getElementById('jTotalPnl').textContent='';return;}
-  const totalPnl=tradeJournal.reduce((s,t)=>s+t.pnl,0);
-  const totEl=document.getElementById('jTotalPnl');
-  if(totEl){totEl.textContent='Total P&L: '+(totalPnl>=0?'+':'')+'$'+totalPnl.toFixed(2);totEl.style.color=totalPnl>=0?'var(--gr)':'var(--rd)';}
-  list.innerHTML=tradeJournal.slice(0,50).map(t=>{
-    const d=new Date(t.ts);
-    const dateStr=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'});
-    const pnlColor=t.pnl>0?'var(--gr)':t.pnl<0?'var(--rd)':'var(--mu)';
-    return '<div class="journal-trade-row" title="'+t.note+'">'
-      +'<span style="font-size:9px;color:var(--dim);font-family:\'DM Mono\',monospace">'+dateStr+'</span>'
-      +'<span style="font-weight:800;color:'+(t.side==='LONG'?'var(--gr)':'var(--rd)')+'">'+t.sym+'</span>'
-      +'<span style="font-size:10px;color:var(--mu)">'+t.side+'</span>'
-      +'<span style="font-weight:700;color:'+pnlColor+';font-family:\'DM Mono\',monospace">'+(t.pnl>=0?'+':'')+'$'+t.pnl.toFixed(2)+'</span>'
-      +'<span style="font-size:10px;color:'+pnlColor+';font-family:\'DM Mono\',monospace">'+(t.pnlPct>=0?'+':'')+t.pnlPct.toFixed(1)+'%</span>'
-      +'<span style="font-size:9px;color:var(--mu)">'+t.score+'</span>'
-      +'</div>';
-  }).join('');
-}
-// Close journal on backdrop click
-document.getElementById('journalModal').addEventListener('click',e=>{if(e.target===document.getElementById('journalModal'))closeJournal();});
 
-// ═══ INIT ═══
-async function init(){
-  if(!localStorage.getItem('sv_v1_migrated')){
-    localStorage.removeItem('sv_scan');localStorage.removeItem('sv_scan_v1');scanSyms=[];
-    const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
-    if(token&&uid)sf('/rest/v1/profiles?id=eq.'+uid,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},body:JSON.stringify({watchlist:[]})}).catch(()=>{});
-    localStorage.setItem('sv_v1_migrated','1');
+  try {
+    // Try ordering by raw VOLUME. If Webull rejects that enum, fall back to the
+    // old RELATIVE_VOLUME ordering so this endpoint never goes dark.
+    let resp = await webullGet(env.WEBULL_APP_KEY, env.WEBULL_APP_SECRET, path, buildParams('VOLUME'));
+    let raw = await resp.text();
+    if (!resp.ok) {
+      resp = await webullGet(env.WEBULL_APP_KEY, env.WEBULL_APP_SECRET, path, buildParams('RELATIVE_VOLUME'));
+      raw = await resp.text();
+    }
+    if (!resp.ok) {
+      return new Response(JSON.stringify({ error: `Webull ${resp.status}`, detail: raw, session }), {
+        status: resp.status, headers: { 'Content-Type': 'application/json', ...CORS }
+      });
+    }
+    let parsed;
+    try { parsed = JSON.parse(raw); } catch(e) { parsed = { data: [] }; }
+    const items = Array.isArray(parsed) ? parsed : (parsed.data || parsed.list || []);
+    // Sort by real volume descending so the most liquid names lead regardless of
+    // how Webull happened to order the payload.
+    const normalized = items.map(normalizeItem).filter(i => i.symbol)
+      .sort((a, b) => (b.volume || 0) - (a.volume || 0));
+    return new Response(JSON.stringify(normalized), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', ...CORS }
+    });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), {
+      status: 500, headers: { 'Content-Type': 'application/json', ...CORS }
+    });
   }
-  scanSyms=scanSyms.filter(s=>!s.includes('.')||s==='BTC/USD'||s==='ETH/USD');
-  // Clear symbols added more than 12 hours ago — they're from a previous session
-  // Keeps manually-pinned (starred) symbols regardless of age
-  const todayStr=new Date().toLocaleDateString('en-US',{timeZone:'America/New_York'});
-  const lastClearDay=localStorage.getItem('sv_last_clear_day');
-  const isNewDay=lastClearDay!==todayStr;
-  const fourHoursAgo=Date.now()-4*60*60*1000;
-  const staleBefore=scanSyms.filter(s=>{
-    if(starredSyms.has(s))return false; // never clear starred
-    if(isNewDay)return true; // new trading day — clear everything from yesterday
-    const meta=symMeta.get(s);
-    if(!meta||!meta.addedTs)return true;
-    return meta.addedTs<fourHoursAgo;
-  });
-  localStorage.setItem('sv_last_clear_day',todayStr);
-  if(staleBefore.length){
-    sessionStorage.setItem('sv_cleared_today','1'); // signal: overwrite cloud, don't re-merge yesterday's list
-    scanSyms=scanSyms.filter(s=>!staleBefore.includes(s));
-    staleBefore.forEach(s=>{delete scanCache[s];symMeta.delete(s);});
-    showToast('🗑 Cleared '+staleBefore.length+' symbols from previous session');
-  }
-  saveScanSyms();liveScanUpdate();updateSortArrows();
-  // Pulse panel open by default
-  document.getElementById('pulsePanel').style.display='flex';
-  document.getElementById('pulseToggleBtn').classList.add('active');
-  connectFinnhubWS();
-  const toFetch=scanSyms.filter(s=>!Q[s]?.price);
-  const statusEl=document.getElementById('scanStatus');
-  for(let i=0;i<toFetch.length;i++){
-    const sym=toFetch[i];
-    if(statusEl)statusEl.textContent='Loading '+(i+1)+'/'+toFetch.length+' ('+sym+')';
-    await fetchQDirect(sym);liveScanUpdate();
-    await new Promise(r=>setTimeout(r,1100));
-  }
-  appReady=true;liveScanUpdate();
-  pullWatchlistFromCloud();
-  pullNotesFromCloud();
-  setTimeout(startDeepScan,3000);
-  startUniverseScan();
-  setInterval(()=>{if(appReady)liveScanUpdate();},15000);
 }
 
-window.addEventListener('pageshow',e=>{if(e.persisted)location.reload();});
-if(checkAuth())init();
-</script>
-</body>
-</html>
+// ─── /fmp-gainers handler ─────────────────────────────────────────────────────
+// FMP covers NYSE + Nasdaq + AMEX — catches everything Webull API misses
+// Free tier: 250 calls/day. We call this every 30s = ~240 calls/trading day. Perfect.
+async function handleFmpGainers(request, env) {
+  if (!env.FMP_API_KEY) {
+    return new Response(JSON.stringify({ error: 'FMP_API_KEY not set in Worker environment variables' }), {
+      status: 500, headers: { 'Content-Type': 'application/json', ...CORS }
+    });
+  }
+  try {
+    // FMP gainers endpoint — returns NYSE + Nasdaq + AMEX top gainers
+    // Includes pre-market data during pre-market hours
+    const resp = await fetch(
+      `https://financialmodelingprep.com/stable/biggest-gainers?apikey=${env.FMP_API_KEY}`,
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+    if (!resp.ok) {
+      return new Response(JSON.stringify({ error: `FMP ${resp.status}` }), {
+        status: resp.status, headers: { 'Content-Type': 'application/json', ...CORS }
+      });
+    }
+    const raw = await resp.json();
+    // FMP returns: [{symbol, name, change, price, changesPercentage, ...}]
+    // Normalize to same shape as Webull so dashboard handles both identically
+    const items = Array.isArray(raw) ? raw : (raw.gainers || raw.data || []);
+    const normalized = items.map(item => ({
+      symbol:        (item.symbol || '').toUpperCase().trim(),
+      price:         parseFloat(item.price ?? 0),
+      change_ratio:  parseFloat(item.changesPercentage ?? item.changePercentage ?? item.change_pct ?? 0),
+      volume:        parseFloat(item.volume ?? 0),
+      pre_close:     parseFloat(item.previousClose ?? item.price ?? 0),
+      relative_volume_10d: 0, // FMP free tier doesn't include RVOL
+      turnover_rate: 0,
+      name:          item.name || '',
+      exchange:      item.exchange || '',
+    })).filter(i => i.symbol && !i.symbol.includes('.'));
+    return new Response(JSON.stringify(normalized), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json', ...CORS }
+    });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), {
+      status: 500, headers: { 'Content-Type': 'application/json', ...CORS }
+    });
+  }
+}
+
+// ─── Main handler ─────────────────────────────────────────────────────────────
+
+// ─── Error logging endpoint ──────────────────────────────────────────────────
+// Dashboard POSTs failed fetches here. Stored in KV so Claude can pull them
+// next session via the /errors endpoint instead of the user screenshotting console.
+async function handleLogError(request, env) {
+  if (!env.ERROR_LOG) {
+    return new Response(JSON.stringify({ error: 'ERROR_LOG KV not bound' }), {
+      status: 500, headers: { 'Content-Type': 'application/json', ...CORS }
+    });
+  }
+  try {
+    const body = await request.json();
+    const key = `err:${Date.now()}:${Math.random().toString(36).slice(2,8)}`;
+    const entry = {
+      ts: Date.now(),
+      iso: new Date().toISOString(),
+      source: body.source || 'unknown',
+      status: body.status || 0,
+      url: body.url || '',
+      message: body.message || '',
+    };
+    await env.ERROR_LOG.put(key, JSON.stringify(entry), { expirationTtl: 86400 * 3 }); // keep 3 days
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200, headers: { 'Content-Type': 'application/json', ...CORS }
+    });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), {
+      status: 500, headers: { 'Content-Type': 'application/json', ...CORS }
+    });
+  }
+}
+
+// ─── Pull error log — Claude or the user can GET this directly ──────────────
+async function handleGetErrors(request, env) {
+  if (!env.ERROR_LOG) {
+    return new Response(JSON.stringify({ error: 'ERROR_LOG KV not bound' }), {
+      status: 500, headers: { 'Content-Type': 'application/json', ...CORS }
+    });
+  }
+  try {
+    const list = await env.ERROR_LOG.list({ prefix: 'err:' });
+    const entries = await Promise.all(
+      list.keys.map(async k => {
+        const v = await env.ERROR_LOG.get(k.name);
+        return v ? JSON.parse(v) : null;
+      })
+    );
+    const sorted = entries.filter(Boolean).sort((a, b) => b.ts - a.ts);
+    return new Response(JSON.stringify({ count: sorted.length, errors: sorted }), {
+      status: 200, headers: { 'Content-Type': 'application/json', ...CORS }
+    });
+  } catch (e) {
+    return new Response(JSON.stringify({ error: e.message }), {
+      status: 500, headers: { 'Content-Type': 'application/json', ...CORS }
+    });
+  }
+}
+
+export default {
+  async fetch(request, env) {
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
+    if (request.method !== 'GET' && request.method !== 'POST') return new Response('Method not allowed', { status: 405, headers: CORS });
+
+    const path = new URL(request.url).pathname;
+
+    // Routes that don't need Webull credentials — always available
+    // regardless of Webull secret status, so logging/health never go
+    // down just because a different integration has a credential issue.
+    if (path === '/log-error' && request.method === 'POST') return handleLogError(request, env);
+    if (path === '/errors')         return handleGetErrors(request, env);
+    if (path === '/fmp-gainers')    return handleFmpGainers(request, env);
+    if (path === '/health')         return new Response(JSON.stringify({
+      ok: true, ts: Date.now(), session: getMarketSession(),
+      webull: !!(env.WEBULL_APP_KEY && env.WEBULL_APP_SECRET),
+      fmp: !!env.FMP_API_KEY, errorLog: !!env.ERROR_LOG
+    }), { status: 200, headers: { 'Content-Type': 'application/json', ...CORS } });
+
+    // Webull-specific routes — only these require the Webull secrets
+    if (!env.WEBULL_APP_KEY || !env.WEBULL_APP_SECRET) {
+      return new Response(JSON.stringify({ error: 'WEBULL_APP_KEY and WEBULL_APP_SECRET not set in Worker environment variables' }), {
+        status: 500, headers: { 'Content-Type': 'application/json', ...CORS }
+      });
+    }
+    if (path === '/gainers')        return handleGainers(request, env);
+    if (path === '/active')         return handleActive(request, env);
+    // Diagnostic: returns the RAW, unmodified Webull payload for the first few
+    // movers so we can see exactly which fields (especially volume) Webull sends
+    // in the current session. Open in a browser and read it — no guessing.
+    if (path === '/raw-gainers') {
+      try {
+        const resp = await webullGet(
+          env.WEBULL_APP_KEY, env.WEBULL_APP_SECRET,
+          '/openapi/market-data/screener/gainers-losers',
+          { category: 'US_STOCK', order: 'CHANGE_RATIO', direction: 'DESC',
+            count: '5', market_session: getMarketSession() }
+        );
+        const text = await resp.text();
+        let parsed; try { parsed = JSON.parse(text); } catch (e) { parsed = { unparsed: text }; }
+        const items = Array.isArray(parsed) ? parsed : (parsed.data || parsed.list || []);
+        return new Response(JSON.stringify({
+          session: getMarketSession(),
+          status: resp.status,
+          itemCount: items.length,
+          // Every key present on the first item — this reveals the real field names
+          fieldsOnFirstItem: items[0] ? Object.keys(items[0]) : [],
+          firstThreeRaw: items.slice(0, 3)
+        }, null, 2), { status: 200, headers: { 'Content-Type': 'application/json', ...CORS } });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), {
+          status: 500, headers: { 'Content-Type': 'application/json', ...CORS }
+        });
+      }
+    }
+    // Diagnostic for the MOST-ACTIVE endpoint — this is the one that should
+    // surface the multi-million-share movers. Reports which sort order Webull
+    // accepted so we know whether VOLUME ordering worked or fell back.
+    if (path === '/raw-active') {
+      const tryOrder = async (order) => {
+        const r = await webullGet(
+          env.WEBULL_APP_KEY, env.WEBULL_APP_SECRET,
+          '/openapi/market-data/screener/most-active',
+          { category: 'US_STOCK', order, direction: 'DESC',
+            count: '20', market_session: getMarketSession() }
+        );
+        return { ok: r.ok, status: r.status, text: await r.text() };
+      };
+      try {
+        let usedOrder = 'VOLUME';
+        let res = await tryOrder('VOLUME');
+        if (!res.ok) { usedOrder = 'RELATIVE_VOLUME'; res = await tryOrder('RELATIVE_VOLUME'); }
+        let parsed; try { parsed = JSON.parse(res.text); } catch (e) { parsed = { unparsed: res.text }; }
+        const items = Array.isArray(parsed) ? parsed : (parsed.data || parsed.list || []);
+        return new Response(JSON.stringify({
+          session: getMarketSession(),
+          orderThatWorked: usedOrder,
+          volumeOrderAccepted: usedOrder === 'VOLUME',
+          status: res.status,
+          itemCount: items.length,
+          // Compact view: symbol + volume + % so we can see at a glance whether
+          // the liquid names (millions of shares) are now coming back.
+          symbols: items.map(i => ({
+            sym: (i.symbol || '').toUpperCase(),
+            vol: pickVolume(i),
+            pct: (() => { const r = parseFloat(i.change_ratio ?? 0); return Math.abs(r) <= 2 ? +(r * 100).toFixed(2) : +r.toFixed(2); })(),
+            px: parseFloat(i.close ?? i.price ?? 0)
+          }))
+        }, null, 2), { status: 200, headers: { 'Content-Type': 'application/json', ...CORS } });
+      } catch (e) {
+        return new Response(JSON.stringify({ error: e.message }), {
+          status: 500, headers: { 'Content-Type': 'application/json', ...CORS }
+        });
+      }
+    }
+    // ─── FMP ACCURACY TEST ────────────────────────────────────────────────────
+    // The decisive question: can FMP report a TRUE previous close and a real
+    // pre-market price? Webull cannot (it measures from a stale session, so
+    // yesterday's runner shows as today's gainer). We test against known truth.
+    // Usage: /raw-fmp?symbols=LABT,ZCMD,PN
+    if (path === '/raw-fmp') {
+      if (!env.FMP_API_KEY) {
+        return new Response(JSON.stringify({ error: 'FMP_API_KEY not set' }), {
+          status: 500, headers: { 'Content-Type': 'application/json', ...CORS }
+        });
+      }
+      const symbols = (new URL(request.url).searchParams.get('symbols') || 'LABT,ZCMD,PN')
+        .split(',').map(s => s.trim().toUpperCase()).filter(Boolean).slice(0, 5);
+      const key = env.FMP_API_KEY;
+      const tryUrl = async (label, url) => {
+        try {
+          const r = await fetch(url);
+          const t = await r.text();
+          let j; try { j = JSON.parse(t); } catch (e) { j = { unparsed: t.slice(0, 400) }; }
+          return { label, status: r.status, data: j };
+        } catch (e) { return { label, error: e.message }; }
+      };
+      const out = { session: getMarketSession(), serverTimeET: new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }), tests: [] };
+      for (const sym of symbols) {
+        // Standard quote — does previousClose match reality?
+        out.tests.push(await tryUrl(`quote:${sym}`,
+          `https://financialmodelingprep.com/stable/quote?symbol=${sym}&apikey=${key}`));
+        // Pre/post market endpoint — does FMP expose a live extended-hours price?
+        out.tests.push(await tryUrl(`aftermarket-quote:${sym}`,
+          `https://financialmodelingprep.com/stable/aftermarket-quote?symbol=${sym}&apikey=${key}`));
+      }
+      // The gainers list currently powering the dashboard's FMP path
+      out.tests.push(await tryUrl('biggest-gainers(first5)',
+        `https://financialmodelingprep.com/stable/biggest-gainers?apikey=${key}`));
+      if (Array.isArray(out.tests[out.tests.length - 1].data)) {
+        out.tests[out.tests.length - 1].data = out.tests[out.tests.length - 1].data.slice(0, 5);
+      }
+      return new Response(JSON.stringify(out, null, 2), {
+        status: 200, headers: { 'Content-Type': 'application/json', ...CORS }
+      });
+    }
+    // ─── /pm-quotes — TRUE pre-market data ────────────────────────────────────
+    // Both Webull and FMP's standard quote return YESTERDAY'S completed session
+    // (verified: FMP quote timestamp = 4:00pm prior day). Their "% change" is
+    // therefore yesterday's move, which is why stocks that already ran show as
+    // today's top gainers.
+    //
+    // The real picture needs two pieces:
+    //   yesterday's close   = FMP quote.price      (static all day -> cached)
+    //   live pre-market px  = FMP aftermarket-quote bid/ask mid
+    // True change % is computed from those. Verified against TradingView:
+    // LABT aftermarket mid $3.145 vs chart $3.15 — exact match.
+    // Usage: /pm-quotes?symbols=LABT,ZCMD,PN
+    if (path === '/pm-quotes') {
+      if (!env.FMP_API_KEY) {
+        return new Response(JSON.stringify({ error: 'FMP_API_KEY not set' }), {
+          status: 500, headers: { 'Content-Type': 'application/json', ...CORS }
+        });
+      }
+      const key = env.FMP_API_KEY;
+      const symbols = (new URL(request.url).searchParams.get('symbols') || '')
+        .split(',').map(s => s.trim().toUpperCase()).filter(Boolean).slice(0, 40);
+      if (!symbols.length) {
+        return new Response(JSON.stringify({ error: 'pass ?symbols=A,B,C' }), {
+          status: 400, headers: { 'Content-Type': 'application/json', ...CORS }
+        });
+      }
+      const etDate = new Date().toLocaleDateString('en-US', { timeZone: 'America/New_York' });
+      const getJson = async (url) => {
+        try { const r = await fetch(url); if (!r.ok) return null; return await r.json(); }
+        catch (e) { return null; }
+      };
+      // Yesterday's close never changes during the day — cache it per symbol/day
+      // so we spend API calls only on the live pre-market prices.
+      const closeFor = async (sym) => {
+        const cacheKey = `pmclose:${etDate}:${sym}`;
+        if (env.ERROR_LOG) {
+          const hit = await env.ERROR_LOG.get(cacheKey);
+          if (hit) return parseFloat(hit);
+        }
+        const j = await getJson(`https://financialmodelingprep.com/stable/quote?symbol=${sym}&apikey=${key}`);
+        const px = Array.isArray(j) && j[0] ? parseFloat(j[0].price || 0) : 0;
+        if (px > 0 && env.ERROR_LOG) {
+          await env.ERROR_LOG.put(cacheKey, String(px), { expirationTtl: 86400 });
+        }
+        return px;
+      };
+      // Try ONE batched aftermarket call first — FMP accepts comma-separated
+      // symbols on most endpoints. If it returns multiple rows we spend 1 API
+      // call instead of 40, which keeps the quota safe at a 60s refresh.
+      let amMap = {};
+      const batch = await getJson(`https://financialmodelingprep.com/stable/aftermarket-quote?symbol=${symbols.join(',')}&apikey=${key}`);
+      if (Array.isArray(batch) && batch.length > 1) {
+        for (const b of batch) if (b && b.symbol) amMap[b.symbol.toUpperCase()] = b;
+      }
+      const rows = [];
+      for (const sym of symbols) {
+        let a = amMap[sym] || null;
+        const prevClose = await closeFor(sym);
+        if (!a) {
+          const am = await getJson(`https://financialmodelingprep.com/stable/aftermarket-quote?symbol=${sym}&apikey=${key}`);
+          a = Array.isArray(am) && am[0] ? am[0] : null;
+        }
+        const bid = a ? parseFloat(a.bidPrice || 0) : 0;
+        const ask = a ? parseFloat(a.askPrice || 0) : 0;
+        const mid = (bid > 0 && ask > 0) ? (bid + ask) / 2 : (ask || bid || 0);
+        const vol = a ? parseFloat(a.volume || 0) : 0;
+        const pct = (mid > 0 && prevClose > 0) ? ((mid - prevClose) / prevClose) * 100 : null;
+        rows.push({
+          symbol: sym,
+          price: +mid.toFixed(4),
+          bid: bid || null,
+          ask: ask || null,
+          prevClose: prevClose || null,
+          changePct: pct === null ? null : +pct.toFixed(2),
+          preMarketVolume: vol,
+          hasLiveData: !!(a && mid > 0)
+        });
+      }
+      rows.sort((a, b) => (b.changePct ?? -999) - (a.changePct ?? -999));
+      return new Response(JSON.stringify({
+        session: getMarketSession(), asOfET: new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }),
+        count: rows.length, quotes: rows
+      }, null, 2), { status: 200, headers: { 'Content-Type': 'application/json', ...CORS } });
+    }
+    return new Response(JSON.stringify({ error: 'Not found', routes: ['/gainers', '/active', '/pm-quotes', '/raw-gainers', '/raw-active', '/raw-fmp', '/health'] }), {
+      status: 404, headers: { 'Content-Type': 'application/json', ...CORS }
+    });
+  }
+};
