@@ -212,10 +212,9 @@ input,button,textarea{font-family:inherit}
 .split-col{min-width:0;background:rgba(255,255,255,.012);border-radius:10px;padding:4px;
   display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .split-scroll{flex:1;min-height:0;overflow-y:auto;padding-right:3px}
-/* Setups is capped at ~8 rows and scrolls beyond that, leaving the space below
-   it in the same column for the dedicated news box. */
-.setups-scroll{flex:0 1 auto;max-height:var(--setup-h,472px)}
-#newsSlot{flex:1;min-height:120px;display:flex;flex-direction:column;margin-top:10px;
+/* Setups gets the space and scrolls; the news box below it stays compact. */
+.setups-scroll{flex:1;min-height:0}
+#newsSlot{flex:0 0 auto;height:var(--news-h,150px);display:flex;flex-direction:column;margin-top:10px;
   border-top:1px solid rgba(255,255,255,.06);padding-top:8px}
 /* Slim scrollbars so the panes don't eat width */
 .split-scroll::-webkit-scrollbar,.tg-box::-webkit-scrollbar{width:7px}
@@ -482,7 +481,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.66</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.67</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
