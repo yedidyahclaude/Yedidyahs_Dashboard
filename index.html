@@ -462,7 +462,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.61</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.62</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
@@ -734,6 +734,15 @@ const _momentumSticky={}; // sym -> expiry: keeps a spiker on the momentum board
 const _setupSticky={}; // sym -> expiry: keeps a 3/5+ setup on the left board a few cycles
 const _lastHod={}; // sym -> last seen high-of-day, for detecting NEW HOD events (Ross's HOD Momo)
 const _lastGoodRow={}; // sym -> last successfully-scored row, kept across transient data gaps
+// Webull's pre-market change_ratio is measured from a STALE previous close, so a
+// stock that ran YESTERDAY still reports a huge gain today (LABT: Webull +83%,
+// reality -5.9%). When we know the true previous close from Finnhub, recompute the
+// percentage from that. Falls back to Webull's number when we don't know better.
+function _correctPct(sym,px,wbPct){
+  const tp=Q[sym]?._truePc;
+  if(tp>0&&px>0)return (px-tp)/tp*100;
+  return wbPct;
+}
 let splitSwap=localStorage.getItem('sv_splitswap')==='1';
 // Symbols clicked/searched are HELD in the Setups (left) column for 3 min, even
 // at 0/5 — so a momentum pick you're watching stays visible while its setup forms.
@@ -1222,9 +1231,16 @@ async function fetchQDirect(sym){
   if(fhPaused())return;
   if(Q[sym]?.price&&Q[sym]?.high&&Date.now()-(Q[sym]._ts||0)<90000)return;
   if(_badSyms[sym]&&Date.now()-_badSyms[sym]<300000)return;
-  // Skip Finnhub if we already have fresh Webull data — Webull is more accurate
-  if(Q[sym]?._fromWebull&&Date.now()-(Q[sym]._ts||0)<120000)return;
-  if(Q[sym]?._fromFmp&&Date.now()-(Q[sym]._ts||0)<120000)return;
+  // Skip Finnhub if we already have fresh Webull data — EXCEPT when we still lack
+  // a TRUE previous close. Webull's pre-market change_ratio is measured from a
+  // stale reference (verified live: LABT reported +83% because Webull measured
+  // from $1.86, the close from BEFORE yesterday's run; the real prior close was
+  // $3.37 and the stock was actually DOWN today). Finnhub's `pc` is the real
+  // previous close, and it only changes once a day — so one fetch per symbol per
+  // day is enough to correct every percentage on the board.
+  const needTruePc=!(Q[sym]?._truePc>0);
+  if(!needTruePc&&Q[sym]?._fromWebull&&Date.now()-(Q[sym]._ts||0)<120000)return;
+  if(!needTruePc&&Q[sym]?._fromFmp&&Date.now()-(Q[sym]._ts||0)<120000)return;
   return queueCall(async()=>{
     try{
       const r=await fhFetch('/quote?symbol='+sym);
@@ -1236,7 +1252,7 @@ async function fetchQDirect(sym){
         // prices (BIYA showed $4.14 API vs $7.97 real). Finnhub is split-adjusted. When
         // they diverge >15%, trust Finnhub's price/% and flag the row as suspect.
         const splitMismatch=wbPx&&q.c&&Math.abs(q.c-wbPx)/Math.max(q.c,wbPx)>0.15;
-        Q[sym]={symbol:sym,price:q.c,open:q.o||Q[sym]?.open||0,high:q.h||Q[sym]?.high||0,low:q.l||Q[sym]?.low||0,prevClose:q.pc,change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,volume:Math.max(q.v||0,Q[sym]?.volume||0),bid:q.c*(1-0.0005),ask:q.c*(1+0.0005),_fromWebull:Q[sym]?._fromWebull,_fromFmp:Q[sym]?._fromFmp,wbRvol:Q[sym]?.wbRvol||0,_pxAgo:Q[sym]?._pxAgo,_pxAgoTs:Q[sym]?._pxAgoTs,_volAgo:Q[sym]?._volAgo,_volAgoTs:Q[sym]?._volAgoTs,_splitFlag:splitMismatch||Q[sym]?._splitFlag,priceTs:q.t?q.t*1000:Date.now(),_ts:Date.now()};
+        Q[sym]={symbol:sym,price:q.c,open:q.o||Q[sym]?.open||0,high:q.h||Q[sym]?.high||0,low:q.l||Q[sym]?.low||0,prevClose:q.pc,change:q.c-q.pc,changePct:q.pc?(q.c-q.pc)/q.pc*100:0,_truePc:q.pc||Q[sym]?._truePc||0,volume:Math.max(q.v||0,Q[sym]?.volume||0),bid:q.c*(1-0.0005),ask:q.c*(1+0.0005),_fromWebull:Q[sym]?._fromWebull,_fromFmp:Q[sym]?._fromFmp,wbRvol:Q[sym]?.wbRvol||0,_pxAgo:Q[sym]?._pxAgo,_pxAgoTs:Q[sym]?._pxAgoTs,_volAgo:Q[sym]?._volAgo,_volAgoTs:Q[sym]?._volAgoTs,_splitFlag:splitMismatch||Q[sym]?._splitFlag,priceTs:q.t?q.t*1000:Date.now(),_ts:Date.now()};
         const sess=getSession();
         checkPmhBreak(sym,q.c);
         if(sess==='pre'||sess==='mkt'){if(!pmHigh[sym]||q.h>pmHigh[sym])pmHigh[sym]=q.h;}
@@ -2010,7 +2026,7 @@ async function runWebullScan(){
           if(!pxAgoTs||Date.now()-pxAgoTs>60000){pxAgo=prev?.price||px;pxAgoTs=Date.now();}
           const volAgo=(!prev?._volAgoTs||Date.now()-prev._volAgoTs>60000)?(prev?.volume||vol):prev._volAgo;
           const volAgoTs=(!prev?._volAgoTs||Date.now()-prev._volAgoTs>60000)?Date.now():prev._volAgoTs;
-          Q[sym]={symbol:sym,price:px,changePct:chgPct,volume:vol,open:Q[sym]?.open||0,high:Q[sym]?.high||0,low:Q[sym]?.low||0,prevClose:item.pre_close?parseFloat(item.pre_close):px,wbRvol:Q[sym]?.wbRvol||0,_pxAgo:pxAgo,_pxAgoTs:pxAgoTs,_volAgo:volAgo,_volAgoTs:volAgoTs,_ts:Date.now(),_fromWebull:true};
+          Q[sym]={symbol:sym,price:px,changePct:_correctPct(sym,px,chgPct),volume:vol,open:Q[sym]?.open||0,high:Q[sym]?.high||0,low:Q[sym]?.low||0,prevClose:item.pre_close?parseFloat(item.pre_close):px,wbRvol:Q[sym]?.wbRvol||0,_truePc:Q[sym]?._truePc||0,_wbPct:chgPct,_pxAgo:pxAgo,_pxAgoTs:pxAgoTs,_volAgo:volAgo,_volAgoTs:volAgoTs,_ts:Date.now(),_fromWebull:true};
         }
         // Store turnover rate from Webull if available
         const tr=parseFloat(item.turnover_rate||item.turnover||0);
