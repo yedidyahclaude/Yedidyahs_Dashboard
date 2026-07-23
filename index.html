@@ -212,6 +212,11 @@ input,button,textarea{font-family:inherit}
 .split-col{min-width:0;background:rgba(255,255,255,.012);border-radius:10px;padding:4px;
   display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .split-scroll{flex:1;min-height:0;overflow-y:auto;padding-right:3px}
+/* Setups is capped at ~8 rows and scrolls beyond that, leaving the space below
+   it in the same column for the dedicated news box. */
+.setups-scroll{flex:0 1 auto;max-height:var(--setup-h,472px)}
+#newsSlot{flex:1;min-height:120px;display:flex;flex-direction:column;margin-top:10px;
+  border-top:1px solid rgba(255,255,255,.06);padding-top:8px}
 /* Slim scrollbars so the panes don't eat width */
 .split-scroll::-webkit-scrollbar,.tg-box::-webkit-scrollbar{width:7px}
 .split-scroll::-webkit-scrollbar-thumb,.tg-box::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:4px}
@@ -232,7 +237,6 @@ input,button,textarea{font-family:inherit}
 /* News panel sits BELOW the scanner. In split view it's constrained to the left
    (Setups) column so it reads as "news for the setup you're looking at". */
 #newsPanel{margin-top:12px;flex:0 0 auto}
-@media(min-width:901px){#newsPanel.under-setups{max-width:calc(50% - 5px)}}
 /* ── TOP GAINERS box (under Momentum) ── */
 .tg-box{flex:0 0 auto;max-height:210px;overflow-y:auto;margin-top:10px;border-top:1px solid rgba(255,255,255,.06);padding-top:6px}
 .tg-hd{position:sticky;top:0;background:var(--s1);z-index:2;font-size:11px;font-weight:800;letter-spacing:.04em;padding:6px 10px;color:var(--gr);text-transform:uppercase}
@@ -279,7 +283,8 @@ input,button,textarea{font-family:inherit}
 .notes-btns{display:flex;gap:8px;margin-top:12px;justify-content:flex-end}
 
 /* ── NEWS PANEL ── */
-#newsPanel{display:none;flex-direction:column;background:var(--s2);border:1px solid var(--b1);border-radius:10px;max-height:160px;overflow:hidden}
+#newsPanel{display:flex;flex-direction:column;background:var(--s2);border:1px solid var(--b1);border-radius:10px;max-height:160px;overflow:hidden}
+#newsSlot #newsPanel{max-height:none;flex:1;min-height:0;margin-top:0}
 .news-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--b1);flex-shrink:0}
 .news-hdr span{font-size:11px;font-weight:700;color:var(--ac2)}
 .news-sym-label{font-size:10px;color:var(--mu)}
@@ -477,7 +482,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.65</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.66</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
@@ -1587,7 +1592,14 @@ function renderNews(sym){
       +'</div>';
   }).join('');
 }
-function closeNewsPanel(){document.getElementById('newsPanel').style.display='none';}
+function closeNewsPanel(){
+  // The news box is a permanent part of the Setups column now — closing clears
+  // it back to the prompt instead of removing the box from the layout.
+  const l=document.getElementById('newsList');
+  if(l)l.innerHTML='<div class="news-empty">Click a row to load headlines</div>';
+  const s=document.getElementById('newsPanelSym');
+  if(s)s.textContent='select a row';
+}
 
 // ═══ CROSS-DEVICE SYNC ═══
 // Supabase access tokens expire after 60 min. Refresh proactively at 45 min,
@@ -1808,7 +1820,6 @@ function liveScanUpdate(){
   const sortBarEl=document.getElementById('sortBar');
   if(sortBarEl)sortBarEl.style.display=splitView?'none':'';
   const npEl=document.getElementById('newsPanel');
-  if(npEl)npEl.classList.toggle('under-setups',splitView);
   if(rows)rows.classList.toggle('split-mode',splitView);
   if(splitView){
     renderSplitView(results,maxShow,pd);
@@ -2034,14 +2045,22 @@ function renderSplitView(results,maxShow,pd){
   const rightLbl=splitSwap?'🎯 Setups':'⚡ Momentum';
   const leftHtml=splitSwap?right:left;
   const rightHtml=splitSwap?left:right;
+  // Keep the live news panel across re-renders: park it outside the container
+  // before we wipe the HTML, then drop it into its slot under Setups.
+  const _np=document.getElementById('newsPanel');
+  if(_np&&!renderSplitView._npHome)renderSplitView._npHome=_np.parentNode;
+  if(_np&&renderSplitView._npHome)renderSplitView._npHome.appendChild(_np);
   rows.innerHTML='<div class="split-wrap">'
     +'<div class="split-col"><div class="split-hd left" onclick="swapSplit()">'+leftLbl+'</div>'
-      +'<div class="split-scroll">'+leftHtml+'</div></div>'
+      +'<div class="split-scroll setups-scroll">'+leftHtml+'</div>'
+      +'<div id="newsSlot"></div></div>'
     +'<div class="split-col"><div class="split-hd right" onclick="swapSplit()">'+rightLbl+'</div>'
       +'<div class="split-scroll">'+rightHtml+'</div>'
       +'<div class="tg-box"><div class="tg-hd">📈 Top Gainers <span class="tg-sub">under $20 · min '+Math.round(_tgFloor/1000)+'K vol</span></div>'+tgHtml+'</div>'
     +'</div>'
     +'</div>';
+  const _slot=document.getElementById('newsSlot');
+  if(_np&&_slot)_slot.appendChild(_np);
 }
 
 // ═══ WEBULL LIVE SCAN — 100 symbols ═══
