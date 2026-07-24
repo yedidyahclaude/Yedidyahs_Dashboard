@@ -481,7 +481,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.71</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.72</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
@@ -792,7 +792,7 @@ let _wsGaveUp=false;
 let sortCol='score';
 let sortMode=localStorage.getItem('sv_sortmode')||'heat'; // 'heat' = most active first, 'score' = 5→1
 let splitView=localStorage.getItem('sv_splitview')!=='0'; // default ON
-const _momentumSticky={}; // sym -> expiry: keeps a spiker on the momentum board a few cycles
+const _momentumOrder=[]; // insertion-order queue: newest entrant at index 0, pushed down only by newer entrants or the row cap
 const _setupSticky={}; // sym -> expiry: keeps a 3/5+ setup on the left board a few cycles
 const _lastHod={}; // sym -> last seen high-of-day, for detecting NEW HOD events (Ross's HOD Momo)
 const _lastGoodRow={}; // sym -> last successfully-scored row, kept across transient data gaps
@@ -1961,10 +1961,15 @@ function renderSplitView(results,maxShow,pd){
   // ── EVENT-DRIVEN MOMENTUM (mirrors Ross's two scanners) ──
   // Ross runs two momentum scanners: HOD Momo (fires on a NEW high-of-day) and
   // Running Up (fires on a quick % move even before a new HOD). We combine them:
-  // a stock FIRES onto the board on either event, then SITS for 3 minutes (like an
-  // alert that stays up), refreshing its timer on each new event. It only drops off
-  // once it's been quiet for the full window — fire-and-sit, not live-flicker.
-  const MOMO_SIT_MS=180000; // 3 min, matching how Ross's alerts stay visible
+  // a stock FIRES onto the board on either event.
+  // ── INSERTION-ORDER QUEUE (not heat-sorted, not timer-expired) ──
+  // Once a stock fires onto the board, it goes to the TOP and STAYS in that
+  // position. It is never re-sorted and never silently times out. It only
+  // leaves the board when either (a) it gets promoted into Setups, or
+  // (b) enough newer names fire above it that it's pushed past the row cap.
+  // This trades "always shows the single hottest name at #1" for "what you
+  // saw stays where you saw it" — no flicker, no vanishing.
+  const setupSyms=new Set(setups.map(r=>r.sym));
   results.forEach(r=>{
     const q=r.q;if(!q||!q.price)return;
     const hasVol=(q.volume||0)>0;if(!hasVol)return; // any real volume qualifies
@@ -1975,25 +1980,20 @@ function renderSplitView(results,maxShow,pd){
     const newHod=hod>0&&hod>prevHod&&q.price>=hod*0.998; // HOD Momo event
     if(hod>prevHod)_lastHod[r.sym]=hod;
     const runningUp=vel>=1.0||volSurge; // Running Up event (quick move, pre-HOD)
-    // A stock is a MOMENTUM name if it's a real gapper (Ross's core: up 10%+ with
-    // real volume) — that's the baseline the board should always show. Live events
-    // (new HOD, quick move) REFRESH its timer so active ones stay longer.
     // TRADEABLE FLOOR: a stock that's traded 9K-20K shares isn't a momentum name,
     // it's noise with a big percentage on almost no activity. Ross wouldn't touch
     // it — you can't get in or out. Require real volume before it counts as a mover.
     const _vFloor=(typeof getSession==='function'&&getSession()==='mkt')?100000:50000;
     const isGapper=(q.changePct||0)>=10&&(q.volume||0)>=_vFloor;
-    if(isGapper||newHod||runningUp)_momentumSticky[r.sym]=nowT+MOMO_SIT_MS;
+    if((isGapper||newHod||runningUp)&&!setupSyms.has(r.sym)&&!_momentumOrder.includes(r.sym)){
+      _momentumOrder.unshift(r.sym); // brand-new entrant → top of the queue
+    }
   });
-  const movers=results.filter(r=>_momentumSticky[r.sym]&&_momentumSticky[r.sym]>nowT&&(r.q.volume||0)>0)
-    .sort((a,b)=>{
-      // Sort by live heat tier first (what's moving NOW rises), then by day % change
-      // so the biggest movers lead when nothing is actively spiking.
-      const ha=Math.floor(heatScore(a.sym)/15),hb=Math.floor(heatScore(b.sym)/15);
-      if(ha!==hb)return hb-ha;
-      return (b.q.changePct||0)-(a.q.changePct||0);
-    })
-    .slice(0,maxShow);
+  // Promotion removal: a name that's made it into Setups no longer needs a Momentum slot.
+  for(let i=_momentumOrder.length-1;i>=0;i--){if(setupSyms.has(_momentumOrder[i]))_momentumOrder.splice(i,1);}
+  // Row-cap removal: pushed off the bottom by newer entrants above it.
+  if(_momentumOrder.length>maxShow)_momentumOrder.length=maxShow;
+  const movers=_momentumOrder.map(sym=>allResults.find(r=>r.sym===sym)).filter(Boolean);
   const buildSetupRow=r=>{
     const base=buildRow(r,pd);
     if(!held.includes(r.sym))return base;
