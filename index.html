@@ -481,7 +481,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.70</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.71</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
@@ -2378,18 +2378,18 @@ async function startDeepScan(){
         const today=new Date().toISOString().split('T')[0];
         const from=new Date(Date.now()-2*86400000).toISOString().split('T')[0];
         const r=await fhFetch('/news?symbol='+sym+'&from='+from+'&to='+today);
-        if(r.status===403||r.status===429){p3=null;hitLimit=true;if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-news',r.status,FH_URL+'/news?symbol='+sym,sym);return;}
+        if(r.status===403||r.status===429){p3=cached.p3??null;hitLimit=true;if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-news',r.status,FH_URL+'/news?symbol='+sym,sym);return;}
         const news=await r.json();
         const catalysts=Array.isArray(news)?news.filter(a=>isRealCatalyst(a,sym)):[];
         hasNews=catalysts.length>0;p3=hasNews;
         if(catalysts.length&&catalysts[0].headline)latestHeadline=catalysts[0].headline;
         else if(Array.isArray(news)&&news[0]?.headline)latestHeadline=news[0].headline; // display-only fallback
         if(Array.isArray(news)&&news.length)_newsCache[sym]=news.slice(0,8);
-      }catch(e){p3=null;}});
+      }catch(e){p3=cached.p3??null;}});
       if(!scanCache[sym]?._rvolFromWebull){
         await queueCall(async()=>{try{
           const r=await fhFetch('/metric?symbol='+sym);
-          if(r.status===403||r.status===429){p4=null;p5=null;hitLimit=true;if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-metric',r.status,FH_URL+'/metric?symbol='+sym,sym);return;}
+          if(r.status===403||r.status===429){p4=cached.p4??null;p5=cached.p5??null;hitLimit=true;if(r.status===429)fhNote429();if(!fhPaused())logErrorToServer('finnhub-metric',r.status,FH_URL+'/metric?symbol='+sym,sym);return;}
           const d=await r.json();const m=d.metric||{};
           const avgDailyVol=(m['10DayAverageTradingVolume']||0)*1e6;
           const volFloor=sess==='mkt'?500000:100000; // absolute floor — a big ratio on a dead tape is not momentum
@@ -2406,7 +2406,7 @@ async function startDeepScan(){
           // Sub-50k float is a data error, not a tradeable float — never score it
           if(fm!==null&&fm>=0.05){p5=fm<10;scanCache[sym]={...scanCache[sym],floatValue:fm<0.1?'<0.1M':fm.toFixed(1)+'M'};}
           else{p5=null;scanCache[sym]={...scanCache[sym],floatValue:'—'};}
-        }catch(e){p4=null;p5=null;}});
+        }catch(e){p4=cached.p4??null;p5=cached.p5??null;}});
       } else {
         await queueCall(async()=>{try{
           const r=await fhFetch('/metric?symbol='+sym);
