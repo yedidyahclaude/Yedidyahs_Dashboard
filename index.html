@@ -481,7 +481,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.69</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.70</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
@@ -726,12 +726,12 @@ async function refreshPreMarketTruth(){
       if(!volAgoTs||Date.now()-volAgoTs>60000){volAgo=prev.volume||q.preMarketVolume;volAgoTs=Date.now();}
       Q[sym]={...prev,symbol:sym,price:q.price,
         changePct:(q.changePct===null||q.changePct===undefined)?(prev.changePct||0):q.changePct,
-        volume:q.preMarketVolume||0,
+        volume:q.preMarketVolume>0?q.preMarketVolume:(prev.volume||0),
         prevClose:q.prevClose||prev.prevClose||0,_truePc:q.prevClose||prev._truePc||0,
         bid:q.bid||prev.bid,ask:q.ask||prev.ask,
         high:Math.max(prev.high||0,q.price),low:prev.low?Math.min(prev.low,q.price):q.price,
         _pxAgo:pxAgo,_pxAgoTs:pxAgoTs,_volAgo:volAgo,_volAgoTs:volAgoTs,
-        _pmTruth:true,priceTs:Date.now(),_ts:Date.now()};
+        _pmTruth:true,_pmTruthTs:Date.now(),priceTs:Date.now(),_ts:Date.now()};
       fixed++;
     }
     if(fixed)liveScanUpdate();
@@ -2119,7 +2119,14 @@ async function runWebullScan(){
           if(!pxAgoTs||Date.now()-pxAgoTs>60000){pxAgo=prev?.price||px;pxAgoTs=Date.now();}
           const volAgo=(!prev?._volAgoTs||Date.now()-prev._volAgoTs>60000)?(prev?.volume||vol):prev._volAgo;
           const volAgoTs=(!prev?._volAgoTs||Date.now()-prev._volAgoTs>60000)?Date.now():prev._volAgoTs;
-          Q[sym]={symbol:sym,price:px,changePct:_correctPct(sym,px,chgPct),volume:vol,open:Q[sym]?.open||0,high:Q[sym]?.high||0,low:Q[sym]?.low||0,prevClose:item.pre_close?parseFloat(item.pre_close):px,wbRvol:Q[sym]?.wbRvol||0,_truePc:Q[sym]?._truePc||0,_wbPct:chgPct,_pxAgo:pxAgo,_pxAgoTs:pxAgoTs,_volAgo:volAgo,_volAgoTs:volAgoTs,_ts:Date.now(),_fromWebull:true};
+          // FMP's aftermarket-quote truth (refreshPreMarketTruth) is more accurate than
+          // Webull's own raw pre-market price/%, which is documented as unreliable
+          // (stale change_ratio, pre_close bugs). If a truth fix landed within the
+          // last 45s, keep that price/% instead of letting this 60s cycle stomp it
+          // with Webull's raw number — that regression showed WLDS at the wrong %
+          // right after pm-quotes had already corrected it.
+          const trustPmTruth=!!(prev&&prev._pmTruth&&prev.price>0&&Date.now()-(prev._pmTruthTs||0)<45000);
+          Q[sym]={symbol:sym,price:trustPmTruth?prev.price:px,changePct:trustPmTruth?prev.changePct:_correctPct(sym,px,chgPct),volume:vol,open:Q[sym]?.open||0,high:Q[sym]?.high||0,low:Q[sym]?.low||0,prevClose:item.pre_close?parseFloat(item.pre_close):px,wbRvol:Q[sym]?.wbRvol||0,_truePc:Q[sym]?._truePc||0,_wbPct:chgPct,_pxAgo:pxAgo,_pxAgoTs:pxAgoTs,_volAgo:volAgo,_volAgoTs:volAgoTs,_ts:Date.now(),_fromWebull:true,_pmTruth:trustPmTruth,_pmTruthTs:trustPmTruth?prev._pmTruthTs:0};
         }
         // Store turnover rate from Webull if available
         const tr=parseFloat(item.turnover_rate||item.turnover||0);
