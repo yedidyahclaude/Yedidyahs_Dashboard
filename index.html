@@ -481,7 +481,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.75</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.76</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
@@ -2028,7 +2028,7 @@ function renderSplitView(results,maxShow,pd){
     const hod=q.high||0;const nearHod=hod>0&&q.price>=hod*0.995;
     const flame=heat>=40?'🔥🔥':heat>=25?'🔥':'';
     const scoreDot=r.score>=4?'<span class="mo-score s4">'+r.score+'/5</span>':r.score>=3?'<span class="mo-score s3">'+r.score+'/5</span>':'<span class="mo-score">'+r.score+'/5</span>';
-    return '<div class="mo-row'+(nearHod?' athod':'')+'" onclick="selectSym(\''+r.sym+'\',true)">'
+    return '<div class="mo-row'+(nearHod?' athod':'')+'" onclick="selectSym(\''+r.sym+'\')">'
       +'<div class="mo-top">'
         +'<span class="mo-sym">'+r.sym+'</span>'+(flame?'<span class="mo-flame">'+flame+'</span>':'')
         +'<span class="mo-px">$'+q.price.toFixed(2)+'</span>'
