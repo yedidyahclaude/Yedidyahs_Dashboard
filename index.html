@@ -481,7 +481,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.73</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.74</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
@@ -2809,6 +2809,14 @@ async function init(){
     await new Promise(r=>setTimeout(r,1100));
   }
   appReady=true;liveScanUpdate();
+  // URL-param symbol jump: yedidyahsdashboard.click/?sym=XXXX opens straight to
+  // that symbol, pinned to the top for 3 min — lets an external hotkey/script
+  // (e.g. copy a symbol in Webull, press a hotkey) open this dashboard already
+  // focused on the right ticker, same as searching it manually would.
+  try{
+    const urlSym=new URLSearchParams(location.search).get('sym');
+    if(urlSym&&/^[A-Za-z.]{1,10}$/.test(urlSym))setTimeout(()=>selectSym(urlSym,true),300);
+  }catch(e){}
   pullWatchlistFromCloud();
   pullNotesFromCloud();
   setTimeout(startDeepScan,3000);
