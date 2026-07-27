@@ -481,7 +481,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.72</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.73</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
@@ -2231,9 +2231,16 @@ async function runFmpScan(){
       const px=parseFloat(item.price||0);
       const chgPct=parseFloat(item.change_ratio||0);
       if(!px)continue;
-      // Update Q if we don't have fresh data
-      if(!Q[sym]||Date.now()-(Q[sym]._ts||0)>30000){
-        Q[sym]={symbol:sym,price:px,changePct:chgPct,volume:parseFloat(item.volume||0),open:Q[sym]?.open||0,high:Q[sym]?.high||0,low:Q[sym]?.low||0,
+      // Update Q if we don't have fresh data — UNLESS a recent FMP-truth correction
+      // (refreshPreMarketTruth) is still fresh, in which case trust that over this
+      // raw gainers-feed data. Without this check, this 30-45s cadence loop was
+      // stomping a correct price/prevClose with stale raw fields (e.g. item.pre_close
+      // still reflecting Friday's reference) every cycle — same bug class as the
+      // Webull deep-scan overwrite fixed earlier, different source, missed then.
+      const _prevQ=Q[sym];
+      const _trustTruth=!!(_prevQ&&_prevQ._pmTruth&&_prevQ.price>0&&Date.now()-(_prevQ._pmTruthTs||0)<45000);
+      if(!_trustTruth&&(!Q[sym]||Date.now()-(Q[sym]._ts||0)>30000)){
+        Q[sym]={symbol:sym,price:px,changePct:chgPct,volume:Math.max(parseFloat(item.volume||0),_prevQ?.volume||0),open:_prevQ?.open||0,high:_prevQ?.high||0,low:_prevQ?.low||0,
           prevClose:parseFloat(item.pre_close||px),_ts:Date.now(),_fromFmp:true};
       }
       checkPmhBreak(sym,px);
