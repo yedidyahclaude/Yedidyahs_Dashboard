@@ -481,7 +481,7 @@ input,button,textarea{font-family:inherit}
   <div class="topbar" style="position:relative">
     <div style="flex-shrink:0">
       <div class="brand">Yedidyah's <span>Dashboard</span></div>
-      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.74</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
+      <div class="brand-sub">5 Pillars · Live · <span style="color:var(--ac2);opacity:.7">v3.9.75</span><span id="armDot" class="dead" title="Alert sounds not armed — click the page"></span></div>
     </div>
     <input id="si" type="text" placeholder="Search any ticker — press Enter" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter'){const s=this.value.trim();if(s){this.value='';selectSym(s,true);}}"/>
     <div class="clock-center">
@@ -897,6 +897,21 @@ function _ctx(){if(!_actx){try{_actx=new (window.AudioContext||window.webkitAudi
 function unlockAudio(){_ctx();_audioUnlocked=true;const b=document.getElementById('audioBanner');if(b)b.style.display='none';const d=document.getElementById('armDot');if(d){d.className='live';d.title='Alert sounds armed ✓';}showToast('🔔 Alerts armed — you\'ll hear every setup now');try{playSound('score4');}catch(e){}}
 document.addEventListener('pointerdown',()=>{if(!_audioUnlocked)unlockAudio();},{once:true});
 document.addEventListener('keydown',()=>{if(!_audioUnlocked)unlockAudio();},{once:true});
+// Alt+S: focus the search box without reloading the page. Lets an external
+// hotkey tool (AutoHotkey) drive this already-open tab — WinActivate the
+// window, send Alt+S, type a symbol, send Enter — same as searching by hand,
+// no new tab, no page reload, keeps scroll position and app state intact.
+document.addEventListener('keydown',(e)=>{
+  if(e.altKey&&e.key.toLowerCase()==='s'){
+    e.preventDefault();
+    const si=document.getElementById('si');
+    if(si){si.focus();si.select();}
+  }
+  if(e.altKey&&e.key.toLowerCase()==='p'){
+    e.preventDefault();
+    openTVPopup(); // reuses the same floating window (_tvWin) — no tab stacking
+  }
+});
 // A fresh page load has audio blocked by the browser until the first interaction.
 // Loading at 4am and walking away = every ping silent. Nag until it's unlocked.
 setTimeout(()=>{
@@ -2767,23 +2782,19 @@ function renderJournalList(){
 document.getElementById('journalModal').addEventListener('click',e=>{if(e.target===document.getElementById('journalModal'))closeJournal();});
 
 // ═══ INIT ═══
-async function init(){
-  if(!localStorage.getItem('sv_v1_migrated')){
-    localStorage.removeItem('sv_scan');localStorage.removeItem('sv_scan_v1');scanSyms=[];
-    const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
-    if(token&&uid)sf('/rest/v1/profiles?id=eq.'+uid,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},body:JSON.stringify({watchlist:[]})}).catch(()=>{});
-    localStorage.setItem('sv_v1_migrated','1');
-  }
-  scanSyms=scanSyms.filter(s=>!s.includes('.')||s==='BTC/USD'||s==='ETH/USD');
-  // Clear symbols added more than 12 hours ago — they're from a previous session
-  // Keeps manually-pinned (starred) symbols regardless of age
-  const todayStr=new Date().toLocaleDateString('en-US',{timeZone:'America/New_York'});
+// Trading-day boundary is 4am ET (pre-market open), not midnight — anything
+// tracked before 4am today still counts as "yesterday" and gets cleared.
+// Also re-checked periodically so a tab left open overnight resets correctly
+// even without a page reload, not just on the very next init().
+function dailyResetCheck(){
+  const tradingDayRef=new Date(Date.now()-4*60*60*1000); // shift back 4h before reading the NY calendar date
+  const todayStr=tradingDayRef.toLocaleDateString('en-US',{timeZone:'America/New_York'});
   const lastClearDay=localStorage.getItem('sv_last_clear_day');
   const isNewDay=lastClearDay!==todayStr;
   const fourHoursAgo=Date.now()-4*60*60*1000;
   const staleBefore=scanSyms.filter(s=>{
     if(starredSyms.has(s))return false; // never clear starred
-    if(isNewDay)return true; // new trading day — clear everything from yesterday
+    if(isNewDay)return true; // new trading day (past 4am ET) — clear everything from before
     const meta=symMeta.get(s);
     if(!meta||!meta.addedTs)return true;
     return meta.addedTs<fourHoursAgo;
@@ -2792,9 +2803,23 @@ async function init(){
   if(staleBefore.length){
     sessionStorage.setItem('sv_cleared_today','1'); // signal: overwrite cloud, don't re-merge yesterday's list
     scanSyms=scanSyms.filter(s=>!staleBefore.includes(s));
-    staleBefore.forEach(s=>{delete scanCache[s];symMeta.delete(s);});
+    staleBefore.forEach(s=>{delete scanCache[s];symMeta.delete(s);delete Q[s];});
+    saveScanSyms();
     showToast('🗑 Cleared '+staleBefore.length+' symbols from previous session');
+    if(appReady)liveScanUpdate();
   }
+}
+setInterval(dailyResetCheck,5*60000); // re-check every 5 min in case the tab stays open across 4am ET
+
+async function init(){
+  if(!localStorage.getItem('sv_v1_migrated')){
+    localStorage.removeItem('sv_scan');localStorage.removeItem('sv_scan_v1');scanSyms=[];
+    const token=sessionStorage.getItem('sv_token'),uid=sessionStorage.getItem('sv_uid');
+    if(token&&uid)sf('/rest/v1/profiles?id=eq.'+uid,{method:'PATCH',headers:{'Authorization':'Bearer '+token,'Prefer':'return=minimal'},body:JSON.stringify({watchlist:[]})}).catch(()=>{});
+    localStorage.setItem('sv_v1_migrated','1');
+  }
+  scanSyms=scanSyms.filter(s=>!s.includes('.')||s==='BTC/USD'||s==='ETH/USD');
+  dailyResetCheck();
   saveScanSyms();liveScanUpdate();updateSortArrows();
   // Pulse panel open by default
   document.getElementById('pulsePanel').style.display='flex';
